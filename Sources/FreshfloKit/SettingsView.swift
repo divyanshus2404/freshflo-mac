@@ -134,7 +134,10 @@ private struct GeneralTab: View {
                     fieldRow("Speech model", text: $settings.transcriptionModel, prompt: settings.provider.defaultTranscriptionModel)
                     Toggle("Fall back to on-device transcription when offline", isOn: $settings.offlineFallback)
                 }
-                fieldRow("Spoken language", text: $settings.language, prompt: "auto (or en, hi, es…)")
+                Picker("Spoken language", selection: $settings.language) {
+                    ForEach(Languages.spoken, id: \.code) { Text($0.name).tag($0.code) }
+                    if !Languages.spoken.contains(where: { $0.code == settings.language }) { Text(settings.language).tag(settings.language) }
+                }
             }
             .onChange(of: settings.language) { _, language in
                 LivePreview.prepare(language: language)
@@ -219,6 +222,13 @@ private struct GeneralTab: View {
 
             Section("Diagnostics") {
                 DiagnosticsSummary()
+                Toggle(isOn: $settings.shareUsage) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Share anonymous usage counts and crash reports")
+                        Text("Once a day: how many dictations, words and failures, and which engine. Never your words or app names.").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                Button("Send Feedback…") { (NSApp.delegate as? AppDelegate)?.openFeedback() }
             }
 
             Section("Permissions") {
@@ -406,6 +416,12 @@ private struct ToneTab: View {
             }
 
             Section {
+                Toggle(isOn: $settings.autoPromptMode) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Prompt mode in AI tools")
+                        Text("In Cursor, Claude, ChatGPT, AI chat sites and terminals running Claude Code or Codex, write a clear, structured prompt.").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
                 Toggle(isOn: $settings.fixGrammar) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Fix grammar")
@@ -429,9 +445,12 @@ private struct ToneTab: View {
 
             Section {
                 LabeledContent("Write in") {
-                    TextField("", text: $settings.outputLanguage, prompt: Text("Same as spoken"))
-                        .textFieldStyle(.roundedBorder)
-                        .frame(maxWidth: 260)
+                    Picker("", selection: $settings.outputLanguage) {
+                        ForEach(Languages.written, id: \.self) { Text($0.isEmpty ? "Same as spoken" : $0).tag($0) }
+                        if !Languages.written.contains(settings.outputLanguage) { Text(settings.outputLanguage).tag(settings.outputLanguage) }
+                    }
+                    .labelsHidden()
+                    .frame(maxWidth: 260)
                 }
                 Picker("Regional formatting", selection: $settings.regionalFormat) {
                     ForEach(RegionalFormat.allCases) { Text($0.label).tag($0) }

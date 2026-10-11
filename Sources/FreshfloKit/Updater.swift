@@ -23,7 +23,7 @@ final class Updater {
     var onChange: (() -> Void)?
     private var timer: Timer?
 
-    static var currentVersion: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0" }
+    nonisolated static var currentVersion: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0" }
 
     func start() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 20) { [weak self] in Task { await self?.check(userInitiated: false) } }
@@ -222,6 +222,12 @@ final class Updater {
 /// Shown once after an update, so people see what got better.
 enum WhatsNew {
     static let notes: [String: [String]] = [
+        "0.9.8": [
+            "Prompt mode: in Cursor, Claude, ChatGPT and Claude Code, rambling becomes a clear, structured prompt.",
+            "Ten Indian languages, from Tamil to Punjabi, in and English out. Pick yours in Settings → General.",
+            "Send Feedback… in the menu goes straight to the person who builds Freshflo.",
+            "Optional: share anonymous daily counts and crash reports to help improve Freshflo (Settings → General).",
+        ],
         "0.9.7": [
             "Grammar fixed, not just punctuation: \u{201C}he don't know nothing\u{201D} becomes \u{201C}he doesn't know anything\u{201D}.",
             "Stutters and repeats removed: \u{201C}I I think the the\u{201D} becomes \u{201C}I think the\u{201D}.",

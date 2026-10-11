@@ -416,10 +416,31 @@ struct OnboardingView: View {
                 cheat(keys: [settings.hotkey.shortLabel, "control"], "Edit by voice", "“make that shorter”, “scratch that”", color: Color(red: 0.44, green: 0.31, blue: 0.88))
                 cheat(keys: [settings.hotkey.shortLabel, "shift"], "Ask anything", "“remind me to call Rahul at 5”", color: Color(red: 0.18, green: 0.48, blue: 0.88))
             }
+            HStack(spacing: 12) {
+                Image(systemName: "globe").foregroundStyle(Brand.mint).frame(width: 18)
+                Picker("I speak", selection: $settings.language) {
+                    ForEach(Languages.spoken, id: \.code) { Text($0.name).tag($0.code) }
+                }
+                Picker("Write in", selection: $settings.outputLanguage) {
+                    ForEach(Languages.written, id: \.self) { Text($0.isEmpty ? "Same as spoken" : $0).tag($0) }
+                }
+            }
+            .padding(.horizontal, 12).padding(.vertical, 9)
+            .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.85)))
             Toggle(isOn: $openAtLogin) {
                 VStack(alignment: .leading, spacing: 1) {
                     Text("Open Freshflo when I log in").font(.headline)
                     Text("So it's ready whenever you want to talk.").font(.callout).foregroundStyle(.secondary)
+                }
+            }
+            .toggleStyle(.switch)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.85)))
+            Toggle(isOn: $settings.shareUsage) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Help improve Freshflo").font(.headline)
+                    Text("Share anonymous daily counts and crash reports. Never your words.").font(.callout).foregroundStyle(.secondary)
                 }
             }
             .toggleStyle(.switch)

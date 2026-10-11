@@ -73,11 +73,13 @@ public enum CLI {
     private static func execute() async throws {
         let settings = AppSettings.shared
         // Temporary overrides for experiments; restored before exit so saved settings don't change.
-        let savedLanguage = settings.outputLanguage, savedRegion = settings.regionalFormat
+        let savedLanguage = settings.outputLanguage, savedRegion = settings.regionalFormat, savedSpoken = settings.language
         defer {
             settings.outputLanguage = savedLanguage
             settings.regionalFormat = savedRegion
+            settings.language = savedSpoken
         }
+        if let spoken = value("--lang") { settings.language = spoken }
         let savedCleanupModel = settings.cleanupModel
         defer { settings.cleanupModel = savedCleanupModel }
         if let model = value("--cleanup-model") { settings.cleanupModel = model }

@@ -60,7 +60,7 @@ enum Cleanup {
                 output = nil
             }
             if debug, let output { print("debug \(engine) output: \(output.debugDescription)") }
-            if let output, let checked = sanitize(output, raw: input.raw, allowed: allowed, translating: input.translating) {
+            if let output, let checked = sanitize(output, raw: input.raw, allowed: allowed, translating: input.translating, promptStyle: input.tone == .prompt) {
                 return CleanupResult(text: TextPolish.apply(Regional.apply(input.context.continued(checked), input.regional), input.polish), engine: engine)
             }
         }
@@ -92,7 +92,7 @@ enum Cleanup {
             if tokens.count <= 8, text.hasSuffix("."), text.dropLast().rangeOfCharacter(from: CharacterSet(charactersIn: ".!?")) == nil {
                 text.removeLast()
             }
-        case .formal:
+        case .formal, .prompt:
             if let last = text.last, last.isLetter || last.isNumber { text += "." }
         }
         return Regional.apply(input.context.continued(text), input.regional)
@@ -120,7 +120,7 @@ enum Cleanup {
         - If the speaker lists items or steps, format them as a list. Turn spoken "new line" / "new paragraph" into line breaks.
         - Write spoken email addresses, URLs and handles in their real form: "rahul at the rate gmail dot com" or "rahul at gmail dot com" → rahul@gmail.com, "example dot com slash pricing" → example.com/pricing.
         - Output only the edited transcript, with no preamble, quotes or tags.
-        Tone: \(input.tone.instruction)
+        Tone: \(input.tone.instruction)\(input.tone == .prompt ? "\n" + PromptMode.example : "")
 
         Examples (they show what to keep; always apply the Tone above for capitalization and punctuation):
         <transcript>um what is the capital of france</transcript>
@@ -177,7 +177,7 @@ enum Cleanup {
     }
 
     /// Rejects model output that clearly isn't a cleanup (e.g. the model answered the transcript instead).
-    static func sanitize(_ output: String, raw: String, allowed: Set<String> = [], translating: Bool = false) -> String? {
+    static func sanitize(_ output: String, raw: String, allowed: Set<String> = [], translating: Bool = false, promptStyle: Bool = false) -> String? {
         var text = output.trimmingCharacters(in: .whitespacesAndNewlines)
         text = text.replacingOccurrences(of: "<transcript>", with: "").replacingOccurrences(of: "</transcript>", with: "")
         text = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -192,7 +192,8 @@ enum Cleanup {
         let outWords = words(text)
         let known = Set(rawWords).union(allowed)
         // A question that comes back without a question mark was most likely answered.
-        if let first = rawWords.first(where: { !fillerWords.contains($0) }), questionStarters.contains(first), !text.contains("?") {
+        // (Prompt style may turn "can you explain X" into "Explain X"; the overlap checks below still catch real answers.)
+        if !promptStyle, let first = rawWords.first(where: { !fillerWords.contains($0) }), questionStarters.contains(first), !text.contains("?") {
             return nil
         }
         // Mostly new vocabulary means the model wrote its own content.
@@ -288,14 +289,14 @@ enum Cleanup {
         case .veryCasual:
             text = text.lowercased()
             while text.hasSuffix(".") { text.removeLast() }
-        case .casual, .formal:
+        case .casual, .formal, .prompt:
             if !continuing { text = first.uppercased() + text.dropFirst() }
         }
         if let last = text.last, last.isLetter || last.isNumber {
             let isQuestion = !continuing && (words(text).first.map(questionStarters.contains) ?? false)
             if isQuestion {
                 text += "?"
-            } else if tone == .formal {
+            } else if tone == .formal || tone == .prompt {
                 text += "."
             }
         }

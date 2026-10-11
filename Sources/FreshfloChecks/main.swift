@@ -222,6 +222,20 @@ expect(TextPolish.grammarBasics("there is nothing to do", tone: .casual), "there
 expect(TextPolish.grammarBasics("if you were here", tone: .casual), "if you were here", "were untouched")
 expect(TextPolish.apply("I I think the the deploy is fucking broken, its a issue", .init()), "I think the deploy is broken, its an issue", "everything together")
 
+// MARK: - Prompt mode
+
+section("Prompt mode")
+expectTrue(PromptMode.isAITarget(bundleID: "com.todesktop.230313mzl4w4u92", windowTitle: "main.swift"), "Cursor")
+expectTrue(PromptMode.isAITarget(bundleID: "com.google.Chrome", windowTitle: "ChatGPT"), "ChatGPT tab")
+expectTrue(PromptMode.isAITarget(bundleID: "com.apple.Safari", windowTitle: "Refactor plan - Claude"), "Claude tab")
+expectTrue(PromptMode.isAITarget(bundleID: "com.googlecode.iterm2", windowTitle: "✳ Claude Code — ~/app"), "Claude Code in a terminal")
+expect(PromptMode.isAITarget(bundleID: "com.google.Chrome", windowTitle: "Inbox (3) - Gmail"), false, "ordinary tab")
+expect(PromptMode.isAITarget(bundleID: "com.apple.Terminal", windowTitle: "zsh — 80×24"), false, "ordinary terminal")
+expect(PromptMode.isAITarget(bundleID: "com.tinyspeck.slackmacgap", windowTitle: "Claude (DM)"), false, "Slack DM named Claude stays chat")
+expectTrue(Cleanup.sanitize("Explain why my React component re-renders twice.", raw: "can you explain why my react component re-renders twice", promptStyle: true) != nil, "prompt may rephrase a question")
+expect(Cleanup.sanitize("Explain why my React component re-renders twice.", raw: "can you explain why my react component re-renders twice"), nil, "chat style still guards questions")
+expect(Cleanup.sanitize("Because the effect runs twice in development strict mode when components mount.", raw: "why does my react component render twice", promptStyle: true), nil, "an answer is still rejected")
+
 // MARK: - Result
 
 if failures.isEmpty {

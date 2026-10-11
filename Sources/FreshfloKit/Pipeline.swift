@@ -43,7 +43,7 @@ enum Pipeline {
         }
         let input = CleanupInput(
             raw: raw,
-            tone: settings.tone(for: context.bundleID),
+            tone: settings.tone(for: context),
             context: context,
             vocabulary: settings.dictionary + extraVocabulary,
             keepPhrases: snippets.map(\.trigger).filter { !$0.isEmpty },

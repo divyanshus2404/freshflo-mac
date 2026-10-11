@@ -61,6 +61,10 @@ final class AppSettings: ObservableObject {
     @Published var indicatorTheme: IndicatorTheme { didSet { defaults.set(indicatorTheme.rawValue, forKey: "indicatorTheme") } }
     /// Swear words: clean up (default), mask, or keep.
     @Published var profanity: ProfanityMode { didSet { defaults.set(profanity.rawValue, forKey: "profanity") } }
+    /// Opt-in: anonymous daily usage counts and crash reports (never words or app names).
+    @Published var shareUsage: Bool { didSet { defaults.set(shareUsage, forKey: "shareUsage"); if shareUsage { Insights.sendDailyIfNeeded() } } }
+    /// Write structured prompts automatically in AI apps, AI chat sites and AI coding agents.
+    @Published var autoPromptMode: Bool { didSet { defaults.set(autoPromptMode, forKey: "autoPromptMode") } }
     /// Make dictations grammatically correct, not just punctuated.
     @Published var fixGrammar: Bool { didSet { defaults.set(fixGrammar, forKey: "fixGrammar") } }
     @Published var indicatorPosition: IndicatorPosition { didSet { defaults.set(indicatorPosition.rawValue, forKey: "indicatorPosition") } }
@@ -115,6 +119,8 @@ final class AppSettings: ObservableObject {
         indicatorTheme = IndicatorTheme(rawValue: d.string(forKey: "indicatorTheme") ?? "") ?? .fresh
         profanity = ProfanityMode(rawValue: d.string(forKey: "profanity") ?? "") ?? .cleanUp
         fixGrammar = d.object(forKey: "fixGrammar") as? Bool ?? true
+        autoPromptMode = d.object(forKey: "autoPromptMode") as? Bool ?? true
+        shareUsage = d.bool(forKey: "shareUsage")
         indicatorPosition = IndicatorPosition(rawValue: d.string(forKey: "indicatorPosition") ?? "") ?? .caret
         soundTheme = SoundTheme(rawValue: d.string(forKey: "soundTheme") ?? "") ?? ((d.object(forKey: "playSounds") as? Bool ?? true) ? .chimes : .off)
         outputLanguage = d.string(forKey: "outputLanguage") ?? ""
@@ -134,6 +140,13 @@ final class AppSettings: ObservableObject {
     func tone(for bundleID: String?) -> Tone {
         guard let bundleID else { return defaultTone }
         return toneRules.first { $0.bundleID == bundleID }?.tone ?? defaultTone
+    }
+
+    /// The style for where the text is going: your rule for the app wins; otherwise AI tools get Prompt mode.
+    func tone(for context: FocusContext) -> Tone {
+        if let rule = toneRules.first(where: { $0.bundleID == context.bundleID }) { return rule.tone }
+        if autoPromptMode, PromptMode.isAITarget(bundleID: context.bundleID, windowTitle: context.windowTitle) { return .prompt }
+        return defaultTone
     }
 
     /// A cloud provider is selected and has credentials (custom servers may not need a key).

@@ -1,7 +1,7 @@
 import Foundation
 
 enum Tone: String, Codable, CaseIterable, Identifiable {
-    case formal, casual, veryCasual
+    case formal, casual, veryCasual, prompt
 
     var id: String { rawValue }
 
@@ -10,6 +10,7 @@ enum Tone: String, Codable, CaseIterable, Identifiable {
         case .formal: return "Formal"
         case .casual: return "Casual"
         case .veryCasual: return "Very casual"
+        case .prompt: return "Prompt (for AI tools)"
         }
     }
 
@@ -18,6 +19,7 @@ enum Tone: String, Codable, CaseIterable, Identifiable {
         case .formal: return "Hey, are you free for lunch tomorrow? Let's do 12 if that works for you."
         case .casual: return "Hey are you free for lunch tomorrow? Let's do 12 if that works for you"
         case .veryCasual: return "hey are you free for lunch tomorrow? let's do 12 if that works for you"
+        case .prompt: return "Find a lunch spot for tomorrow at 12.\n- Walking distance from the office.\n- Vegetarian options."
         }
     }
 
@@ -29,6 +31,8 @@ enum Tone: String, Codable, CaseIterable, Identifiable {
             return "Casual: conversational, normal capitalization, light punctuation, no trailing period on short messages."
         case .veryCasual:
             return "Very casual: all lowercase, minimal punctuation, no trailing period, like a quick text message."
+        case .prompt:
+            return "Prompt: the text is a request to an AI assistant. Rewrite the speech as a clear, well-organized prompt in the speaker's own voice. Lead with the goal in one sentence. If there are several requirements, constraints or steps, list them as short bullet points starting with \"- \". Keep every requirement, detail, name, number and code identifier; wrap file names, functions, variables, commands and paths in backticks only if the speaker said them exactly. Remove fillers, false starts and corrections. Don't answer the request, don't add requirements, and don't add headings or greetings."
         }
     }
 }

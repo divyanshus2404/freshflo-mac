@@ -16,6 +16,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
     private var settingsWindow: NSWindow?
     private var meetingsWindow: NSWindow?
     private var onboardingWindow: NSWindow?
+    private var feedbackWindow: NSWindow?
     private var meetingTimer: Timer?
     private var hotkeyRetry: Timer?
     private var cancellables = Set<AnyCancellable>()
@@ -43,6 +44,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         startHotkey()
         Updater.shared.onChange = { [weak self] in self?.updateStatusIcon() }
         Updater.shared.start()
+        Insights.start()
 
         // People who already set things up before onboarding existed skip it.
         let defaults = UserDefaults.standard
@@ -203,6 +205,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         menu.addItem(item("History…", #selector(openHistory)))
         menu.addItem(item("Settings…", #selector(openSettings), key: ","))
         menu.addItem(item("Setup Guide…", #selector(openOnboarding)))
+        menu.addItem(item("Send Feedback…", #selector(openFeedback)))
         menu.addItem(item("Check for Updates…", #selector(checkForUpdates)))
         menu.addItem(.separator())
         menu.addItem(item("Quit Freshflo", #selector(NSApplication.terminate(_:)), key: "q", target: NSApp))
@@ -272,6 +275,22 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
     @objc private func openMeetings() { showMeetings() }
 
     @objc private func openOnboarding() { showOnboarding() }
+
+    @objc func openFeedback() {
+        if feedbackWindow == nil {
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 480, height: 430), styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
+            window.titlebarAppearsTransparent = true
+            window.titleVisibility = .hidden
+            window.isReleasedWhenClosed = false
+            window.appearance = NSAppearance(named: .aqua)
+            window.center()
+            feedbackWindow = window
+        }
+        // A fresh form each time it opens.
+        feedbackWindow?.contentView = NSHostingView(rootView: FeedbackView { [weak self] in self?.feedbackWindow?.close() })
+        NSApp.activate(ignoringOtherApps: true)
+        feedbackWindow?.makeKeyAndOrderFront(nil)
+    }
 
     private func showOnboarding(step: Int = 0) {
         if onboardingWindow == nil {
