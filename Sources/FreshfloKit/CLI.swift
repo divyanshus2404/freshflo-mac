@@ -134,10 +134,9 @@ public enum CLI {
             _ = NSApplication.shared
             for step in 0..<5 {
                 let view = OnboardingView(initialStep: step) {}
-                    .frame(width: 620, height: 580)
-                    .frame(width: 620, height: 500, alignment: .top)
+                    .frame(width: 820, height: 580)
+                    .frame(width: 820, height: 492, alignment: .top) // drop the footer buttons
                     .clipped()
-                    .background(Color(nsColor: .windowBackgroundColor))
                 let renderer = ImageRenderer(content: view)
                 renderer.scale = 2
                 if let image = renderer.nsImage, let tiff = image.tiffRepresentation,

@@ -276,12 +276,13 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
     private func showOnboarding(step: Int = 0) {
         if onboardingWindow == nil {
             let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 560, height: 520),
+                contentRect: NSRect(x: 0, y: 0, width: 820, height: 580),
                 styleMask: [.titled, .closable, .fullSizeContentView],
                 backing: .buffered,
                 defer: false
             )
             window.titlebarAppearsTransparent = true
+            window.appearance = NSAppearance(named: .aqua) // setup always uses the light brand look
             window.titleVisibility = .hidden
             window.isReleasedWhenClosed = false
             window.contentView = NSHostingView(rootView: OnboardingView(initialStep: step) { [weak self] in

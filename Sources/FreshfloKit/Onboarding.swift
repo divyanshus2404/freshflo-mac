@@ -1,10 +1,11 @@
 import AppKit
+import ServiceManagement
 import SwiftUI
 
-/// First-run setup, designed so anyone can go from download to a working dictation in about a minute:
-/// welcome → permissions → test the key → first dictation → optional accuracy upgrade.
-/// The built-in Apple engine works with no account or API key, so no step asks for one.
-/// Reopen any time from the menu (Setup Guide…).
+/// First-run setup assistant: anyone goes from download to a working dictation in about a minute.
+/// Welcome (animated demo) → permissions (auto-advances) → test the talk key → first dictation → finish
+/// (shortcut cheat sheet, open at login, optional accuracy upgrade). The built-in Apple engine needs no account or key.
+/// Always shown in the light brand look. Reopen from the menu (Setup Guide…).
 struct OnboardingView: View {
     var onFinish: () -> Void
 
@@ -21,8 +22,14 @@ struct OnboardingView: View {
     @State private var keyWorks = false
     @State private var keyMonitor: Any?
     @State private var askedAccessibility = false
+    @State private var openAtLogin = true
+    @State private var showUpgrade = false
+    @State private var celebrate = false
 
-    private let steps = ["Welcome", "Permissions", "Your key", "Try it", "Accuracy"]
+    private let steps: [(title: String, icon: String)] = [
+        ("Welcome", "hand.wave"), ("Permissions", "lock.shield"), ("Talk key", "keyboard"),
+        ("First dictation", "waveform"), ("Finish", "flag.checkered"),
+    ]
 
     init(initialStep: Int = 0, onFinish: @escaping () -> Void) {
         self.onFinish = onFinish
@@ -30,31 +37,33 @@ struct OnboardingView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            progress
-                .padding(.top, 26)
-                .padding(.horizontal, 36)
-            Group {
-                switch step {
-                case 0: welcome
-                case 1: permissionsStep
-                case 2: keyStep
-                case 3: tryItStep
-                default: accuracyStep
+        HStack(spacing: 0) {
+            sidebar
+            VStack(spacing: 0) {
+                Group {
+                    switch step {
+                    case 0: welcome
+                    case 1: permissionsStep
+                    case 2: keyStep
+                    case 3: tryItStep
+                    default: finishStep
+                    }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .padding(.horizontal, 36)
+                .padding(.top, 34)
+                .id(step)
+                .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
+                footer
+                    .padding(.horizontal, 28)
+                    .padding(.vertical, 16)
+                    .background(Color.white.opacity(0.7))
+                    .overlay(alignment: .top) { Divider() }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .padding(.horizontal, 36)
-            .padding(.top, 22)
-            .id(step)
-            .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .opacity))
-            footer
-                .padding(.horizontal, 28)
-                .padding(.vertical, 18)
-                .background(.bar)
+            .background(Brand.backdrop)
         }
-        .frame(width: 620, height: 580)
-        .background(Brand.backdrop)
+        .frame(width: 820, height: 580)
+        .environment(\.colorScheme, .light)
         .tint(Brand.mint)
         .animation(.spring(response: 0.42, dampingFraction: 0.86), value: step)
         .onAppear {
@@ -66,68 +75,108 @@ struct OnboardingView: View {
             stopKeyTest()
         }
         .onChange(of: step) { _, new in new == 2 ? startKeyTest() : stopKeyTest() }
+        .onChange(of: permissionsDone) { _, done in
+            // Everything granted while on this step: move on by itself.
+            guard done, step == 1 else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.1) { if step == 1 { step = 2 } }
+        }
     }
 
-    private var progress: some View {
-        HStack(spacing: 6) {
-            ForEach(steps.indices, id: \.self) { i in
-                Capsule()
-                    .fill(i <= step ? Brand.mint : Color.secondary.opacity(0.18))
-                    .frame(height: 4)
+    // MARK: Sidebar
+
+    private var sidebar: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 10) {
+                Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 40, height: 40)
+                (Text("freshflo") + Text(".").foregroundColor(Brand.mint))
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+            }
+            .padding(.bottom, 30)
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(steps.indices, id: \.self) { i in
+                    let done = i < step, current = i == step
+                    HStack(spacing: 11) {
+                        ZStack {
+                            Circle().fill(done ? Brand.mint : (current ? Color.white : Color.black.opacity(0.05)))
+                            Circle().strokeBorder(current ? Brand.mint : Color.clear, lineWidth: 2)
+                            if done {
+                                Image(systemName: "checkmark").font(.system(size: 10, weight: .bold)).foregroundStyle(.white)
+                            } else {
+                                Text("\(i + 1)").font(.system(size: 11, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(current ? Brand.mint : Color.secondary)
+                            }
+                        }
+                        .frame(width: 24, height: 24)
+                        Text(steps[i].title)
+                            .font(.system(size: 13.5, weight: current ? .semibold : .regular))
+                            .foregroundStyle(current ? Color.primary : (done ? Color.primary.opacity(0.75) : Color.secondary))
+                        Spacer()
+                    }
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 10)
+                    .background(RoundedRectangle(cornerRadius: 10).fill(current ? Color.white.opacity(0.8) : .clear))
+                    .shadow(color: current ? Color.black.opacity(0.06) : .clear, radius: 6, y: 2)
+                }
+            }
+            Spacer()
+            VStack(alignment: .leading, spacing: 8) {
+                Label("About a minute", systemImage: "clock").font(.callout).foregroundStyle(.secondary)
+                Label("Only listens while you hold the key", systemImage: "lock.fill").font(.callout).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
+        .padding(24)
+        .frame(width: 236)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(LinearGradient(colors: [Brand.mint.opacity(0.13), Color(red: 0.42, green: 0.65, blue: 1).opacity(0.08)],
+                                   startPoint: .topLeading, endPoint: .bottomTrailing))
+        .background(Color(red: 0.97, green: 0.985, blue: 0.98))
+        .overlay(alignment: .trailing) { Rectangle().fill(Color.black.opacity(0.06)).frame(width: 1) }
     }
 
     // MARK: Welcome
 
     private var welcome: some View {
         VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .center, spacing: 16) {
-                Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 76, height: 76)
-                    .shadow(color: Brand.mint.opacity(0.25), radius: 12, y: 6)
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("Say it messy.").font(.system(size: 38, weight: .regular, design: .serif))
-                    Text("Send it fresh.").font(.system(size: 38, weight: .regular, design: .serif)).italic().foregroundStyle(Brand.mintText)
-                }
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Say it messy.").font(.system(size: 40, weight: .regular, design: .serif))
+                Text("Send it fresh.").font(.system(size: 40, weight: .regular, design: .serif)).italic().foregroundStyle(Brand.mintText)
             }
-            Text("Freshflo turns your voice into clean, polished text in any app. No typing, no account, free.")
+            Text("Talk the way you think. Freshflo turns it into clean, polished text in any app. Free, with no account.")
                 .font(.title3).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            VStack(spacing: 10) {
-                howRow(1, key: settings.hotkey.shortLabel, "Hold your talk key", "in any app where you can type")
-                howRow(2, key: nil, "Talk naturally", "ums, restarts and “no wait” are fine")
-                howRow(3, key: nil, "Let go", "clean text appears where your cursor is")
+            DemoReplay()
+            HStack(spacing: 10) {
+                stepChip("1", key: settings.hotkey.shortLabel, "Hold")
+                Image(systemName: "arrow.right").foregroundStyle(.tertiary)
+                stepChip("2", key: nil, "Talk")
+                Image(systemName: "arrow.right").foregroundStyle(.tertiary)
+                stepChip("3", key: nil, "Let go")
             }
-            .padding(.top, 4)
         }
     }
 
-    private func howRow(_ n: Int, key: String?, _ title: String, _ detail: String) -> some View {
-        HStack(spacing: 14) {
-            Text("\(n)").font(.system(.callout, design: .rounded).weight(.bold)).foregroundStyle(Brand.mintText)
-                .frame(width: 28, height: 28).background(Circle().fill(Brand.mint.opacity(0.14)))
-            VStack(alignment: .leading, spacing: 1) {
-                HStack(spacing: 6) {
-                    Text(title).font(.headline)
-                    if let key { Keycap(label: key, small: true) }
-                }
-                Text(detail).font(.callout).foregroundStyle(.secondary)
-            }
-            Spacer()
+    private func stepChip(_ n: String, key: String?, _ text: String) -> some View {
+        HStack(spacing: 7) {
+            Text(n).font(.system(size: 11, weight: .bold, design: .rounded)).foregroundStyle(Brand.mintText)
+                .frame(width: 20, height: 20).background(Circle().fill(Brand.mint.opacity(0.15)))
+            Text(text).font(.callout.weight(.medium))
+            if let key { Keycap(label: key, small: true) }
         }
-        .padding(12)
-        .background(RoundedRectangle(cornerRadius: 14).fill(Color.primary.opacity(0.04)))
+        .padding(.horizontal, 10).padding(.vertical, 6)
+        .background(Capsule().fill(Color.white.opacity(0.85)))
+        .overlay(Capsule().strokeBorder(Color.black.opacity(0.07)))
     }
 
     // MARK: Permissions
 
-    private var needsSpeech: Bool { settings.provider == .local && LocalSpeech.needsAuthorization }
     private var permissionsDone: Bool {
         permissions.accessibility && permissions.microphone == .authorized && (permissions.speech || settings.provider != .local)
     }
+    private var showsSpeechCard: Bool { settings.provider == .local && LocalSpeech.needsAuthorization || settings.provider == .local && !permissions.speech }
 
     private var permissionsStep: some View {
         VStack(alignment: .leading, spacing: 14) {
-            title(needsSpeech || !permissions.speech && settings.provider == .local ? "Allow three things" : "Allow two things",
+            title(showsSpeechCard ? "Allow three things" : "Allow two things",
                   "macOS asks once. Freshflo only listens while you hold the key, and never reads password fields.")
             permissionCard(icon: "mic.fill", name: "Microphone", detail: "To hear you while you hold the key.",
                            granted: permissions.microphone == .authorized) {
@@ -143,7 +192,7 @@ struct OnboardingView: View {
                 Permissions.promptAccessibility()
                 Permissions.openAccessibilitySettings()
             }
-            if settings.provider == .local, !permissions.speech || LocalSpeech.needsAuthorization {
+            if showsSpeechCard {
                 permissionCard(icon: "waveform", name: "Speech Recognition", detail: "For the free built-in engine on this version of macOS.",
                                granted: permissions.speech) {
                     Task { @MainActor in
@@ -152,18 +201,40 @@ struct OnboardingView: View {
                     }
                 }
             }
-            if askedAccessibility, !permissions.accessibility {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("In the window that opened:").font(.callout.weight(.semibold))
-                    Text("1. Turn on the switch next to **Freshflo**.  2. Come back here. This page updates by itself.")
-                    Text("Don't see Freshflo? Click **+**, open Applications and choose Freshflo.").foregroundStyle(.secondary)
-                }
-                .font(.callout)
-                .padding(12)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: 12).fill(Brand.mint.opacity(0.08)))
+            if permissionsDone {
+                Label("All set. Moving on…", systemImage: "checkmark.circle.fill")
+                    .font(.headline).foregroundStyle(Brand.mint)
+                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
+            } else if !permissions.accessibility {
+                accessibilityGuide
             }
         }
+        .animation(.easeOut(duration: 0.3), value: permissionsDone)
+    }
+
+    /// A picture of the exact row to switch on, so nobody hunts through System Settings.
+    private var accessibilityGuide: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(askedAccessibility ? "In the System Settings window that opened, switch this on:"
+                                    : "After you click Allow, System Settings opens. Switch this on:").font(.callout.weight(.semibold))
+            HStack(spacing: 10) {
+                Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 22, height: 22)
+                Text("Freshflo").font(.callout)
+                Spacer()
+                ZStack(alignment: .trailing) {
+                    Capsule().fill(Brand.mint).frame(width: 38, height: 22)
+                    Circle().fill(.white).frame(width: 18, height: 18).padding(.trailing, 2).shadow(radius: 1, y: 1)
+                }
+                Image(systemName: "hand.point.left.fill").foregroundStyle(.orange)
+            }
+            .padding(.horizontal, 12).padding(.vertical, 8)
+            .background(RoundedRectangle(cornerRadius: 9).fill(Color.white))
+            .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(Color.black.opacity(0.08)))
+            Text("Not in the list? Click **+** at the bottom, choose Applications → Freshflo. This page updates by itself.")
+                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(14)
+        .background(RoundedRectangle(cornerRadius: 14).fill(Brand.mint.opacity(0.07)))
     }
 
     private func permissionCard(icon: String, name: String, detail: String, granted: Bool, action: @escaping () -> Void) -> some View {
@@ -176,17 +247,19 @@ struct OnboardingView: View {
             Spacer()
             if granted {
                 Label("Allowed", systemImage: "checkmark.circle.fill").foregroundStyle(Brand.mint).font(.callout.weight(.semibold))
+                    .transition(.scale.combined(with: .opacity))
             } else {
                 Button("Allow", action: action).buttonStyle(.borderedProminent).controlSize(.large)
             }
         }
         .padding(14)
-        .background(RoundedRectangle(cornerRadius: 14).fill(Color.primary.opacity(granted ? 0.03 : 0.05)))
-        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(granted ? Brand.mint.opacity(0.35) : Color.primary.opacity(0.08)))
+        .background(RoundedRectangle(cornerRadius: 14).fill(Color.white.opacity(granted ? 0.6 : 0.9)))
+        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(granted ? Brand.mint.opacity(0.45) : Color.black.opacity(0.08)))
+        .shadow(color: .black.opacity(granted ? 0 : 0.04), radius: 8, y: 3)
         .animation(.easeOut(duration: 0.25), value: granted)
     }
 
-    // MARK: Key
+    // MARK: Talk key
 
     private var keyStep: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -195,13 +268,16 @@ struct OnboardingView: View {
                 Keycap(label: settings.hotkey.shortLabel, pressed: keyDown)
                 VStack(alignment: .leading, spacing: 6) {
                     if keyWorks {
-                        Label("Works. You're all set.", systemImage: "checkmark.circle.fill").font(.headline).foregroundStyle(Brand.mint)
+                        Label("It works.", systemImage: "checkmark.circle.fill").font(.title3.weight(.semibold)).foregroundStyle(Brand.mint)
+                            .transition(.scale.combined(with: .opacity))
+                        Text("That's the key you'll hold to talk.").foregroundStyle(.secondary)
                     } else {
-                        Text("Press it now to check.").font(.headline)
+                        Text("Press it now to check.").font(.title3.weight(.semibold))
+                        Text(settings.hotkey == .fn ? "No fn key on your keyboard? Pick Right ⌥ below." : "Pick a different key below any time.")
+                            .foregroundStyle(.secondary)
                     }
-                    Text("No \(settings.hotkey == .fn ? "fn key on your keyboard" : "luck")? Pick another key below.")
-                        .font(.callout).foregroundStyle(.secondary)
                 }
+                .animation(.spring(response: 0.35, dampingFraction: 0.7), value: keyWorks)
             }
             .padding(.vertical, 6)
             HStack(spacing: 8) {
@@ -211,17 +287,13 @@ struct OnboardingView: View {
                         keyWorks = false
                     } label: {
                         Text(key.shortLabel).font(.callout.weight(.medium)).padding(.horizontal, 12).padding(.vertical, 7)
-                            .background(Capsule().fill(settings.hotkey == key ? Brand.mint.opacity(0.18) : Color.primary.opacity(0.05)))
-                            .overlay(Capsule().strokeBorder(settings.hotkey == key ? Brand.mint : Color.primary.opacity(0.1)))
+                            .background(Capsule().fill(settings.hotkey == key ? Brand.mint.opacity(0.18) : Color.white.opacity(0.8)))
+                            .overlay(Capsule().strokeBorder(settings.hotkey == key ? Brand.mint : Color.black.opacity(0.1)))
                     }
                     .buttonStyle(.plain)
                 }
             }
-            if settings.hotkey == .fn {
-                fnAdvice
-            }
-            Text("Hold \(settings.hotkey.shortLabel) + Control to edit by voice (\u{201C}make that shorter\u{201D}), \(settings.hotkey.shortLabel) + Shift to ask a question.")
-                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            if settings.hotkey == .fn { fnAdvice }
         }
     }
 
@@ -259,7 +331,7 @@ struct OnboardingView: View {
             }
             if settings.hotkey.keyCodes.contains(Int64(event.keyCode)) {
                 withAnimation(.easeOut(duration: 0.12)) { keyDown = down }
-                if down { withAnimation { keyWorks = true } }
+                if down { keyWorks = true }
             }
             return event
         }
@@ -276,25 +348,33 @@ struct OnboardingView: View {
         keyDown = false
     }
 
-    // MARK: Try it
+    // MARK: First dictation
+
+    private var practiced: Bool { history.items.count > historyCountAtPractice }
 
     private var tryItStep: some View {
         VStack(alignment: .leading, spacing: 14) {
-            if history.items.count > historyCountAtPractice, let last = history.items.first {
-                HStack(spacing: 12) {
-                    Image(systemName: "checkmark.circle.fill").font(.system(size: 34)).foregroundStyle(Brand.mint)
+            if practiced, let last = history.items.first {
+                HStack(spacing: 14) {
+                    Image(systemName: "checkmark.circle.fill").font(.system(size: 40)).foregroundStyle(Brand.mint)
+                        .symbolEffect(.bounce, value: celebrate)
+                        .shadow(color: Brand.mint.opacity(0.4), radius: 12)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("It works.").font(.system(size: 30, design: .serif))
-                        Text("That's all there is to it. Freshflo lives in your menu bar.").foregroundStyle(.secondary)
+                        Text("You just dictated.").font(.system(size: 32, design: .serif))
+                        Text(last.latencyMs.map { "Typed \(String(format: "%.2f", Double($0) / 1000)) s after you let go." } ?? "That's all there is to it.")
+                            .foregroundStyle(.secondary)
                     }
                 }
+                .onAppear { celebrate.toggle() }
                 Text("\u{201C}\(last.text)\u{201D}")
                     .font(.system(.title3, design: .serif))
-                    .padding(14)
+                    .padding(16)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(RoundedRectangle(cornerRadius: 14).fill(Brand.mint.opacity(0.08)))
+                    .background(RoundedRectangle(cornerRadius: 14).fill(Color.white))
+                    .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Brand.mint.opacity(0.4)))
+                Text("Try it once more in the box, or continue.").font(.callout).foregroundStyle(.secondary)
             } else {
-                title("Try it now", "")
+                title("Your first dictation", "")
                 HStack(spacing: 6) {
                     Text("Click in the box, hold")
                     Keycap(label: settings.hotkey.shortLabel, small: true)
@@ -303,81 +383,104 @@ struct OnboardingView: View {
                 .font(.title3)
                 Text("\u{201C}um, hey, this is my first dictation, no wait, my first test\u{201D}")
                     .font(.system(.title3, design: .serif)).italic().foregroundStyle(Brand.mintText)
-                Text("Then let go.").font(.title3)
+                Text("Then let go and watch the ums disappear.").font(.title3)
             }
             ZStack(alignment: .topLeading) {
                 TextEditor(text: $practice)
                     .font(.body)
                     .scrollContentBackground(.hidden)
                     .padding(10)
-                    .background(RoundedRectangle(cornerRadius: 14).fill(Color.primary.opacity(0.05)))
-                    .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.primary.opacity(0.1)))
-                    .frame(height: 110)
+                    .background(RoundedRectangle(cornerRadius: 14).fill(Color.white))
+                    .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Color.black.opacity(0.1)))
+                    .frame(height: practiced ? 70 : 110)
                 if practice.isEmpty {
                     Text("Click here first…").foregroundStyle(.tertiary).padding(16).allowsHitTesting(false)
                 }
             }
             if !permissionsDone {
-                Label("Some permissions are still missing, so this won't work yet. Go back one step.", systemImage: "exclamationmark.triangle")
+                Label("Some permissions are still missing, so this won't work yet. Go back to Permissions.", systemImage: "exclamationmark.triangle")
                     .font(.callout).foregroundStyle(.orange)
             }
         }
         .onAppear { historyCountAtPractice = history.items.count }
+        .animation(.spring(response: 0.45, dampingFraction: 0.8), value: practiced)
     }
 
-    // MARK: Accuracy (optional)
+    // MARK: Finish
 
-    private var accuracyStep: some View {
+    private var finishStep: some View {
         VStack(alignment: .leading, spacing: 14) {
-            title("Want even better accuracy?", "Optional. Freshflo already works. This makes names, accents and Hinglish noticeably better.")
-            engineCard(selected: settings.provider == .local, icon: "applelogo", name: "Built-in (Apple)",
-                       detail: engineStatus.isEmpty ? "Free, no account." : "Free, no account. \(engineStatus).") {
-                settings.provider = .local
-                refreshEngine()
+            title("You're all set", "Three keys to remember. Freshflo lives in your menu bar.")
+            VStack(spacing: 8) {
+                cheat(keys: [settings.hotkey.shortLabel], "Hold to dictate", "Tap once for hands-free. Esc cancels.", color: Brand.mint)
+                cheat(keys: [settings.hotkey.shortLabel, "control"], "Edit by voice", "“make that shorter”, “scratch that”", color: Color(red: 0.44, green: 0.31, blue: 0.88))
+                cheat(keys: [settings.hotkey.shortLabel, "shift"], "Ask anything", "“remind me to call Rahul at 5”", color: Color(red: 0.18, green: 0.48, blue: 0.88))
             }
-            engineCard(selected: settings.provider == .groq, icon: "bolt.fill", name: "Groq Whisper (recommended)",
-                       detail: "The most accurate, about 0.3 s per dictation. Needs a free key, takes a minute.") {
-                settings.provider = .groq
+            Toggle(isOn: $openAtLogin) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Open Freshflo when I log in").font(.headline)
+                    Text("So it's ready whenever you want to talk.").font(.callout).foregroundStyle(.secondary)
+                }
+            }
+            .toggleStyle(.switch)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.85)))
+            DisclosureGroup(isExpanded: $showUpgrade) {
+                upgrade.padding(.top, 8)
+            } label: {
+                Text(settings.provider == .groq && settings.canUseCloud ? "Accuracy: Groq Whisper ✓" : "Want sharper accuracy for names and accents? (optional)")
+                    .font(.callout.weight(.medium))
+            }
+        }
+    }
+
+    private func cheat(keys: [String], _ title: String, _ detail: String, color: Color) -> some View {
+        HStack(spacing: 12) {
+            Circle().fill(color).frame(width: 8, height: 8)
+            HStack(spacing: 4) {
+                ForEach(keys.indices, id: \.self) { i in
+                    if i > 0 { Text("+").foregroundStyle(.tertiary).font(.caption) }
+                    Keycap(label: keys[i], small: true)
+                }
+            }
+            .frame(width: 130, alignment: .leading)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title).font(.callout.weight(.semibold))
+                Text(detail).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 12).padding(.vertical, 9)
+        .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.85)))
+        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.black.opacity(0.06)))
+    }
+
+    private var upgrade: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Groq Whisper is the most accurate engine (about 0.3 s per dictation). The key is free and takes a minute.")
+                .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 6) {
+                Text("1.")
+                Link("Get your free key at console.groq.com →", destination: URL(string: "https://console.groq.com/keys")!)
+            }
+            HStack(spacing: 8) {
+                Text("2.")
+                SecureField("", text: Binding(get: { settings.provider == .groq ? settings.apiKey : "" }, set: { new in
+                    if settings.provider != .groq { settings.provider = .groq }
+                    settings.apiKey = new
+                }), prompt: Text("Paste it here (starts with gsk_)"))
+                .textFieldStyle(.roundedBorder)
+                Button(testingKey ? "Checking…" : "Check") { testKey() }.disabled(testingKey || settings.apiKey.isEmpty || settings.provider != .groq)
+            }
+            if let keyStatus {
+                Text(keyStatus).font(.callout).foregroundStyle(keyStatus.hasPrefix("✓") ? Brand.mint : .red)
             }
             if settings.provider == .groq {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 6) {
-                        Text("1.")
-                        Link("Get your free key at console.groq.com →", destination: URL(string: "https://console.groq.com/keys")!)
-                    }
-                    HStack(spacing: 8) {
-                        Text("2.")
-                        SecureField("", text: $settings.apiKey, prompt: Text("Paste it here (starts with gsk_)"))
-                            .textFieldStyle(.roundedBorder)
-                        Button(testingKey ? "Checking…" : "Check") { testKey() }.disabled(testingKey || settings.apiKey.isEmpty)
-                    }
-                    if let keyStatus {
-                        Text(keyStatus).font(.callout).foregroundStyle(keyStatus.hasPrefix("✓") ? Brand.mint : .red)
-                    }
-                }
-                .font(.callout)
-                .padding(.leading, 6)
+                Button("Use the built-in engine instead") { settings.provider = .local; keyStatus = nil }.buttonStyle(.link).font(.callout)
             }
         }
-    }
-
-    private func engineCard(selected: Bool, icon: String, name: String, detail: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 14) {
-                Image(systemName: icon).font(.title3).frame(width: 30).foregroundStyle(selected ? Brand.mint : .secondary)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(name).font(.headline)
-                    Text(detail).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer()
-                Image(systemName: selected ? "checkmark.circle.fill" : "circle").font(.title3).foregroundStyle(selected ? Brand.mint : .secondary)
-            }
-            .padding(14)
-            .background(RoundedRectangle(cornerRadius: 14).fill(selected ? Brand.mint.opacity(0.08) : Color.primary.opacity(0.04)))
-            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(selected ? Brand.mint : Color.primary.opacity(0.1)))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
+        .font(.callout)
     }
 
     // MARK: Footer
@@ -390,30 +493,32 @@ struct OnboardingView: View {
             Spacer()
             switch step {
             case 0:
-                Button("Set up in a minute") { step = 1 }.keyboardShortcut(.defaultAction).controlSize(.large)
+                Button("Set up in a minute") { step = 1 }.keyboardShortcut(.defaultAction).controlSize(.large).buttonStyle(.borderedProminent)
             case 1:
                 if !permissionsDone { Button("Skip for now") { step += 1 }.buttonStyle(.borderless) }
-                Button("Continue") { step += 1 }.keyboardShortcut(.defaultAction).controlSize(.large).disabled(!permissionsDone)
+                Button("Continue") { step += 1 }.keyboardShortcut(.defaultAction).controlSize(.large).buttonStyle(.borderedProminent).disabled(!permissionsDone)
             case 3:
-                Button(history.items.count > historyCountAtPractice ? "Continue" : "Skip") { step += 1 }
-                    .keyboardShortcut(.defaultAction).controlSize(.large)
+                Button(practiced ? "Continue" : "Skip") { step += 1 }.keyboardShortcut(.defaultAction).controlSize(.large).buttonStyle(.borderedProminent)
             case 4:
-                Button(settings.provider == .groq && !settings.canUseCloud ? "Use built-in for now" : "Finish") {
-                    if settings.provider == .groq, !settings.canUseCloud { settings.provider = .local }
-                    onFinish()
-                }
-                .keyboardShortcut(.defaultAction).controlSize(.large)
+                Button("Start using Freshflo") { finish() }.keyboardShortcut(.defaultAction).controlSize(.large).buttonStyle(.borderedProminent)
             default:
-                Button("Continue") { step += 1 }.keyboardShortcut(.defaultAction).controlSize(.large)
+                Button("Continue") { step += 1 }.keyboardShortcut(.defaultAction).controlSize(.large).buttonStyle(.borderedProminent)
             }
         }
+    }
+
+    private func finish() {
+        // A Groq choice without a working key would leave dictation broken; fall back to the built-in engine.
+        if settings.provider == .groq, !settings.canUseCloud { settings.provider = .local }
+        if openAtLogin, SMAppService.mainApp.status != .enabled { try? SMAppService.mainApp.register() }
+        onFinish()
     }
 
     // MARK: Pieces
 
     @ViewBuilder private func title(_ heading: String, _ detail: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(heading).font(.system(size: 30, weight: .regular, design: .serif))
+            Text(heading).font(.system(size: 32, weight: .regular, design: .serif))
             if !detail.isEmpty {
                 Text(detail).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
@@ -436,9 +541,67 @@ struct OnboardingView: View {
 
     private func refreshEngine() {
         let language = settings.language
-        Task { @MainActor in
-            let status = await LocalSpeech.status(language: language)
-            engineStatus = status == "Ready" ? "Runs on this Mac" : status.replacingOccurrences(of: "Ready (uses Apple's servers)", with: "Uses Apple's speech servers")
+        Task { @MainActor in engineStatus = await LocalSpeech.status(language: language) }
+    }
+}
+
+/// The welcome screen's looping demo: rambling words stream into the pill, the mess is struck out,
+/// and the clean sentence lands. It explains the product without a paragraph.
+struct DemoReplay: View {
+    private let raw = ["um", "so", "let's", "meet", "on", "Tuesday,", "no", "wait,", "Wednesday", "at", "five"]
+    private let dropped: Set<Int> = [0, 1, 5, 6, 7]
+    private let clean = "Let's meet on Wednesday at 5."
+    private let cycle = 8.0
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1 / 30)) { context in
+            let t = context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: cycle)
+            let shown = min(raw.count, Int(t / 0.28) + 1)
+            let listening = t < 3.3
+            let struck = t > 3.5
+            let done = t > 4.3
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 10) {
+                    Circle().fill(Brand.mint).frame(width: 7, height: 7).shadow(color: Brand.mint, radius: 4)
+                    HStack(spacing: 2.5) {
+                        ForEach(0..<11, id: \.self) { i in
+                            let wave = abs(sin(t * 7 + Double(i) * 0.9)) * sin(Double(i + 1) / 12 * .pi)
+                            Capsule().fill(Brand.mint).frame(width: 3, height: listening ? 4 + 16 * wave : 3)
+                        }
+                    }
+                    .frame(height: 22)
+                    Text(done ? "Inserted · 0.31 s" : (listening ? "Listening…" : "Polishing…"))
+                        .font(.system(size: 12, weight: .medium)).foregroundStyle(Color.white.opacity(0.75))
+                }
+                .padding(.horizontal, 14)
+                .frame(height: 36)
+                .background(Capsule().fill(Color(red: 0.06, green: 0.1, blue: 0.09)))
+                .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
+
+                raw.indices.reduce(Text("")) { text, i in
+                    guard i < shown else { return text }
+                    let gone = struck && dropped.contains(i)
+                    return text + Text(raw[i] + " ")
+                        .strikethrough(gone, color: .red)
+                        .foregroundColor(gone ? Color.red.opacity(0.75) : .secondary)
+                        .italic()
+                }
+                .font(.system(size: 16))
+                .frame(height: 22, alignment: .leading)
+
+                HStack(spacing: 10) {
+                    Image(systemName: "arrow.turn.down.right").foregroundStyle(Brand.mint)
+                    Text(clean).font(.system(size: 20, design: .serif))
+                }
+                .opacity(done ? 1 : 0)
+                .offset(y: done ? 0 : 6)
+                .animation(.easeOut(duration: 0.4), value: done)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 16).fill(Color.white.opacity(0.9)))
+            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.black.opacity(0.06)))
+            .shadow(color: .black.opacity(0.05), radius: 12, y: 4)
         }
     }
 }
@@ -452,9 +615,9 @@ enum Brand {
     })
     static var backdrop: some View {
         ZStack {
-            Color(nsColor: .windowBackgroundColor)
-            RadialGradient(colors: [mint.opacity(0.12), .clear], center: .topLeading, startRadius: 10, endRadius: 420)
-            RadialGradient(colors: [Color(red: 0.42, green: 0.65, blue: 1).opacity(0.08), .clear], center: .topTrailing, startRadius: 10, endRadius: 380)
+            Color(red: 0.985, green: 0.992, blue: 0.99)
+            RadialGradient(colors: [mint.opacity(0.10), .clear], center: .topTrailing, startRadius: 10, endRadius: 460)
+            RadialGradient(colors: [Color(red: 0.42, green: 0.65, blue: 1).opacity(0.06), .clear], center: .bottomTrailing, startRadius: 10, endRadius: 380)
         }
         .ignoresSafeArea()
     }
@@ -474,10 +637,10 @@ struct Keycap: View {
             .padding(.horizontal, small ? 6 : 10)
             .background(
                 RoundedRectangle(cornerRadius: small ? 6 : 16)
-                    .fill(pressed ? Brand.mint : Color(nsColor: .controlBackgroundColor))
+                    .fill(pressed ? Brand.mint : Color.white)
                     .shadow(color: .black.opacity(pressed ? 0.05 : 0.18), radius: 0, y: pressed ? 1 : (small ? 2 : 5))
             )
-            .overlay(RoundedRectangle(cornerRadius: small ? 6 : 16).strokeBorder(Color.primary.opacity(0.14)))
+            .overlay(RoundedRectangle(cornerRadius: small ? 6 : 16).strokeBorder(Color.black.opacity(0.14)))
             .offset(y: pressed ? (small ? 1 : 4) : 0)
             .shadow(color: pressed ? Brand.mint.opacity(0.5) : .clear, radius: 14)
     }

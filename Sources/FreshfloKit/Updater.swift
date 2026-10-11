@@ -222,6 +222,12 @@ final class Updater {
 /// Shown once after an update, so people see what got better.
 enum WhatsNew {
     static let notes: [String: [String]] = [
+        "0.9.6": [
+            "A new setup assistant with a step-by-step sidebar and a live demo of what Freshflo does.",
+            "Setup shows exactly which switch to turn on in System Settings, then moves on by itself.",
+            "Freshflo can open when you log in, so it's always ready.",
+            "A cheat sheet of the three keys when you finish.",
+        ],
         "0.9.5": [
             "Works on every Mac with macOS 14 or later, Apple Silicon and Intel.",
             "No API key needed: Apple's built-in speech engine is the free default.",
