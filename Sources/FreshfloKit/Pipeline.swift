@@ -50,7 +50,9 @@ enum Pipeline {
             customInstructions: settings.customInstructions,
             outputLanguage: settings.outputLanguage,
             regional: settings.regionalFormat,
-            longForm: longForm
+            longForm: longForm,
+            profanity: settings.profanity,
+            fixGrammar: settings.fixGrammar
         )
         var result = await Cleanup.run(input, mode: mode ?? settings.cleanupMode, endpoint: settings.endpoint, canUseAPI: settings.canUseCloud)
         result.text = SnippetExpander.applyInline(result.text, snippets: snippets)

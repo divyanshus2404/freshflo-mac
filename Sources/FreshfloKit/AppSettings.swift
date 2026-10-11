@@ -59,6 +59,10 @@ final class AppSettings: ObservableObject {
     @Published var regionalFormat: RegionalFormat { didSet { defaults.set(regionalFormat.rawValue, forKey: "regionalFormat") } }
     @Published var indicatorStyle: IndicatorStyle { didSet { defaults.set(indicatorStyle.rawValue, forKey: "indicatorStyle") } }
     @Published var indicatorTheme: IndicatorTheme { didSet { defaults.set(indicatorTheme.rawValue, forKey: "indicatorTheme") } }
+    /// Swear words: clean up (default), mask, or keep.
+    @Published var profanity: ProfanityMode { didSet { defaults.set(profanity.rawValue, forKey: "profanity") } }
+    /// Make dictations grammatically correct, not just punctuated.
+    @Published var fixGrammar: Bool { didSet { defaults.set(fixGrammar, forKey: "fixGrammar") } }
     @Published var indicatorPosition: IndicatorPosition { didSet { defaults.set(indicatorPosition.rawValue, forKey: "indicatorPosition") } }
     @Published var soundTheme: SoundTheme { didSet { defaults.set(soundTheme.rawValue, forKey: "soundTheme") } }
     @Published var askModeEnabled: Bool { didSet { defaults.set(askModeEnabled, forKey: "askModeEnabled") } }
@@ -109,6 +113,8 @@ final class AppSettings: ObservableObject {
         askModeEnabled = d.object(forKey: "askModeEnabled") as? Bool ?? true
         indicatorStyle = IndicatorStyle(rawValue: d.string(forKey: "indicatorStyle") ?? "") ?? .halo
         indicatorTheme = IndicatorTheme(rawValue: d.string(forKey: "indicatorTheme") ?? "") ?? .fresh
+        profanity = ProfanityMode(rawValue: d.string(forKey: "profanity") ?? "") ?? .cleanUp
+        fixGrammar = d.object(forKey: "fixGrammar") as? Bool ?? true
         indicatorPosition = IndicatorPosition(rawValue: d.string(forKey: "indicatorPosition") ?? "") ?? .caret
         soundTheme = SoundTheme(rawValue: d.string(forKey: "soundTheme") ?? "") ?? ((d.object(forKey: "playSounds") as? Bool ?? true) ? .chimes : .off)
         outputLanguage = d.string(forKey: "outputLanguage") ?? ""

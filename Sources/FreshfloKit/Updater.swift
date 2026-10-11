@@ -222,6 +222,12 @@ final class Updater {
 /// Shown once after an update, so people see what got better.
 enum WhatsNew {
     static let notes: [String: [String]] = [
+        "0.9.7": [
+            "Grammar fixed, not just punctuation: \u{201C}he don't know nothing\u{201D} becomes \u{201C}he doesn't know anything\u{201D}.",
+            "Stutters and repeats removed: \u{201C}I I think the the\u{201D} becomes \u{201C}I think the\u{201D}.",
+            "Swear words cleaned up by default. Choose Clean it up, Mask or Keep in Settings → Style.",
+            "Names close to ones in your Dictionary are spelled your way, even offline.",
+        ],
         "0.9.6": [
             "A new setup assistant with a step-by-step sidebar and a live demo of what Freshflo does.",
             "Setup shows exactly which switch to turn on in System Settings, then moves on by itself.",

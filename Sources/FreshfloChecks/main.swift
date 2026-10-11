@@ -177,6 +177,50 @@ expect(LocalSpeech.chunks([Float](repeating: 0.1, count: 16_000 * 10)).count, 1,
 expectTrue(Tips.all.allSatisfy { !$0.isEmpty }, "tips present")
 expectTrue(Tips.today(key: "Fn").contains("%@") == false, "tip placeholders filled")
 
+// MARK: - Clean and correct
+
+section("Repeats & stutters")
+expect(TextPolish.removeStutters("th- the meeting moved"), "the meeting moved", "stutter fragment")
+expect(TextPolish.removeRepeats("I think I think we should"), "I think we should", "repeated phrase")
+expect(TextPolish.removeRepeats("send it to the the team."), "send it to the team.", "repeated word")
+expect(TextPolish.removeRepeats("we we we need it"), "we need it", "triple repeat")
+expect(TextPolish.removeRepeats("on Friday, Friday at 5."), "on Friday at 5.", "repeat keeps the later punctuation")
+expect(TextPolish.removeRepeats("Go. Go."), "Go. Go.", "intentional repeat across a full stop")
+expect(TextPolish.removeRepeats("I had had enough"), "I had had enough", "grammatical had had")
+expect(TextPolish.removeRepeats("what it is is a problem"), "what it is is a problem", "grammatical is is")
+expect(TextPolish.removeRepeats("the plan is is ready"), "the plan is ready", "stuttered is")
+expect(TextPolish.removeRepeats("very very good"), "very very good", "emphasis kept")
+
+section("Swear words")
+expect(TextPolish.filterProfanity("this is fucking broken", mode: .cleanUp), "this is  broken", "intensifier removed")
+expect(TextPolish.apply("What the fuck is this?", .init()), "What is this?", "what the f… → what")
+expect(TextPolish.apply("this is bullshit", .init()), "this is nonsense", "polite swap")
+expect(TextPolish.apply("Damn, that's nice", .init()), "That's nice", "leading swear removed and capitalized")
+expect(TextPolish.apply("oh shit we're late", .init()), "oh no we're late", "oh no")
+expect(TextPolish.apply("the deploy is f*** broken", .init()), "the deploy is broken", "recognizer-masked word removed")
+expect(TextPolish.filterProfanity("this is fucking broken", mode: .mask), "this is f****** broken", "masked")
+expect(TextPolish.filterProfanity("this is fucking broken", mode: .keep), "this is fucking broken", "kept")
+expect(TextPolish.apply("mera manager chutiya hai", .init()), "mera manager idiot hai", "Hinglish insult")
+expect(TextPolish.apply("Scunthorpe and assessment", .init()), "Scunthorpe and assessment", "no false positives inside words")
+
+section("Names & grammar")
+expect(TextPolish.snapToDictionary("send it to devianchu today", dictionary: ["Divyanshu"]), "send it to Divyanshu today", "near-miss name")
+expect(TextPolish.snapToDictionary("ask sharmar", dictionary: ["Sharma"]), "ask Sharma", "extra letter")
+expect(TextPolish.snapToDictionary("the prior plan", dictionary: ["Priya"]), "the prior plan", "different-sounding word untouched")
+expect(TextPolish.snapToDictionary("push to github", dictionary: ["GitHub"]), "push to GitHub", "dictionary casing")
+expect(TextPolish.snapToDictionary("mail rahul.sharmar@gmail.com", dictionary: ["Sharma"]), "mail rahul.sharmar@gmail.com", "emails untouched")
+expect(TextPolish.grammarBasics("i think its a apple and an car", tone: .casual), "I think its an apple and a car", "a/an and I")
+expect(TextPolish.grammarBasics("dont worry, im here", tone: .casual), "don't worry, I'm here", "apostrophes")
+expect(TextPolish.grammarBasics("a hour, a university, an MBA", tone: .casual), "an hour, a university, an MBA", "a/an exceptions")
+expect(TextPolish.grammarBasics("meet at 5 p.m. at the office. then lunch", tone: .casual), "meet at 5 p.m. at the office. Then lunch", "capitals, not after p.m.")
+expect(TextPolish.grammarBasics("i think so", tone: .veryCasual), "i think so", "very casual keeps lowercase")
+expect(TextPolish.grammarBasics("he don't know nothing about it", tone: .casual), "he doesn't know anything about it", "agreement + double negative")
+expect(TextPolish.grammarBasics("they was there but I didn't see nobody", tone: .casual), "they were there but I didn't see anybody", "was/were + nobody")
+expect(TextPolish.grammarBasics("I don't know", tone: .casual), "I don't know", "correct sentence untouched")
+expect(TextPolish.grammarBasics("there is nothing to do", tone: .casual), "there is nothing to do", "plain nothing untouched")
+expect(TextPolish.grammarBasics("if you were here", tone: .casual), "if you were here", "were untouched")
+expect(TextPolish.apply("I I think the the deploy is fucking broken, its a issue", .init()), "I think the deploy is broken, its an issue", "everything together")
+
 // MARK: - Result
 
 if failures.isEmpty {

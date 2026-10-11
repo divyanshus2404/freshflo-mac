@@ -406,6 +406,28 @@ private struct ToneTab: View {
             }
 
             Section {
+                Toggle(isOn: $settings.fixGrammar) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Fix grammar")
+                        Text("Correct tense, agreement, articles and misheard words, not just punctuation.").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                Picker(selection: $settings.profanity) {
+                    ForEach(ProfanityMode.allCases) { Text($0.label).tag($0) }
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Swear words")
+                        Text(settings.profanity.detail).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            } header: {
+                Text("Clean and correct")
+            } footer: {
+                Text("Repeated words and stutters (\u{201C}I I think\u{201D}, \u{201C}th- the\u{201D}) are always removed, and names close to ones in your Dictionary are spelled your way.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
+            Section {
                 LabeledContent("Write in") {
                     TextField("", text: $settings.outputLanguage, prompt: Text("Same as spoken"))
                         .textFieldStyle(.roundedBorder)
