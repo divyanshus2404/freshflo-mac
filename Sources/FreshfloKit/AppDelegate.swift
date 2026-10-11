@@ -103,7 +103,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         case .processing: symbol = "ellipsis.circle"
         case .idle: symbol = hotkey.isRunning ? "waveform" : "exclamationmark.triangle"
         }
-        let image = NSImage(systemSymbolName: symbol, accessibilityDescription: "Freshflo")
+        let image = dictation.state == .idle && hotkey.isRunning
+            ? BrandMark.menuBarImage
+            : NSImage(systemSymbolName: symbol, accessibilityDescription: "Freshflo")
         image?.isTemplate = true
         statusItem.button?.image = image
     }

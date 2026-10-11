@@ -17,13 +17,8 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/arm64-apple-macosx/release/Freshflo "$APP/Contents/MacOS/Freshflo"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 
-if [ ! -f build/AppIcon.icns ]; then
-    echo "→ Rendering icon"
-    rm -rf build/AppIcon.iconset
-    swift scripts/make-icon.swift build/AppIcon.iconset
-    iconutil -c icns build/AppIcon.iconset -o build/AppIcon.icns
-fi
-cp build/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+# Icon is rendered from the brand master (Freshflo-Website/brand/icon.svg) and checked in.
+cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
 # A stable signing identity keeps the Accessibility/Microphone grants across rebuilds.
 # Override with SIGN_IDENTITY="..." or SIGN_IDENTITY="-" for ad-hoc.
