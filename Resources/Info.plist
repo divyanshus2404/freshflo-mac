@@ -2,41 +2,41 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleDevelopmentRegion</key>
-    <string>en</string>
-    <key>CFBundleDisplayName</key>
-    <string>Freshflo</string>
-    <key>CFBundleExecutable</key>
-    <string>Freshflo</string>
-    <key>CFBundleIconFile</key>
-    <string>AppIcon</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.freshflo.app</string>
-    <key>CFBundleInfoDictionaryVersion</key>
-    <string>6.0</string>
-    <key>CFBundleName</key>
-    <string>Freshflo</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleShortVersionString</key>
-    <string>0.1.0</string>
-    <key>CFBundleVersion</key>
-    <string>1</string>
-    <key>LSApplicationCategoryType</key>
-    <string>public.app-category.productivity</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>14.0</string>
-    <key>LSUIElement</key>
-    <true/>
-    <key>NSHighResolutionCapable</key>
-    <true/>
-    <key>NSCalendarsFullAccessUsageDescription</key>
-    <string>Freshflo adds events to your calendar when you ask it to, after you confirm.</string>
-    <key>NSRemindersFullAccessUsageDescription</key>
-    <string>Freshflo adds reminders when you ask it to, after you confirm.</string>
-    <key>NSSpeechRecognitionUsageDescription</key>
-    <string>Freshflo can transcribe your speech on this Mac, without sending audio anywhere.</string>
-    <key>NSMicrophoneUsageDescription</key>
-    <string>Freshflo listens while you hold the dictation key so it can turn your speech into text.</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>Freshflo</string>
+	<key>CFBundleExecutable</key>
+	<string>Freshflo</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.freshflo.app</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Freshflo</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.9.0</string>
+	<key>CFBundleVersion</key>
+	<string>9</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.productivity</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Freshflo adds events to your calendar when you ask it to, after you confirm.</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Freshflo listens while you hold the dictation key so it can turn your speech into text.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>Freshflo adds reminders when you ask it to, after you confirm.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Freshflo can transcribe your speech on this Mac, without sending audio anywhere.</string>
 </dict>
 </plist>
