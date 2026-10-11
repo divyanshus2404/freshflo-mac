@@ -7,7 +7,7 @@ import Foundation
 ///   ExcuseMe --command "make this formal" [--selection "hey whats up"]
 public enum CLI {
     public static var isRequested: Bool {
-        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding"].contains(where: CommandLine.arguments.contains)
+        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--benchmark"].contains(where: CommandLine.arguments.contains)
     }
 
     /// Shows the real floating indicator inside a proper app run loop with synthetic speech (performance checks).
@@ -117,6 +117,11 @@ public enum CLI {
             print("one-shot: release → transcript \(ms(since: fullStart))")
             print("streamed text: \(parts.joined(separator: " "))")
             print("one-shot text: \(full)")
+            return
+        }
+
+        if let dir = value("--benchmark") {
+            try await Benchmark.run(directory: URL(fileURLWithPath: dir), compareFile: value("--compare").map { URL(fileURLWithPath: $0) })
             return
         }
 

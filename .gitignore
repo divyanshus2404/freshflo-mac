@@ -6,3 +6,4 @@ build.log
 .DS_Store
 test.log
 *.log
+Benchmarks/results-*.json

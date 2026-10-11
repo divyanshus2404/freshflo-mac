@@ -103,6 +103,8 @@ expect(Regional.apply("Pay 1500 rupees now.", .india), "Pay ₹1,500 now.", "rup
 expect(Regional.apply("Send 5 lakh rupees.", .india), "Send ₹5 lakh.", "lakh")
 expect(Regional.apply("It costs Rs. 250000", .india), "It costs ₹2,50,000", "Indian grouping")
 expect(Regional.apply("Pay 1500 rupees.", .us), "Pay 1500 rupees.", "only for India")
+expect(Regional.apply("The invoice is for ₹250,000 due.", .india), "The invoice is for ₹2,50,000 due.", "regroup Western ₹ amounts")
+expect(Regional.apply("₹1,50,000 already Indian", .india), "₹1,50,000 already Indian", "keep Indian grouping")
 expect(Regional.apply("mail rahul at the rate gmail dot com", .none), "mail rahul@gmail.com", "spoken email (at the rate)")
 expect(Regional.apply("it's divyanshu at gmail dot com.", .none), "it's divyanshu@gmail.com.", "spoken email (at)")
 expect(Regional.apply("meet me at home", .none), "meet me at home", "not an email")

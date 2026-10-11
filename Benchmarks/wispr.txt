@@ -1,0 +1,40 @@
+# Wispr Flow outputs for the ExcuseMe benchmark.
+# For each case: click into a text box, hold Wispr's key, read the SCRIPT aloud (or play Benchmarks/audio/<id>.m4a
+# near the mic), then paste Wispr's result after the id. For command-formal, select the text and use Command Mode.
+# Then run:  build/ExcuseMe.app/Contents/MacOS/ExcuseMe --benchmark Benchmarks --compare Benchmarks/wispr.txt
+
+# SCRIPT: Um, so I was thinking we could, uh, meet tomorrow morning.
+fillers: 
+
+# SCRIPT: Let's meet at 5 pm, no wait, 6 pm at the office.
+self-correction: 
+
+# SCRIPT: Please send the contract to Divyanshu and Priyanka from Zerodha.
+names: 
+
+# SCRIPT: We deployed the Kubernetes cluster and fixed the GraphQL resolver in the Next.js app.
+jargon: 
+
+# SCRIPT: The invoice is for two lakh fifty thousand rupees, due on the fifteenth.
+rupees: 
+
+# SCRIPT: My email is rahul dot sharma at gmail dot com.
+email: 
+
+# SCRIPT: Can you review the pull request before lunch
+question: 
+
+# SCRIPT: For the trip I need to pack three things: a charger, my passport, and sunscreen.
+list: 
+
+# SCRIPT: Haha yeah, sounds good, see you there.
+casual-chat: 
+
+# SCRIPT: कल सुबह दस बजे मीटिंग है, कृपया रिपोर्ट तैयार रखना
+hindi-to-english: 
+
+# SCRIPT: Hi team, here is the weekly update. On the product side, we shipped the new onboarding flow and the pricing page is finally live. Conversion on the signup page went up by about twelve percent, which is great news. On engineering, we fixed the payment bugs and reduced the crash rate on iOS. Next week we will focus on the referral program and the Android beta. Please send me your blockers by Thursday so we can plan the sprint.
+long-form: 
+
+# SCRIPT (Command Mode on selected text “hey can u send me the report asap, thx”): make this more formal
+command-formal: 

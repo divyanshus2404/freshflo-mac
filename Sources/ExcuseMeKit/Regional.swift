@@ -24,8 +24,16 @@ enum Regional {
         return re.stringByReplacingMatches(in: s, range: NSRange(s.startIndex..., in: s), withTemplate: template)
     }
 
-    /// ₹150000 → ₹1,50,000 (Indian digit grouping) for amounts written without separators.
-    private static func groupIndian(_ s: String) -> String {
+    /// ₹150000 or ₹150,000 → ₹1,50,000 (Indian digit grouping), whatever grouping the model used.
+    private static func groupIndian(_ input: String) -> String {
+        // Strip existing separators inside ₹ amounts first so Western "250,000" is regrouped too.
+        var s = input
+        if let western = try? NSRegularExpression(pattern: #"₹(\d{1,3}(?:,\d{2,3})+)(?!\d)"#) {
+            for match in western.matches(in: s, range: NSRange(s.startIndex..., in: s)).reversed() {
+                guard let r = Range(match.range(at: 1), in: s) else { continue }
+                s.replaceSubrange(r, with: s[r].replacingOccurrences(of: ",", with: ""))
+            }
+        }
         guard let re = try? NSRegularExpression(pattern: #"₹(\d{4,})(?![\d,])"#) else { return s }
         var result = s
         for match in re.matches(in: s, range: NSRange(s.startIndex..., in: s)).reversed() {
