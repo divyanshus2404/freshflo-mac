@@ -64,10 +64,17 @@ enum Benchmark {
             print("  \(c.id): \(score.checksPassed)/\(score.checksTotal) checks, WER \(percent(score.wer)), \(score.latencyMs ?? 0) ms")
         }
 
-        var theirs: [Score]?
+        var theirs: [Score?]?
         if let compareFile {
             let outputs = parseOutputs(try String(contentsOf: compareFile, encoding: .utf8))
-            theirs = cases.map { Self.score($0, output: outputs[$0.id] ?? "") }
+            // Unfilled cases are skipped, not scored: blank text would "pass" every must-not-contain check.
+            theirs = cases.map { c in outputs[c.id].flatMap { $0.isEmpty ? nil : Self.score(c, output: $0) } }
+            let filled = theirs?.compactMap { $0 }.count ?? 0
+            if filled == 0 {
+                print("\n⚠︎ \(compareFile.lastPathComponent) has no outputs yet. Paste the other app's result after each id, then run again.\n")
+            } else if filled < cases.count {
+                print("\nNote: comparing \(filled) of \(cases.count) cases (the rest of \(compareFile.lastPathComponent) is blank).\n")
+            }
         }
 
         let report = markdown(cases: cases, ours: ours, theirs: theirs, otherName: compareFile.map { $0.deletingPathExtension().lastPathComponent } ?? "")
@@ -144,10 +151,14 @@ enum Benchmark {
 
     private static func percent(_ v: Double) -> String { String(format: "%.0f%%", v * 100) }
 
-    private static func markdown(cases: [Case], ours: [Score], theirs: [Score]?, otherName: String) -> String {
+    private static func markdown(cases: [Case], ours: [Score], theirs: [Score?]?, otherName: String) -> String {
+        // Totals only over cases both apps have, so the comparison is like-for-like.
+        let compared = Set(theirs.map { zip(cases, $0).filter { $0.1 != nil }.map(\.0.id) } ?? cases.map(\.id))
         func totals(_ s: [Score]) -> (checks: String, wer: String) {
+            let s = s.filter { compared.contains($0.id) }
+            guard !s.isEmpty else { return ("–", "–") }
             let passed = s.reduce(0) { $0 + $1.checksPassed }, all = s.reduce(0) { $0 + $1.checksTotal }
-            let audioScores = zip(cases, s).filter { $0.0.command == nil }.map(\.1)
+            let audioScores = s.filter { score in cases.first { $0.id == score.id }?.command == nil }
             let meanWER = audioScores.map(\.wer).reduce(0, +) / Double(max(1, audioScores.count))
             return ("\(passed)/\(all)", percent(meanWER))
         }
@@ -155,16 +166,22 @@ enum Benchmark {
         var md = "# Dictation benchmark — \(Date().formatted(date: .abbreviated, time: .shortened))\n\n"
         let o = totals(ours)
         md += "| | ExcuseMe" + (theirs != nil ? " | \(otherName)" : "") + " |\n|---|---" + (theirs != nil ? "|---" : "") + "|\n"
-        md += "| Formatting checks passed | \(o.checks)" + (theirs.map { " | \(totals($0).checks)" } ?? "") + " |\n"
-        md += "| Mean word error rate (audio cases) | \(o.wer)" + (theirs.map { " | \(totals($0).wer)" } ?? "") + " |\n"
+        let t = theirs.map { totals($0.compactMap { $0 }) }
+        md += "| Cases compared | \(compared.count)" + (theirs != nil ? " | \(compared.count)" : "") + " |\n"
+        md += "| Formatting checks passed | \(o.checks)" + (t.map { " | \($0.checks)" } ?? "") + " |\n"
+        md += "| Mean word error rate (audio cases) | \(o.wer)" + (t.map { " | \($0.wer)" } ?? "") + " |\n"
         md += "| Median latency (release → final text) | \(latencies.isEmpty ? 0 : latencies[latencies.count / 2]) ms" + (theirs != nil ? " | n/a" : "") + " |\n\n"
         md += "## Per case\n\n"
         for (i, c) in cases.enumerated() {
             let s = ours[i]
             md += "**\(c.id)** — reference: \(c.reference)\n"
             md += "- ExcuseMe (\(s.checksPassed)/\(s.checksTotal), WER \(percent(s.wer))): \(s.output)\(s.failedChecks.isEmpty ? "" : " ⚠︎ " + s.failedChecks.joined(separator: "; "))\n"
-            if let t = theirs?[i] {
-                md += "- \(otherName) (\(t.checksPassed)/\(t.checksTotal), WER \(percent(t.wer))): \(t.output.isEmpty ? "_(no output)_" : t.output)\(t.failedChecks.isEmpty ? "" : " ⚠︎ " + t.failedChecks.joined(separator: "; "))\n"
+            if let theirs {
+                if let t = theirs[i] {
+                    md += "- \(otherName) (\(t.checksPassed)/\(t.checksTotal), WER \(percent(t.wer))): \(t.output)\(t.failedChecks.isEmpty ? "" : " ⚠︎ " + t.failedChecks.joined(separator: "; "))\n"
+                } else {
+                    md += "- \(otherName): _not filled in yet_\n"
+                }
             }
             md += "\n"
         }
