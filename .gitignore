@@ -1,0 +1,8 @@
+.build/
+build/
+build.log
+*.xcodeproj/
+.swiftpm/
+.DS_Store
+test.log
+*.log
