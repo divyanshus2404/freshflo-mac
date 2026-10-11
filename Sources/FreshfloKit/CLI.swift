@@ -7,7 +7,7 @@ import Foundation
 ///   Freshflo --command "make this formal" [--selection "hey whats up"]
 public enum CLI {
     public static var isRequested: Bool {
-        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--benchmark", "--check-update"].contains(where: CommandLine.arguments.contains)
+        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update"].contains(where: CommandLine.arguments.contains)
     }
 
     /// Shows the real floating indicator inside a proper app run loop with synthetic speech (performance checks).
@@ -127,6 +127,25 @@ public enum CLI {
 
         if CommandLine.arguments.contains("--check-update") {
             print(await Updater.shared.dryRun())
+            return
+        }
+        // Website screenshots: one retina PNG per setup step, without the footer bar.
+        if let dir = value("--render-onboarding-steps") {
+            _ = NSApplication.shared
+            for step in 0..<5 {
+                let view = OnboardingView(initialStep: step) {}
+                    .frame(width: 620, height: 580)
+                    .frame(width: 620, height: 500, alignment: .top)
+                    .clipped()
+                    .background(Color(nsColor: .windowBackgroundColor))
+                let renderer = ImageRenderer(content: view)
+                renderer.scale = 2
+                if let image = renderer.nsImage, let tiff = image.tiffRepresentation,
+                   let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
+                    try png.write(to: URL(fileURLWithPath: dir).appendingPathComponent("setup-\(step).png"))
+                }
+            }
+            print("rendered setup steps to \(dir)")
             return
         }
         if let out = value("--render-onboarding") {
