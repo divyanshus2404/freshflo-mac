@@ -197,6 +197,7 @@ expect(TextPolish.apply("What the fuck is this?", .init()), "What is this?", "wh
 expect(TextPolish.apply("this is bullshit", .init()), "this is nonsense", "polite swap")
 expect(TextPolish.apply("Damn, that's nice", .init()), "That's nice", "leading swear removed and capitalized")
 expect(TextPolish.apply("oh shit we're late", .init()), "oh no we're late", "oh no")
+expect(TextPolish.apply("this shitty build", .init()), "this bad build", "adjective swap")
 expect(TextPolish.apply("the deploy is f*** broken", .init()), "the deploy is broken", "recognizer-masked word removed")
 expect(TextPolish.filterProfanity("this is fucking broken", mode: .mask), "this is f****** broken", "masked")
 expect(TextPolish.filterProfanity("this is fucking broken", mode: .keep), "this is fucking broken", "kept")
