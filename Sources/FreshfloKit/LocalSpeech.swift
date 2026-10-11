@@ -34,7 +34,7 @@ enum LocalSpeech {
         let transcriber = try await makeTranscriber(language: language)
         try await ensureModel(for: transcriber, onStatus: onStatus)
 
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("excuseme-\(UUID().uuidString).wav")
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("freshflo-\(UUID().uuidString).wav")
         defer { try? FileManager.default.removeItem(at: url) }
         try AudioRecorder.wav(from: samples).write(to: url)
         let file = try AVAudioFile(forReading: url)

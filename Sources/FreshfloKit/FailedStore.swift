@@ -11,7 +11,7 @@ enum FailedStore {
 
     private static let dir: URL = {
         let url = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("ExcuseMe/Failed", isDirectory: true)
+            .appendingPathComponent("Freshflo/Failed", isDirectory: true)
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
     }()

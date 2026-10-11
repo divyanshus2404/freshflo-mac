@@ -470,7 +470,7 @@ private struct DictionaryTab: View {
                     Button("Add", action: add).disabled(newWord.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
                 if settings.dictionary.isEmpty {
-                    Text("No words yet. ExcuseMe also learns words you correct after dictating.").foregroundStyle(.secondary)
+                    Text("No words yet. Freshflo also learns words you correct after dictating.").foregroundStyle(.secondary)
                 } else {
                     FlowLayout(spacing: 6) {
                         ForEach(settings.dictionary, id: \.self) { word in
@@ -582,7 +582,7 @@ private struct SnippetsTab: View {
             } header: {
                 Text("Snippets")
             } footer: {
-                Text("Say a trigger phrase on its own, or inside a sentence, and ExcuseMe inserts the saved text instead. Variables: {date}, {time}, {day}, {tomorrow}, {clipboard}.")
+                Text("Say a trigger phrase on its own, or inside a sentence, and Freshflo inserts the saved text instead. Variables: {date}, {time}, {day}, {tomorrow}, {clipboard}.")
             }
         }
         .formStyle(.grouped)

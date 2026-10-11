@@ -82,7 +82,7 @@ enum Benchmark {
         try report.write(to: reportURL, atomically: true, encoding: .utf8)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        try encoder.encode(ours).write(to: directory.appendingPathComponent("results-excuseme.json"))
+        try encoder.encode(ours).write(to: directory.appendingPathComponent("results-freshflo.json"))
         print("\n" + report)
         print("Saved \(reportURL.path)")
     }
@@ -165,7 +165,7 @@ enum Benchmark {
         let latencies = ours.compactMap(\.latencyMs).sorted()
         var md = "# Dictation benchmark — \(Date().formatted(date: .abbreviated, time: .shortened))\n\n"
         let o = totals(ours)
-        md += "| | ExcuseMe" + (theirs != nil ? " | \(otherName)" : "") + " |\n|---|---" + (theirs != nil ? "|---" : "") + "|\n"
+        md += "| | Freshflo" + (theirs != nil ? " | \(otherName)" : "") + " |\n|---|---" + (theirs != nil ? "|---" : "") + "|\n"
         let t = theirs.map { totals($0.compactMap { $0 }) }
         md += "| Cases compared | \(compared.count)" + (theirs != nil ? " | \(compared.count)" : "") + " |\n"
         md += "| Formatting checks passed | \(o.checks)" + (t.map { " | \($0.checks)" } ?? "") + " |\n"
@@ -175,7 +175,7 @@ enum Benchmark {
         for (i, c) in cases.enumerated() {
             let s = ours[i]
             md += "**\(c.id)** — reference: \(c.reference)\n"
-            md += "- ExcuseMe (\(s.checksPassed)/\(s.checksTotal), WER \(percent(s.wer))): \(s.output)\(s.failedChecks.isEmpty ? "" : " ⚠︎ " + s.failedChecks.joined(separator: "; "))\n"
+            md += "- Freshflo (\(s.checksPassed)/\(s.checksTotal), WER \(percent(s.wer))): \(s.output)\(s.failedChecks.isEmpty ? "" : " ⚠︎ " + s.failedChecks.joined(separator: "; "))\n"
             if let theirs {
                 if let t = theirs[i] {
                     md += "- \(otherName) (\(t.checksPassed)/\(t.checksTotal), WER \(percent(t.wer))): \(t.output)\(t.failedChecks.isEmpty ? "" : " ⚠︎ " + t.failedChecks.joined(separator: "; "))\n"

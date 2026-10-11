@@ -24,8 +24,8 @@ struct CleanupInput {
 }
 
 enum Cleanup {
-    /// Set EXCUSEME_DEBUG=1 to print raw model outputs (used when experimenting with the CLI).
-    static let debug = ProcessInfo.processInfo.environment["EXCUSEME_DEBUG"] == "1"
+    /// Set FRESHFLO_DEBUG=1 to print raw model outputs (used when experimenting with the CLI).
+    static let debug = ProcessInfo.processInfo.environment["FRESHFLO_DEBUG"] == "1"
 
     /// Cleans the transcript using the preferred mode, falling back Apple → API → rules when a step is unavailable or fails.
     static func run(_ input: CleanupInput, mode: CleanupMode, endpoint: ProviderEndpoint, canUseAPI: Bool) async -> CleanupResult {

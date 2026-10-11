@@ -1,7 +1,7 @@
-# Wispr Flow outputs for the ExcuseMe benchmark.
+# Wispr Flow outputs for the Freshflo benchmark.
 # For each case: click into a text box, hold Wispr's key, read the SCRIPT aloud (or play Benchmarks/audio/<id>.m4a
 # near the mic), then paste Wispr's result after the id. For command-formal, select the text and use Command Mode.
-# Then run:  build/ExcuseMe.app/Contents/MacOS/ExcuseMe --benchmark Benchmarks --compare Benchmarks/wispr.txt
+# Then run:  build/Freshflo.app/Contents/MacOS/Freshflo --benchmark Benchmarks --compare Benchmarks/wispr.txt
 
 # SCRIPT: Um, so I was thinking we could, uh, meet tomorrow morning.
 fillers: 

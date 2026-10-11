@@ -46,6 +46,14 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         if !defaults.bool(forKey: "onboarded"), settings.isReady, Permissions.accessibility, Permissions.microphone == .authorized {
             defaults.set(true, forKey: "onboarded")
         }
+        // Coming from the old app name: settings carried over, but macOS needs the permissions granted again.
+        if defaults.bool(forKey: LegacyMigration.needsPermissionsKey) {
+            defaults.removeObject(forKey: LegacyMigration.needsPermissionsKey)
+            if !(Permissions.accessibility && Permissions.microphone == .authorized) {
+                showOnboarding(step: 1)
+                return
+            }
+        }
         if !defaults.bool(forKey: "onboarded") {
             showOnboarding()
         } else if !settings.isReady {
@@ -95,7 +103,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         case .processing: symbol = "ellipsis.circle"
         case .idle: symbol = hotkey.isRunning ? "waveform" : "exclamationmark.triangle"
         }
-        let image = NSImage(systemSymbolName: symbol, accessibilityDescription: "ExcuseMe")
+        let image = NSImage(systemSymbolName: symbol, accessibilityDescription: "Freshflo")
         image?.isTemplate = true
         statusItem.button?.image = image
     }
@@ -165,7 +173,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         menu.addItem(item("Settings…", #selector(openSettings), key: ","))
         menu.addItem(item("Setup Guide…", #selector(openOnboarding)))
         menu.addItem(.separator())
-        menu.addItem(item("Quit ExcuseMe", #selector(NSApplication.terminate(_:)), key: "q", target: NSApp))
+        menu.addItem(item("Quit Freshflo", #selector(NSApplication.terminate(_:)), key: "q", target: NSApp))
     }
 
     private func item(_ title: String, _ action: Selector, key: String = "", target: AnyObject? = nil) -> NSMenuItem {
@@ -224,7 +232,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
 
     @objc private func openOnboarding() { showOnboarding() }
 
-    private func showOnboarding() {
+    private func showOnboarding(step: Int = 0) {
         if onboardingWindow == nil {
             let window = NSWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 560, height: 520),
@@ -235,7 +243,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
             window.titlebarAppearsTransparent = true
             window.titleVisibility = .hidden
             window.isReleasedWhenClosed = false
-            window.contentView = NSHostingView(rootView: OnboardingView { [weak self] in
+            window.contentView = NSHostingView(rootView: OnboardingView(initialStep: step) { [weak self] in
                 UserDefaults.standard.set(true, forKey: "onboarded")
                 self?.onboardingWindow?.close()
             })
@@ -300,7 +308,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
                 backing: .buffered,
                 defer: false
             )
-            window.title = "ExcuseMe"
+            window.title = "Freshflo"
             window.isReleasedWhenClosed = false
             window.contentView = NSHostingView(rootView: SettingsView(router: router))
             window.contentMinSize = NSSize(width: 560, height: 480)
@@ -317,7 +325,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         let appItem = NSMenuItem()
         let appMenu = NSMenu()
         appMenu.addItem(withTitle: "Close Window", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
-        appMenu.addItem(withTitle: "Quit ExcuseMe", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appMenu.addItem(withTitle: "Quit Freshflo", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = appMenu
         main.addItem(appItem)
 

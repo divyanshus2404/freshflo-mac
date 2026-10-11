@@ -1,9 +1,9 @@
-// Renders the ExcuseMe app icon into an .iconset folder.
-// Usage: swift scripts/make-icon.swift <output.iconset>
+// Renders the Freshflo app icon into an .iconset folder. Same mark as the website:
+// a deep spruce rounded square with four spearmint voice bars.
+// Usage: swift scripts/make-icon.swift <output.iconset>   or   swift scripts/make-icon.swift <file.png> <size>
 import AppKit
 
 let out = URL(fileURLWithPath: CommandLine.arguments[1])
-try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
 
 func render(_ px: Int) -> Data {
     let s = CGFloat(px)
@@ -14,46 +14,63 @@ func render(_ px: Int) -> Data {
     NSGraphicsContext.saveGraphicsState()
     NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
 
-    // macOS icon grid: ~10% inset, continuous-ish rounded square.
+    // macOS icon grid: ~10% inset, rounded square.
     let inset = s * 0.1
     let rect = NSRect(x: inset, y: inset, width: s - inset * 2, height: s - inset * 2)
     let shape = NSBezierPath(roundedRect: rect, xRadius: rect.width * 0.225, yRadius: rect.width * 0.225)
+
+    // Soft drop shadow like system icons.
+    let shadow = NSShadow()
+    shadow.shadowColor = NSColor.black.withAlphaComponent(0.3)
+    shadow.shadowBlurRadius = s * 0.02
+    shadow.shadowOffset = NSSize(width: 0, height: -s * 0.008)
+    NSGraphicsContext.saveGraphicsState()
+    shadow.set()
+    NSColor(red: 0.05, green: 0.14, blue: 0.13, alpha: 1).setFill()
+    shape.fill()
+    NSGraphicsContext.restoreGraphicsState()
+
     NSGradient(colors: [
-        NSColor(red: 1.00, green: 0.44, blue: 0.33, alpha: 1),
-        NSColor(red: 0.85, green: 0.20, blue: 0.47, alpha: 1),
+        NSColor(red: 0.09, green: 0.23, blue: 0.21, alpha: 1),
+        NSColor(red: 0.03, green: 0.10, blue: 0.09, alpha: 1),
     ])!.draw(in: shape, angle: -90)
 
-    // Speech bubble.
-    let bw = rect.width * 0.58, bh = rect.height * 0.42
-    let bubble = NSRect(x: rect.midX - bw / 2, y: rect.midY - bh / 2 + rect.height * 0.04, width: bw, height: bh)
-    let path = NSBezierPath(roundedRect: bubble, xRadius: bh * 0.42, yRadius: bh * 0.42)
-    let tail = NSBezierPath()
-    tail.move(to: NSPoint(x: bubble.minX + bw * 0.22, y: bubble.minY + 2))
-    tail.line(to: NSPoint(x: bubble.minX + bw * 0.12, y: bubble.minY - bh * 0.32))
-    tail.line(to: NSPoint(x: bubble.minX + bw * 0.42, y: bubble.minY + 2))
-    tail.close()
-    NSColor.white.setFill()
-    path.fill()
-    tail.fill()
+    // Thin top highlight for a glassy edge.
+    NSGraphicsContext.saveGraphicsState()
+    shape.addClip()
+    NSGradient(colors: [NSColor.white.withAlphaComponent(0.10), NSColor.white.withAlphaComponent(0)])!
+        .draw(in: NSRect(x: rect.minX, y: rect.midY, width: rect.width, height: rect.height / 2), angle: -90)
+    NSGraphicsContext.restoreGraphicsState()
 
-    // Waveform bars inside the bubble.
-    let heights: [CGFloat] = [0.28, 0.55, 0.85, 0.55, 0.28]
-    let barW = bw * 0.075, gap = bw * 0.06
-    let total = CGFloat(heights.count) * barW + CGFloat(heights.count - 1) * gap
-    var x = bubble.midX - total / 2
-    NSColor(red: 0.88, green: 0.25, blue: 0.43, alpha: 1).setFill()
-    for h in heights {
-        let barH = bh * 0.7 * h
-        NSBezierPath(roundedRect: NSRect(x: x, y: bubble.midY - barH / 2, width: barW, height: barH),
-                     xRadius: barW / 2, yRadius: barW / 2).fill()
-        x += barW + gap
+    // Four voice bars, same proportions as the site logo (32-unit grid: x 9/14/19/24, heights 6/14/8/3).
+    let unit = rect.width / 32
+    let bars: [(x: CGFloat, h: CGFloat)] = [(9, 6), (14, 14), (19, 8), (24, 3)]
+    let barW = unit * 3.2
+    let mint = NSColor(red: 0.21, green: 0.84, blue: 0.65, alpha: 1)
+    let glow = NSShadow()
+    glow.shadowColor = mint.withAlphaComponent(0.55)
+    glow.shadowBlurRadius = s * 0.035
+    glow.shadowOffset = .zero
+    NSGraphicsContext.saveGraphicsState()
+    glow.set()
+    for bar in bars {
+        let h = bar.h * unit + barW
+        let r = NSRect(x: rect.minX + bar.x * unit - barW / 2, y: rect.midY - h / 2, width: barW, height: h)
+        NSGradient(colors: [mint, NSColor(red: 0.47, green: 0.93, blue: 0.78, alpha: 1)])!
+            .draw(in: NSBezierPath(roundedRect: r, xRadius: barW / 2, yRadius: barW / 2), angle: 90)
     }
+    NSGraphicsContext.restoreGraphicsState()
 
     NSGraphicsContext.restoreGraphicsState()
     return rep.representation(using: .png, properties: [:])!
 }
 
-for size in [16, 32, 128, 256, 512] {
-    try render(size).write(to: out.appendingPathComponent("icon_\(size)x\(size).png"))
-    try render(size * 2).write(to: out.appendingPathComponent("icon_\(size)x\(size)@2x.png"))
+if CommandLine.arguments.count > 2, let size = Int(CommandLine.arguments[2]) {
+    try render(size).write(to: out)
+} else {
+    try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+    for size in [16, 32, 128, 256, 512] {
+        try render(size).write(to: out.appendingPathComponent("icon_\(size)x\(size).png"))
+        try render(size * 2).write(to: out.appendingPathComponent("icon_\(size)x\(size)@2x.png"))
+    }
 }

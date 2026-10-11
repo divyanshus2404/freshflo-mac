@@ -3,8 +3,8 @@ import SwiftUI
 import Foundation
 
 /// Headless test hook: runs the real pipeline on an audio file and prints each stage.
-///   ExcuseMe --transcribe speech.aiff [--local] [--app com.apple.mail] [--before "text before cursor"]
-///   ExcuseMe --command "make this formal" [--selection "hey whats up"]
+///   Freshflo --transcribe speech.aiff [--local] [--app com.apple.mail] [--before "text before cursor"]
+///   Freshflo --command "make this formal" [--selection "hey whats up"]
 public enum CLI {
     public static var isRequested: Bool {
         ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--benchmark"].contains(where: CommandLine.arguments.contains)

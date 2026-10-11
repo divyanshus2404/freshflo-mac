@@ -1,7 +1,7 @@
-// Logic checks for ExcuseMe. Run with:  swift run ExcuseMeChecks
+// Logic checks for Freshflo. Run with:  swift run FreshfloChecks
 // (Plain executable so it works with only the Command Line Tools installed.)
 import Foundation
-@testable import ExcuseMeKit
+@testable import FreshfloKit
 
 var failures: [String] = []
 var passed = 0

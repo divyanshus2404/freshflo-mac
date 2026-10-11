@@ -65,7 +65,7 @@ struct OnboardingView: View {
     private var welcome: some View {
         VStack(alignment: .leading, spacing: 14) {
             Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 72, height: 72)
-            Text("Welcome to ExcuseMe").font(.largeTitle.weight(.semibold))
+            Text("Welcome to Freshflo").font(.largeTitle.weight(.semibold))
             Text("Hold a key, speak, and polished text appears wherever your cursor is: in any app.")
                 .font(.title3).foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 8) {
@@ -79,7 +79,7 @@ struct OnboardingView: View {
 
     private var permissionsStep: some View {
         VStack(alignment: .leading, spacing: 16) {
-            title("Two permissions", "ExcuseMe needs these to hear you and type for you. Nothing is recorded unless you hold the key.")
+            title("Two permissions", "Freshflo needs these to hear you and type for you. Nothing is recorded unless you hold the key.")
             permissionCard(
                 icon: "mic.fill", name: "Microphone", detail: "To hear you while you hold the dictation key.",
                 granted: permissions.microphone == .authorized
@@ -99,7 +99,7 @@ struct OnboardingView: View {
                 Permissions.openAccessibilitySettings()
             }
             if !permissions.accessibility {
-                Text("In System Settings, turn on the switch next to ExcuseMe. This screen updates on its own.")
+                Text("In System Settings, turn on the switch next to Freshflo. This screen updates on its own.")
                     .font(.callout).foregroundStyle(.secondary)
             }
         }
@@ -169,7 +169,7 @@ struct OnboardingView: View {
     private var tryItStep: some View {
         VStack(alignment: .leading, spacing: 14) {
             if history.items.count > historyCountAtPractice {
-                title("🎉 It works", "That's all there is to it. ExcuseMe lives in your menu bar.")
+                title("🎉 It works", "That's all there is to it. Freshflo lives in your menu bar.")
                 if let last = history.items.first {
                     Text("“\(last.text)”")
                         .font(.title3)

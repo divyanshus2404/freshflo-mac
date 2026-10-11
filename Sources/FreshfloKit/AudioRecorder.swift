@@ -242,7 +242,7 @@ final class AudioRecorder {
 
     /// AAC in an MP4 container: roughly 8x smaller than WAV, so long dictations upload faster.
     static func m4a(from samples: [Float]) throws -> Data {
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("excuseme-\(UUID().uuidString).m4a")
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("freshflo-\(UUID().uuidString).m4a")
         defer { try? FileManager.default.removeItem(at: url) }
         try writeAAC(samples, to: url)
         return try Data(contentsOf: url)

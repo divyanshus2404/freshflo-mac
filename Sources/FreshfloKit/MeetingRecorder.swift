@@ -11,7 +11,7 @@ final class ChunkWriter {
     private(set) var frames: Int = 0
 
     init(url: URL, label: String) throws {
-        queue = DispatchQueue(label: "ExcuseMe.writer.\(label)")
+        queue = DispatchQueue(label: "Freshflo.writer.\(label)")
         file = try AVAudioFile(forWriting: url, settings: [
             AVFormatIDKey: kAudioFormatMPEG4AAC,
             AVSampleRateKey: 16_000,
@@ -56,7 +56,7 @@ final class MeetingRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
     private var micWriter: ChunkWriter?
     private var systemWriter: ChunkWriter?
     private var stream: SCStream?
-    private let audioQueue = DispatchQueue(label: "ExcuseMe.meeting.system")
+    private let audioQueue = DispatchQueue(label: "Freshflo.meeting.system")
 
     func start(folder: URL, micDeviceUID: String) async throws {
         micWriter = try ChunkWriter(url: folder.appendingPathComponent("you.m4a"), label: "mic")

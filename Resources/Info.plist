@@ -5,17 +5,17 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleDisplayName</key>
-    <string>ExcuseMe</string>
+    <string>Freshflo</string>
     <key>CFBundleExecutable</key>
-    <string>ExcuseMe</string>
+    <string>Freshflo</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
-    <string>com.excuseme.app</string>
+    <string>com.freshflo.app</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>ExcuseMe</string>
+    <string>Freshflo</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -31,12 +31,12 @@
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSCalendarsFullAccessUsageDescription</key>
-    <string>ExcuseMe adds events to your calendar when you ask it to, after you confirm.</string>
+    <string>Freshflo adds events to your calendar when you ask it to, after you confirm.</string>
     <key>NSRemindersFullAccessUsageDescription</key>
-    <string>ExcuseMe adds reminders when you ask it to, after you confirm.</string>
+    <string>Freshflo adds reminders when you ask it to, after you confirm.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
-    <string>ExcuseMe can transcribe your speech on this Mac, without sending audio anywhere.</string>
+    <string>Freshflo can transcribe your speech on this Mac, without sending audio anywhere.</string>
     <key>NSMicrophoneUsageDescription</key>
-    <string>ExcuseMe listens while you hold the dictation key so it can turn your speech into text.</string>
+    <string>Freshflo listens while you hold the dictation key so it can turn your speech into text.</string>
 </dict>
 </plist>

@@ -5,26 +5,26 @@ import PackageDescription
 let weakFoundationModels = LinkerSetting.unsafeFlags(["-Xlinker", "-weak_framework", "-Xlinker", "FoundationModels"])
 
 let package = Package(
-    name: "ExcuseMe",
+    name: "Freshflo",
     platforms: [.macOS(.v14)],
     targets: [
         // Everything testable lives in the library; the app target is just the entry point.
         .target(
-            name: "ExcuseMeKit",
-            path: "Sources/ExcuseMeKit",
+            name: "FreshfloKit",
+            path: "Sources/FreshfloKit",
             linkerSettings: [weakFoundationModels]
         ),
         .executableTarget(
-            name: "ExcuseMe",
-            dependencies: ["ExcuseMeKit"],
-            path: "Sources/ExcuseMe",
+            name: "Freshflo",
+            dependencies: ["FreshfloKit"],
+            path: "Sources/Freshflo",
             linkerSettings: [weakFoundationModels]
         ),
-        // `swift run ExcuseMeChecks`: logic tests that run with just the Command Line Tools.
+        // `swift run FreshfloChecks`: logic tests that run with just the Command Line Tools.
         .executableTarget(
-            name: "ExcuseMeChecks",
-            dependencies: ["ExcuseMeKit"],
-            path: "Sources/ExcuseMeChecks",
+            name: "FreshfloChecks",
+            dependencies: ["FreshfloKit"],
+            path: "Sources/FreshfloChecks",
             linkerSettings: [weakFoundationModels]
         ),
     ]

@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
 
-/// One line per dictation in ~/Library/Logs/ExcuseMe/dictations.jsonl: timings, engines and errors.
+/// One line per dictation in ~/Library/Logs/Freshflo/dictations.jsonl: timings, engines and errors.
 /// Never the words themselves (only counts), so the log is safe to share when reporting a problem.
 struct DictationTrace: Codable {
     var date = Date()
@@ -22,9 +22,9 @@ struct DictationTrace: Codable {
 
 enum Diagnostics {
     static let directory = FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent("Library/Logs/ExcuseMe", isDirectory: true)
+        .appendingPathComponent("Library/Logs/Freshflo", isDirectory: true)
     static var logURL: URL { directory.appendingPathComponent("dictations.jsonl") }
-    private static let queue = DispatchQueue(label: "ExcuseMe.diagnostics")
+    private static let queue = DispatchQueue(label: "Freshflo.diagnostics")
     private static let maxBytes = 2 * 1024 * 1024
 
     static func record(_ trace: DictationTrace) {

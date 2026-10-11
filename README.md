@@ -1,4 +1,4 @@
-# ExcuseMe
+# Freshflo
 
 Voice dictation for macOS. Hold a key, speak, and polished text appears wherever your cursor is. A native, private, free alternative to Wispr Flow.
 
@@ -54,15 +54,15 @@ Voice dictation for macOS. Hold a key, speak, and polished text appears wherever
 
 **App**
 - Microphone picker, launch at login, snippets, searchable history with the original transcript, usage stats (words, WPM, time saved).
-- About 14 MB of memory, 0% CPU when idle, a 1.8 MB app.
+- About 55 MB of memory, 0% CPU when idle, a 3.8 MB app.
 
 ## vs Wispr Flow
 
-| | ExcuseMe | Wispr Flow |
+| | Freshflo | Wispr Flow |
 |---|---|---|
 | Price | Free (Groq free tier, or fully on-device) | $12–15/month after 2,000 words/week |
 | Privacy | Fully on-device mode available | Cloud only |
-| App size / memory | 1.8 MB / ~14 MB | ~300 MB / ~800 MB (Electron) |
+| App size | 3.8 MB (native Swift) | ~400 MB (Electron 42: 272 MB framework + 127 MB app archive) |
 | Command mode, dictionary, auto-learn, snippets, per-app tone | ✓ | ✓ |
 | Offline fallback | ✓ | ✗ |
 | Live transcript while speaking | ✓ | ✗ |
@@ -85,7 +85,7 @@ Voice dictation for macOS. Hold a key, speak, and polished text appears wherever
 Requirements: macOS 14+ (on-device engines need macOS 26), Apple Silicon, Swift 6 command line tools.
 
 ```bash
-./scripts/build-app.sh            # → build/ExcuseMe.app
+./scripts/build-app.sh            # → build/Freshflo.app
 ./scripts/build-app.sh --install  # also copies to /Applications and launches
 ```
 
@@ -93,7 +93,7 @@ The script signs with your first "Apple Development" identity if present, so per
 
 ## First launch
 
-1. **Accessibility:** System Settings → Privacy & Security → Accessibility → enable ExcuseMe. It's needed for the global key, reading context, and pasting.
+1. **Accessibility:** System Settings → Privacy & Security → Accessibility → enable Freshflo. It's needed for the global key, reading context, and pasting.
 2. **Microphone:** allow when prompted.
 3. **Engine:** paste a free Groq key (console.groq.com/keys) or choose *On-device*.
 4. Using Fn? Set System Settings → Keyboard → "Press 🌐 key to" → **Do Nothing**.
@@ -104,13 +104,13 @@ The app binary has a headless mode that runs the real pipeline with your saved s
 
 ```bash
 say -o /tmp/test.aiff "um can you send the deck to Divyanshu"
-/Applications/ExcuseMe.app/Contents/MacOS/ExcuseMe --transcribe /tmp/test.aiff --vocab Divyanshu --app com.apple.mail
-/Applications/ExcuseMe.app/Contents/MacOS/ExcuseMe --transcribe /tmp/test.aiff --local            # on-device engine
-/Applications/ExcuseMe.app/Contents/MacOS/ExcuseMe --command "make this formal" --selection "hey whats up"
-/Applications/ExcuseMe.app/Contents/MacOS/ExcuseMe --models                                        # provider's models
+/Applications/Freshflo.app/Contents/MacOS/Freshflo --transcribe /tmp/test.aiff --vocab Divyanshu --app com.apple.mail
+/Applications/Freshflo.app/Contents/MacOS/Freshflo --transcribe /tmp/test.aiff --local            # on-device engine
+/Applications/Freshflo.app/Contents/MacOS/Freshflo --command "make this formal" --selection "hey whats up"
+/Applications/Freshflo.app/Contents/MacOS/Freshflo --models                                        # provider's models
 ```
 
-Other flags: `--cleanup auto|apple|api|rules|off`, `--before "text before the cursor"`, `--write-in English`, `--region india`, `--file voice-note.opus`, `--preview clip.aiff` (live streaming test). Set `EXCUSEME_DEBUG=1` to see raw model outputs. More: `--ask "remind me…" [--selection …]`, `--meeting --you a.aiff --them b.aiff` (runs the meeting processor on two tracks).
+Other flags: `--cleanup auto|apple|api|rules|off`, `--before "text before the cursor"`, `--write-in English`, `--region india`, `--file voice-note.opus`, `--preview clip.aiff` (live streaming test). Set `FRESHFLO_DEBUG=1` to see raw model outputs. More: `--ask "remind me…" [--selection …]`, `--meeting --you a.aiff --them b.aiff` (runs the meeting processor on two tracks).
 
 ## Architecture
 

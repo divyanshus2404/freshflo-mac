@@ -39,7 +39,7 @@ enum Ask {
             .map { dayFormat.string(from: $0) }.joined(separator: ", ")
         let userName = NSFullUserName()
         let instructions = """
-        You are the voice assistant inside ExcuseMe, a macOS dictation app. Now: \(iso.string(from: now)) (\(weekday)), time zone \(TimeZone.current.identifier).
+        You are the voice assistant inside Freshflo, a macOS dictation app. Now: \(iso.string(from: now)) (\(weekday)), time zone \(TimeZone.current.identifier).
         Upcoming days (use these exact dates; "this Friday" means the next Friday listed): \(upcoming).
         The user's name is \(userName.isEmpty ? "unknown" : userName); sign emails with it and never use placeholders like [Your Name].
         Decide what the user wants and reply with ONLY one JSON object, no prose:
@@ -172,7 +172,7 @@ enum LocalActionError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .denied(let what): return "ExcuseMe needs access to \(what). Allow it in System Settings → Privacy & Security."
+        case .denied(let what): return "Freshflo needs access to \(what). Allow it in System Settings → Privacy & Security."
         }
     }
 }

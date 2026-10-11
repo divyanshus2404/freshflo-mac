@@ -19,7 +19,7 @@ struct Meeting: Codable, Identifiable, Hashable {
     var onDevice: Bool?
 }
 
-/// Meeting notes on disk: ~/Library/Application Support/ExcuseMe/Meetings/<id>/meeting.json (+ audio while processing).
+/// Meeting notes on disk: ~/Library/Application Support/Freshflo/Meetings/<id>/meeting.json (+ audio while processing).
 final class MeetingStore: ObservableObject {
     static let shared = MeetingStore()
 
@@ -28,7 +28,7 @@ final class MeetingStore: ObservableObject {
 
     private init() {
         root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("ExcuseMe/Meetings", isDirectory: true)
+            .appendingPathComponent("Freshflo/Meetings", isDirectory: true)
         try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         reload()
     }

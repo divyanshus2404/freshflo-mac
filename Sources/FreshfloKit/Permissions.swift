@@ -13,7 +13,7 @@ enum Permissions {
         }
     }
 
-    /// Shows the system prompt that adds ExcuseMe to the Accessibility list.
+    /// Shows the system prompt that adds Freshflo to the Accessibility list.
     static func promptAccessibility() {
         let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
         _ = AXIsProcessTrustedWithOptions([key: true] as CFDictionary)

@@ -213,7 +213,7 @@ enum Transcriber {
     private static func uploadJSON(_ audio: Data, filename: String, mime: String, endpoint: ProviderEndpoint,
                                    prompt: String?, format: String) async throws -> [String: Any] {
         var req = try OpenAICompatible.request(endpoint, path: "/audio/transcriptions")
-        let boundary = "ExcuseMe-\(UUID().uuidString)"
+        let boundary = "Freshflo-\(UUID().uuidString)"
         req.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
         var body = Data()

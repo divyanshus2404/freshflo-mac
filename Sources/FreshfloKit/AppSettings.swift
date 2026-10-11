@@ -108,7 +108,7 @@ final class AppSettings: ObservableObject {
         keepMeetingAudio = d.object(forKey: "keepMeetingAudio") as? Bool ?? false
         askModeEnabled = d.object(forKey: "askModeEnabled") as? Bool ?? true
         indicatorStyle = IndicatorStyle(rawValue: d.string(forKey: "indicatorStyle") ?? "") ?? .halo
-        indicatorTheme = IndicatorTheme(rawValue: d.string(forKey: "indicatorTheme") ?? "") ?? .aurora
+        indicatorTheme = IndicatorTheme(rawValue: d.string(forKey: "indicatorTheme") ?? "") ?? .fresh
         indicatorPosition = IndicatorPosition(rawValue: d.string(forKey: "indicatorPosition") ?? "") ?? .caret
         soundTheme = SoundTheme(rawValue: d.string(forKey: "soundTheme") ?? "") ?? ((d.object(forKey: "playSounds") as? Bool ?? true) ? .chimes : .off)
         outputLanguage = d.string(forKey: "outputLanguage") ?? ""

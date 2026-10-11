@@ -9,7 +9,7 @@ enum IndicatorStyle: String, CaseIterable, Identifiable {
 }
 
 enum IndicatorTheme: String, CaseIterable, Identifiable {
-    case aurora, sunset, mono, matrix
+    case fresh, aurora, sunset, mono, matrix
 
     var id: String { rawValue }
     var label: String { rawValue.capitalized }
@@ -74,7 +74,7 @@ final class PillModel: ObservableObject {
     @Published var mode: DictationMode = .dictation
     @Published var startedAt = Date()
     @Published var style: IndicatorStyle = .halo
-    @Published var theme: IndicatorTheme = .aurora
+    @Published var theme: IndicatorTheme = .fresh
     /// Pinned next to the caret: grow to the right only, so the orb never moves.
     @Published var anchoredLeading = false
     /// Gentle nudge when we've heard almost nothing for a while.
@@ -130,9 +130,10 @@ enum IndicatorAccent {
         if error { return Color(red: 1.0, green: 0.72, blue: 0.32) }
         switch mode {
         case .command: return Color(red: 0.72, green: 0.58, blue: 1.0)
-        case .ask: return Color(red: 0.38, green: 0.86, blue: 0.86)
+        case .ask: return Color(red: 0.42, green: 0.67, blue: 1.0)
         case .dictation:
             switch theme {
+            case .fresh: return Color(red: 0.21, green: 0.84, blue: 0.65)
             case .aurora: return Color(red: 0.52, green: 0.70, blue: 1.0)
             case .sunset: return Color(red: 1.0, green: 0.58, blue: 0.45)
             case .mono: return Color(white: 0.94)
@@ -629,7 +630,7 @@ enum PillPreview {
     @MainActor
     static func render(to url: URL) {
         func model(_ phase: PillModel.Phase, mode: DictationMode = .dictation, live: String = "", locked: Bool = false, level: Float = 0.6,
-                   theme: IndicatorTheme = .aurora, bands: SIMD3<Float> = SIMD3(0.6, 0.5, 0.4), hint: String? = nil) -> PillModel {
+                   theme: IndicatorTheme = .fresh, bands: SIMD3<Float> = SIMD3(0.6, 0.5, 0.4), hint: String? = nil) -> PillModel {
             let m = PillModel()
             m.theme = theme
             m.phase = phase
