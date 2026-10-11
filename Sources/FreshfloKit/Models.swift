@@ -89,7 +89,7 @@ enum Provider: String, CaseIterable, Identifiable {
         case .groq: return "Groq"
         case .openai: return "OpenAI"
         case .custom: return "Custom (OpenAI-compatible)"
-        case .local: return "On-device (Apple · free · offline)"
+        case .local: return "Built-in (Apple · free · no key)"
         }
     }
 

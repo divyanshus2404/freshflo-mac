@@ -253,6 +253,13 @@ enum Cleanup {
     static func rules(_ raw: String, tone: Tone, continuing: Bool = false) -> String {
         var text = raw
         text = fillers.stringByReplacingMatches(in: text, range: NSRange(text.startIndex..., in: text), withTemplate: "")
+        // Without a language model (macOS 14–15 with no key), still handle the most common speech habits:
+        // "Tuesday, no wait, Wednesday" → "Wednesday", "the the" → "the", and a leading "basically" / "okay".
+        text = text.replacingOccurrences(of: #"\b[\w']+(?:\s+(?:a\.?m\.?|p\.?m\.?))?[,.]?\s+(?:no wait|wait no|no no|actually no|sorry no|no sorry)\b[,.]?\s+"#,
+                                         with: "", options: [.regularExpression, .caseInsensitive])
+        text = text.replacingOccurrences(of: #"\b[\w']+,\s+I mean,?\s+"#, with: "", options: [.regularExpression, .caseInsensitive])
+        text = text.replacingOccurrences(of: #"\b(?!(?:had|that)\b)(\w+)(?:\s+\1\b)+"#, with: "$1", options: [.regularExpression, .caseInsensitive])
+        text = text.replacingOccurrences(of: #"^\s*(?:(?:so\s+)?(?:basically|okay|ok|well)\b,?\s+)+(?=\w)"#, with: "", options: [.regularExpression, .caseInsensitive])
         text = text.replacingOccurrences(of: #"\s*\bnew paragraph\b[.,]?\s*"#, with: "\n\n", options: [.regularExpression, .caseInsensitive])
         text = text.replacingOccurrences(of: #"\s*\bnew line\b[.,]?\s*"#, with: "\n", options: [.regularExpression, .caseInsensitive])
         text = text.replacingOccurrences(of: #"[ \t]{2,}"#, with: " ", options: .regularExpression)

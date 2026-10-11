@@ -69,7 +69,7 @@ final class AppSettings: ObservableObject {
 
     private init() {
         let d = UserDefaults.standard
-        let provider = Provider(rawValue: d.string(forKey: "provider") ?? "") ?? .groq
+        let provider = Provider(rawValue: d.string(forKey: "provider") ?? "") ?? (Keychain.get(Provider.groq.rawValue).isEmpty ? .local : .groq)
         self.provider = provider
         hotkey = HotkeyKey(rawValue: d.string(forKey: "hotkey") ?? "") ?? .fn
         apiKey = Keychain.get(provider.rawValue)

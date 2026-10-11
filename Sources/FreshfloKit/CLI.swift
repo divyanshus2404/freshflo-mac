@@ -7,7 +7,7 @@ import Foundation
 ///   Freshflo --command "make this formal" [--selection "hey whats up"]
 public enum CLI {
     public static var isRequested: Bool {
-        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--benchmark"].contains(where: CommandLine.arguments.contains)
+        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--benchmark", "--check-update"].contains(where: CommandLine.arguments.contains)
     }
 
     /// Shows the real floating indicator inside a proper app run loop with synthetic speech (performance checks).
@@ -125,6 +125,10 @@ public enum CLI {
             return
         }
 
+        if CommandLine.arguments.contains("--check-update") {
+            print(await Updater.shared.dryRun())
+            return
+        }
         if let out = value("--render-onboarding") {
             _ = NSApplication.shared // the welcome step reads the app icon
             let view = HStack(alignment: .top, spacing: 16) {

@@ -8,13 +8,14 @@ if [ "${SKIP_CHECKS:-0}" != "1" ]; then
     echo "→ Running logic checks…"
     swift run -q FreshfloChecks
 fi
-echo "→ Compiling (release)…"
+echo "→ Compiling (release, Apple Silicon + Intel)…"
 swift build -c release --arch arm64 --product Freshflo
+swift build -c release --arch x86_64 --product Freshflo
 
 echo "→ Assembling $APP"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp .build/arm64-apple-macosx/release/Freshflo "$APP/Contents/MacOS/Freshflo"
+lipo -create .build/arm64-apple-macosx/release/Freshflo .build/x86_64-apple-macosx/release/Freshflo -output "$APP/Contents/MacOS/Freshflo"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 
 # Icon is rendered from the brand master (Freshflo-Website/brand/icon.svg) and checked in.

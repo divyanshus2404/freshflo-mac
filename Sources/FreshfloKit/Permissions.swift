@@ -27,6 +27,17 @@ enum Permissions {
         open("x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")
     }
 
+    static func openSpeechSettings() {
+        open("x-apple.systempreferences:com.apple.preference.security?Privacy_SpeechRecognition")
+    }
+
+    /// What the 🌐/fn key does on its own (System Settings → Keyboard → "Press 🌐 key to").
+    /// nil when the user never changed it (the macOS default differs between Macs).
+    static var fnKeyAction: FnKeyAction? {
+        guard let value = UserDefaults(suiteName: "com.apple.HIToolbox")?.object(forKey: "AppleFnUsageType") as? Int else { return nil }
+        return FnKeyAction(rawValue: value) ?? .other
+    }
+
     static func openKeyboardSettings() {
         open("x-apple.systempreferences:com.apple.Keyboard-Settings.extension")
     }
@@ -36,10 +47,27 @@ enum Permissions {
     }
 }
 
+enum FnKeyAction: Int {
+    case nothing = 0, inputSource = 1, emoji = 2, dictation = 3, other = 99
+
+    /// What macOS does with the key, for the setup warning.
+    var conflict: String? {
+        switch self {
+        case .nothing: return nil
+        case .inputSource: return "switches your keyboard language"
+        case .emoji: return "opens the Emoji & Symbols window"
+        case .dictation: return "starts Apple's own dictation"
+        case .other: return "does something else"
+        }
+    }
+}
+
 /// Polls permission state while a settings view is visible.
 final class PermissionsModel: ObservableObject {
     @Published var microphone = Permissions.microphone
     @Published var accessibility = Permissions.accessibility
+    @Published var speech = !LocalSpeech.needsAuthorization
+    @Published var fnAction = Permissions.fnKeyAction
     private var timer: Timer?
 
     func startPolling() {
@@ -56,5 +84,7 @@ final class PermissionsModel: ObservableObject {
     func refresh() {
         microphone = Permissions.microphone
         accessibility = Permissions.accessibility
+        speech = !LocalSpeech.needsAuthorization
+        fnAction = Permissions.fnKeyAction
     }
 }

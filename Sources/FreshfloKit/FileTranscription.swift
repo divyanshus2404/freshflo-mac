@@ -48,7 +48,7 @@ enum FileTranscription {
                 HistoryStore.shared.add(HistoryItem(
                     date: Date(), appName: "🎙 \(url.lastPathComponent)", bundleID: "", raw: raw, text: polished.text,
                     tone: settings.defaultTone, duration: 0, cleanup: polished.engine, mode: .dictation,
-                    transcriber: settings.provider == .local ? "apple-speech" : settings.endpoint.transcriptionModel
+                    transcriber: settings.provider == .local ? LocalSpeech.engineName(language: settings.language) : settings.endpoint.transcriptionModel
                 ))
             } catch {
                 model.status = nil

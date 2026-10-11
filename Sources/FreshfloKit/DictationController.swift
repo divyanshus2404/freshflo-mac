@@ -73,7 +73,11 @@ final class DictationController {
 
     // MARK: - Hotkey events
 
+    /// Set while setup is testing the key, so pressing it there doesn't start a dictation.
+    static var paused = false
+
     func hotkeyPressed(flags: CGEventFlags) {
+        guard !Self.paused else { return }
         switch state {
         case .idle:
             if settings.askModeEnabled, flags.contains(.maskShift) {

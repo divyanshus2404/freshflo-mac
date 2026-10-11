@@ -41,6 +41,12 @@ expect(Cleanup.rules("um so I was thinking uh we should meet", tone: .formal), "
 expect(Cleanup.rules("Hey, are you free tomorrow.", tone: .veryCasual), "hey, are you free tomorrow", "rules very casual")
 expect(Cleanup.rules("first line new line second line", tone: .casual), "First line\nsecond line", "spoken new line")
 expect(Cleanup.rules("what is the capital of France", tone: .casual), "What is the capital of France?", "question mark")
+expect(Cleanup.rules("push the launch to Tuesday. No wait Wednesday.", tone: .casual), "Push the launch to Wednesday.", "rules: correction across a full stop")
+expect(Cleanup.rules("meet at 5, no wait, 6 pm", tone: .casual), "Meet at 6 pm", "rules: number correction")
+expect(Cleanup.rules("lunch at one pm no wait one thirty pm", tone: .casual), "Lunch at one thirty pm", "rules: correction with pm")
+expect(Cleanup.rules("send it to the the team", tone: .casual), "Send it to the team", "rules: repeated word")
+expect(Cleanup.rules("so basically we need to fix it", tone: .casual), "We need to fix it", "rules: leading so/basically")
+expect(Cleanup.rules("I had had enough", tone: .casual), "I had had enough", "rules: keeps grammatical 'had had'")
 expect(Cleanup.sanitize("\"Hello there.\"", raw: "hello there"), "Hello there.", "strip quotes")
 expect(Cleanup.sanitize(String(repeating: "x", count: 200), raw: "short"), nil, "reject runaway output")
 expect(Cleanup.sanitize("Paris is the capital of France.", raw: "what is the capital of France"), nil, "reject answered question")
@@ -145,6 +151,31 @@ let (trimmed, voiced) = AudioRecorder.trimSilence(silence + tone + silence)
 expectTrue(voiced > 0.8 && voiced < 1.2, "voiced duration ≈ 1 s")
 expectTrue(trimmed.count < 16_000 * 2, "silence trimmed")
 expect(AudioRecorder.trimSilence(silence).voicedSeconds, 0, "pure silence → nothing")
+
+// MARK: - Updates & built-in engine
+
+section("Updates")
+MainActor.assumeIsolated {
+    expectTrue(Updater.isNewer("0.9.5", than: "0.9.0"), "patch is newer")
+    expectTrue(Updater.isNewer("0.10.0", than: "0.9.5"), "numeric, not alphabetical")
+    expectTrue(Updater.isNewer("1.0", than: "0.9.9"), "major bump")
+    expect(Updater.isNewer("0.9.5", than: "0.9.5"), false, "same version isn't newer")
+    expect(Updater.isNewer("0.9", than: "0.9.0"), false, "missing parts count as zero")
+}
+section("Built-in engine")
+var minute = [Float](repeating: 0, count: 16_000 * 130)
+for i in minute.indices where (i / 16_000) % 47 != 46 {
+    let phase = Double(i) * 0.05
+    minute[i] = Float(sin(phase) * 0.3)
+}
+let pieces = LocalSpeech.chunks(minute)
+expect(pieces.count, 3, "130 s splits into three pieces")
+expectTrue(pieces.allSatisfy { Double($0.samples.count) / 16_000 <= 55 }, "every piece under Apple's one-minute limit")
+expect(pieces.map { $0.samples.count }.reduce(0, +), minute.count, "no audio lost between pieces")
+expectTrue(abs(pieces[1].offset - Double(pieces[0].samples.count) / 16_000) < 0.001, "offsets line up")
+expect(LocalSpeech.chunks([Float](repeating: 0.1, count: 16_000 * 10)).count, 1, "short clips stay whole")
+expectTrue(Tips.all.allSatisfy { !$0.isEmpty }, "tips present")
+expectTrue(Tips.today(key: "Fn").contains("%@") == false, "tip placeholders filled")
 
 // MARK: - Result
 

@@ -23,6 +23,7 @@ final class HistoryStore: ObservableObject {
     var last: HistoryItem? { items.first }
 
     func add(_ item: HistoryItem) {
+        UsageStats.shared.record(words: item.wordCount, seconds: item.duration, on: item.date)
         items.insert(item, at: 0)
         if items.count > Self.limit { items.removeLast(items.count - Self.limit) }
         persist()

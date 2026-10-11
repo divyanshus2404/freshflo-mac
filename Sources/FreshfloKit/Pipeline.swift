@@ -19,7 +19,7 @@ enum Pipeline {
         let vocabulary = settings.dictionary + extraVocabulary
         if forceLocal || settings.provider == .local {
             let text = try await LocalSpeech.transcribe(samples, language: settings.language, vocabulary: vocabulary, onStatus: onStatus)
-            return Transcript(text: text, engine: "apple-speech")
+            return Transcript(text: text, engine: LocalSpeech.engineName(language: settings.language))
         }
         do {
             let text = try await Transcriber.transcribe(samples: samples, endpoint: settings.endpoint, vocabulary: vocabulary)

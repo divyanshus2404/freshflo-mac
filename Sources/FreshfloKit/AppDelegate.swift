@@ -21,6 +21,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
     private var cancellables = Set<AnyCancellable>()
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
+        AppMover.moveIfNeeded()
         installMainMenu()
         setUpStatusItem()
 
@@ -40,6 +41,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         }
 
         startHotkey()
+        Updater.shared.onChange = { [weak self] in self?.updateStatusIcon() }
+        Updater.shared.start()
 
         // People who already set things up before onboarding existed skip it.
         let defaults = UserDefaults.standard
@@ -54,6 +57,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
                 return
             }
         }
+        if defaults.bool(forKey: "onboarded") { WhatsNew.showIfUpdated() } else { defaults.set(Updater.currentVersion, forKey: "lastRunVersion") }
         if !defaults.bool(forKey: "onboarded") {
             showOnboarding()
         } else if !settings.isReady {
@@ -113,6 +117,28 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
     public func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
 
+        if let update = Updater.shared.available {
+            menu.addItem(item(Updater.shared.installing ? "Installing Freshflo \(update.version)…" : "⬆︎ Update to Freshflo \(update.version)…", #selector(installUpdate)))
+            menu.addItem(.separator())
+        }
+        // Today's progress: the small reward that makes people come back.
+        let stats = UsageStats.shared
+        let today = stats.today
+        let streak = stats.streak
+        var line = today.words > 0
+            ? "Today: \(today.words.formatted()) words · \(today.minutesSaved) min saved"
+            : "Today: nothing yet. Hold \(settings.hotkey.shortLabel) and talk."
+        if streak >= 2 { line += " · 🔥 \(streak)-day streak" }
+        let progress = NSMenuItem(title: line, action: nil, keyEquivalent: "")
+        progress.isEnabled = false
+        menu.addItem(progress)
+        let week = stats.thisWeek
+        if week.words > 0 {
+            let weekItem = NSMenuItem(title: "This week: \(week.words.formatted()) words · \(week.minutesSaved) min saved", action: nil, keyEquivalent: "")
+            weekItem.isEnabled = false
+            menu.addItem(weekItem)
+        }
+        menu.addItem(.separator())
         let header = NSMenuItem(title: "Hold \(settings.hotkey.shortLabel) to dictate · tap for hands-free", action: nil, keyEquivalent: "")
         header.isEnabled = false
         menu.addItem(header)
@@ -133,9 +159,12 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         if Permissions.microphone != .authorized {
             menu.addItem(item("⚠︎ Grant Microphone Access…", #selector(grantMicrophone)))
         }
-        if !settings.hasAPIKey {
-            menu.addItem(item("⚠︎ Add API Key…", #selector(openSettings)))
+        if !settings.isReady {
+            menu.addItem(item("⚠︎ Finish Setup…", #selector(openOnboarding)))
         }
+        let tip = NSMenuItem(title: "💡 " + Tips.today(key: settings.hotkey.shortLabel), action: nil, keyEquivalent: "")
+        tip.isEnabled = false
+        menu.addItem(tip)
 
         menu.addItem(.separator())
         if dictation.lastFailed != nil {
@@ -174,6 +203,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         menu.addItem(item("History…", #selector(openHistory)))
         menu.addItem(item("Settings…", #selector(openSettings), key: ","))
         menu.addItem(item("Setup Guide…", #selector(openOnboarding)))
+        menu.addItem(item("Check for Updates…", #selector(checkForUpdates)))
         menu.addItem(.separator())
         menu.addItem(item("Quit Freshflo", #selector(NSApplication.terminate(_:)), key: "q", target: NSApp))
     }
@@ -182,6 +212,15 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         let mi = NSMenuItem(title: title, action: action, keyEquivalent: key)
         mi.target = target ?? self
         return mi
+    }
+
+    @objc private func installUpdate() {
+        guard let release = Updater.shared.available else { return }
+        Task { await Updater.shared.install(release) }
+    }
+
+    @objc private func checkForUpdates() {
+        Task { await Updater.shared.check(userInitiated: true) }
     }
 
     @objc private func grantAccessibility() {
