@@ -222,6 +222,11 @@ final class Updater {
 /// Shown once after an update, so people see what got better.
 enum WhatsNew {
     static let notes: [String: [String]] = [
+        "0.13.0": [
+            "Settings is simpler: meeting notes and Claude/Cursor have their own Meetings tab, and sync and diagnostics live under Advanced.",
+            "Setup now shows the extras (live captions, meeting notes, lists and emails, Claude and Cursor, Scratchpad, Your Week) with switches to turn them on.",
+            "VoiceOver hears when Freshflo starts listening and what it typed.",
+        ],
         "0.12.2": [
             "Automatic microphone: Freshflo picks the best mic that's connected (USB, then your Mac's, then a headset), skips system-audio devices like BlackHole, and follows you as devices come and go.",
             "Unplug a mic or connect AirPods mid-sentence and Freshflo carries on with the next mic without losing what you said.",
