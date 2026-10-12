@@ -1,0 +1,586 @@
+[
+ {
+  "tag": "agreement",
+  "raw": "She go to the office every day by metro.",
+  "must": [
+   "she goes"
+  ]
+ },
+ {
+  "tag": "agreement",
+  "raw": "He have two meetings today.",
+  "must": [
+   "he has two meetings"
+  ]
+ },
+ {
+  "tag": "agreement",
+  "raw": "There is many issues with the new build.",
+  "must": [
+   "there are many issues"
+  ]
+ },
+ {
+  "tag": "agreement",
+  "raw": "The list of items are on the table.",
+  "must": [
+   "list of items is"
+  ]
+ },
+ {
+  "tag": "agreement",
+  "raw": "My manager don't like long emails.",
+  "must": [
+   "doesn't like"
+  ]
+ },
+ {
+  "tag": "agreement",
+  "raw": "Everyone in the team have finished their tasks.",
+  "must": [
+   "has finished"
+  ]
+ },
+ {
+  "tag": "agreement",
+  "raw": "The results was better than expected.",
+  "must": [
+   "results were"
+  ]
+ },
+ {
+  "tag": "agreement",
+  "raw": "Each of the students have a laptop.",
+  "must": [
+   "has a laptop"
+  ]
+ },
+ {
+  "tag": "tense",
+  "raw": "Yesterday I go to the market and buy some vegetables.",
+  "must": [
+   "went",
+   "bought"
+  ]
+ },
+ {
+  "tag": "tense",
+  "raw": "Last week we launch the new version and it work really well.",
+  "must": [
+   "launched",
+   "worked"
+  ]
+ },
+ {
+  "tag": "tense",
+  "raw": "I didn't went to the meeting.",
+  "must": [
+   "didn't go"
+  ],
+  "mustNot": [
+   "didn't went"
+  ]
+ },
+ {
+  "tag": "tense",
+  "raw": "Did you finished the report?",
+  "must": [
+   "did you finish"
+  ]
+ },
+ {
+  "tag": "tense",
+  "raw": "He has went home already.",
+  "must": [
+   "has gone"
+  ]
+ },
+ {
+  "tag": "tense",
+  "raw": "I have saw that movie before.",
+  "must": [
+   "have seen"
+  ]
+ },
+ {
+  "tag": "tense",
+  "raw": "Tomorrow I will called you after lunch.",
+  "must": [
+   "will call"
+  ]
+ },
+ {
+  "tag": "tense",
+  "raw": "She don't came to work today.",
+  "must": [
+   "come"
+  ],
+  "mustNot": [
+   "don't came"
+  ]
+ },
+ {
+  "tag": "articles",
+  "raw": "She is engineer at Google.",
+  "must": [
+   "an engineer"
+  ]
+ },
+ {
+  "tag": "articles",
+  "raw": "Can you send me report by evening?",
+  "must": [
+   "the report"
+  ]
+ },
+ {
+  "tag": "articles",
+  "raw": "I need a information about the trip.",
+  "mustNot": [
+   "a information"
+  ]
+ },
+ {
+  "tag": "articles",
+  "raw": "It was an unique experience.",
+  "must": [
+   "a unique"
+  ]
+ },
+ {
+  "tag": "articles",
+  "raw": "We waited for a hour.",
+  "must": [
+   "an hour"
+  ]
+ },
+ {
+  "tag": "indian",
+  "raw": "I am having two brothers and one sister.",
+  "must": [
+   "have two brothers"
+  ],
+  "mustNot": [
+   "am having"
+  ]
+ },
+ {
+  "tag": "indian",
+  "raw": "He is knowing the answer but he is not telling.",
+  "must": [
+   "knows"
+  ]
+ },
+ {
+  "tag": "indian",
+  "raw": "We will discuss about the budget tomorrow.",
+  "must": [
+   "discuss the budget"
+  ],
+  "mustNot": [
+   "discuss about"
+  ]
+ },
+ {
+  "tag": "indian",
+  "raw": "Please revert back by today.",
+  "mustNot": [
+   "revert back"
+  ]
+ },
+ {
+  "tag": "indian",
+  "raw": "Myself Rahul and I am calling from the sales team.",
+  "must": [
+   "rahul"
+  ],
+  "mustNot": [
+   "myself rahul"
+  ]
+ },
+ {
+  "tag": "indian",
+  "raw": "Where you are going after office?",
+  "must": [
+   "where are you going"
+  ]
+ },
+ {
+  "tag": "indian",
+  "raw": "Why you didn't call me yesterday?",
+  "must": [
+   "why didn't you call me"
+  ]
+ },
+ {
+  "tag": "indian",
+  "raw": "What you want for dinner?",
+  "must": [
+   "what do you want"
+  ]
+ },
+ {
+  "tag": "indian",
+  "raw": "He is having fever since two days.",
+  "must": [
+   "for two days"
+  ],
+  "mustNot": [
+   "since two days"
+  ]
+ },
+ {
+  "tag": "indian",
+  "raw": "I am staying here since 2019.",
+  "must": [
+   "since 2019"
+  ],
+  "mustNot": [
+   "i am staying here since"
+  ]
+ },
+ {
+  "tag": "indian",
+  "raw": "Can you please do the needful and send the files?",
+  "must": [
+   "send the files"
+  ]
+ },
+ {
+  "tag": "indian",
+  "raw": "Today morning I had a call with the client.",
+  "must": [
+   "this morning"
+  ]
+ },
+ {
+  "tag": "indian",
+  "raw": "I will reach office by ten.",
+  "must": [
+   "reach the office"
+  ]
+ },
+ {
+  "tag": "indian",
+  "raw": "He is very much excited about the trip.",
+  "must": [
+   "very excited"
+  ],
+  "mustNot": [
+   "very much excited"
+  ]
+ },
+ {
+  "tag": "indian",
+  "raw": "I have done my graduation from Delhi University.",
+  "must": [
+   "delhi university"
+  ],
+  "mustNot": [
+   "done my graduation"
+  ]
+ },
+ {
+  "tag": "indian",
+  "raw": "Kindly let me know your availability.",
+  "must": [
+   "let me know your availability"
+  ]
+ },
+ {
+  "tag": "hinglish",
+  "raw": "Kal meeting hai, so please come on time and bring the reports.",
+  "must": [
+   "kal meeting hai",
+   "bring the reports"
+  ]
+ },
+ {
+  "tag": "hinglish",
+  "raw": "Yaar, he don't listen to anyone in the team.",
+  "must": [
+   "yaar",
+   "doesn't listen"
+  ]
+ },
+ {
+  "tag": "hinglish",
+  "raw": "Main kal office nahi aaunga, I have doctor appointment.",
+  "must": [
+   "main kal office nahi aaunga",
+   "doctor"
+  ],
+  "mustNot": [
+   "i have doctor appointment"
+  ]
+ },
+ {
+  "tag": "homophones",
+  "raw": "Their going to be late because of the traffic.",
+  "must": [
+   "they're going"
+  ]
+ },
+ {
+  "tag": "homophones",
+  "raw": "Your welcome to join us for lunch.",
+  "must": [
+   "you're welcome"
+  ]
+ },
+ {
+  "tag": "homophones",
+  "raw": "The dog wagged it's tail.",
+  "must": [
+   "its tail"
+  ]
+ },
+ {
+  "tag": "homophones",
+  "raw": "This laptop is faster then mine.",
+  "must": [
+   "faster than"
+  ]
+ },
+ {
+  "tag": "homophones",
+  "raw": "I don't know weather we should go.",
+  "must": [
+   "whether"
+  ]
+ },
+ {
+  "tag": "homophones",
+  "raw": "Don't loose your passport.",
+  "must": [
+   "lose your"
+  ]
+ },
+ {
+  "tag": "homophones",
+  "raw": "The new policy will effect everyone.",
+  "must": [
+   "affect everyone"
+  ]
+ },
+ {
+  "tag": "homophones",
+  "raw": "There going to love it.",
+  "must": [
+   "they're going"
+  ]
+ },
+ {
+  "tag": "homophones",
+  "raw": "Lets meet at the cafe.",
+  "must": [
+   "let's meet"
+  ]
+ },
+ {
+  "tag": "homophones",
+  "raw": "Lets grab launch after the meeting.",
+  "must": [
+   "lunch"
+  ]
+ },
+ {
+  "tag": "homophones",
+  "raw": "Can you send me the dock before the call?",
+  "mustNot": [
+   "dock"
+  ]
+ },
+ {
+  "tag": "plurals",
+  "raw": "We have two report due this week.",
+  "must": [
+   "two reports"
+  ]
+ },
+ {
+  "tag": "plurals",
+  "raw": "There are many thing to fix before the launch.",
+  "must": [
+   "many things"
+  ]
+ },
+ {
+  "tag": "plurals",
+  "raw": "I bought three new phone.",
+  "must": [
+   "phones"
+  ]
+ },
+ {
+  "tag": "pronouns",
+  "raw": "Me and him are going to the gym.",
+  "must": [
+   "he and i"
+  ]
+ },
+ {
+  "tag": "pronouns",
+  "raw": "Between you and I, the plan won't work.",
+  "must": [
+   "between you and me"
+  ]
+ },
+ {
+  "tag": "pronouns",
+  "raw": "Him and his wife came to the party.",
+  "must": [
+   "he and his wife"
+  ]
+ },
+ {
+  "tag": "order",
+  "raw": "Can you tell me where is the station?",
+  "must": [
+   "where the station is"
+  ]
+ },
+ {
+  "tag": "order",
+  "raw": "I don't know what is his name.",
+  "must": [
+   "what his name is"
+  ]
+ },
+ {
+  "tag": "order",
+  "raw": "um so what time the meeting is starting",
+  "must": [
+   "what time is the meeting starting",
+   "?"
+  ]
+ },
+ {
+  "tag": "prepositions",
+  "raw": "She is married with a doctor.",
+  "must": [
+   "married to"
+  ]
+ },
+ {
+  "tag": "prepositions",
+  "raw": "It depends of the weather.",
+  "must": [
+   "depends on"
+  ]
+ },
+ {
+  "tag": "prepositions",
+  "raw": "I'm good in maths.",
+  "must": [
+   "good at"
+  ]
+ },
+ {
+  "tag": "prepositions",
+  "raw": "We reached to the airport late.",
+  "must": [
+   "reached the airport"
+  ]
+ },
+ {
+  "tag": "keep",
+  "raw": "Ship it.",
+  "must": [
+   "ship it"
+  ]
+ },
+ {
+  "tag": "keep",
+  "raw": "gonna grab lunch, brb",
+  "must": [
+   "brb"
+  ],
+  "mustNot": [
+   "going to"
+  ],
+  "app": "com.apple.MobileSMS"
+ },
+ {
+  "tag": "keep",
+  "raw": "Push the fix to main and tag v2.3.1.",
+  "must": [
+   "v2.3.1",
+   "main"
+  ]
+ },
+ {
+  "tag": "keep",
+  "raw": "Ask Priya to review PR 482 before Friday.",
+  "must": [
+   "priya",
+   "482",
+   "friday"
+  ]
+ },
+ {
+  "tag": "keep",
+  "raw": "Honestly the demo went great, the client loved it.",
+  "must": [
+   "the client loved it",
+   "demo went great"
+  ]
+ },
+ {
+  "tag": "keep",
+  "raw": "Can you do the thing we discussed?",
+  "must": [
+   "the thing we discussed",
+   "?"
+  ]
+ },
+ {
+  "tag": "keep",
+  "raw": "That's not what I meant, I said Tuesday.",
+  "must": [
+   "tuesday"
+  ]
+ },
+ {
+  "tag": "combined",
+  "raw": "For the release we need three thing. First, fix the login bug. Second, he don't have access so give him access. Third, update the docs.",
+  "must": [
+   "1. fix the login bug",
+   "doesn't have access",
+   "3. update the docs"
+  ]
+ },
+ {
+  "tag": "combined",
+  "raw": "hi sir I am writing to inform that I will not able to attend the meeting tomorrow",
+  "must": [
+   "will not be able to attend"
+  ],
+  "app": "com.apple.mail"
+ },
+ {
+  "tag": "combined",
+  "raw": "so basically the client don't want the new design and they was asking for the old one back",
+  "must": [
+   "doesn't want",
+   "they were asking"
+  ]
+ },
+ {
+  "tag": "combined",
+  "raw": "i think we should of left earlier",
+  "must": [
+   "should have left"
+  ],
+  "mustNot": [
+   "should of"
+  ]
+ },
+ {
+  "tag": "combined",
+  "raw": "The team are working on it and they will finish it by tomorrow evening.",
+  "must": [
+   "finish it by tomorrow evening"
+  ]
+ }
+]

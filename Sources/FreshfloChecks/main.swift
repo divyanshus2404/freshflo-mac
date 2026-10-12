@@ -270,6 +270,45 @@ expect(ListFormat.bullet(for: "com.todesktop.230313mzl4w4u92"), "- ", "Cursor ge
 expect(TextPolish.apply("first eggs second milk third bread", .init(lists: false)), "first eggs second milk third bread", "Smart lists off keeps sentences")
 expect(TextPolish.apply("um so first eggs, second milk", .init()), "1. Eggs\n2. Milk", "polish pass formats lists")
 
+// MARK: - Spoken English
+section("Spoken English")
+func se(_ s: String) -> String { SpokenEnglish.fix(s) }
+expect(se("I am having two brothers and one sister."), "I have two brothers and one sister.", "possessive having")
+expect(se("He is knowing the answer."), "He knows the answer.", "stative knowing")
+expect(se("We will discuss about the budget."), "We will discuss the budget.", "discuss about")
+expect(se("He is having fever since two days."), "He has fever for two days.", "since + duration")
+expect(se("I am staying here since 2019."), "I have been staying here since 2019.", "ongoing since a year")
+expect(se("Today morning I had a call."), "This morning I had a call.", "today morning")
+expect(se("Where you are going after office?"), "Where are you going after office?", "question inversion")
+expect(se("Why you didn't call me?"), "Why didn't you call me?", "why didn't you")
+expect(se("What you want for dinner?"), "What do you want for dinner?", "what do you want")
+expect(se("Me and him are going to the gym."), "He and I are going to the gym.", "me and him")
+expect(se("Him and his wife came."), "He and his wife came.", "him and his")
+expect(se("Between you and I, it won't work."), "Between you and me, it won't work.", "between you and me")
+expect(se("I didn't went there."), "I didn't go there.", "didn't went")
+expect(se("Did you finished the report?"), "Did you finish the report?", "did you finished")
+expect(se("He has went home."), "He has gone home.", "has went")
+expect(se("I will called you."), "I will call you.", "will called")
+expect(se("We should of left earlier."), "We should have left earlier.", "should of")
+expect(se("Lets meet at the cafe."), "Let's meet at the cafe.", "Lets → Let's")
+expect(se("Myself Rahul from sales."), "I'm Rahul from sales.", "Myself Rahul")
+expect(se("Your welcome to join."), "You're welcome to join.", "your welcome")
+expect(se("This laptop is faster then mine."), "This laptop is faster than mine.", "faster than")
+expect(se("Don't loose your passport."), "Don't lose your passport.", "loose → lose")
+expect(se("The policy will effect everyone."), "The policy will affect everyone.", "will affect")
+expect(se("I need a information."), "I need information.", "a information")
+expect(se("I will not able to attend."), "I will not be able to attend.", "not able to")
+expect(se("I don't know weather we should go."), "I don't know whether we should go.", "weather → whether")
+expect(se("The dog wagged it's tail."), "The dog wagged its tail.", "it's tail")
+expect(se("We have two report and many thing to fix."), "We have two reports and many things to fix.", "plurals after numbers")
+// Correct sentences are left alone
+for ok in ["He left office in 2019.", "I'm going home since it's late.", "There always seems to be a bug.", "We have launch on Monday.",
+           "Fill in a feedback form.", "I am having lunch.", "I am having a problem with the build.", "I've worked here since Monday.",
+           "He lets me drive.", "Turn to the left.", "Their never-ending meetings.", "See you later then.", "Me and my team are on it.",
+           "Let's discuss it tomorrow.", "The meeting depends on the client.", "We need to effect change.", "Ready for launch.", "It's way too expensive.", "The weather is nice.", "a two report summary", "I have 3 reports."] {
+    expect(se(ok), ok, "unchanged: \(ok)")
+}
+
 // MARK: - Result
 
 if failures.isEmpty {

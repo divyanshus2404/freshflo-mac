@@ -7,7 +7,7 @@ import Foundation
 ///   Freshflo --command "make this formal" [--selection "hey whats up"]
 public enum CLI {
     public static var isRequested: Bool {
-        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update"].contains(where: CommandLine.arguments.contains)
+        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update", "--grammar-eval"].contains(where: CommandLine.arguments.contains)
     }
 
     /// Shows the real floating indicator inside a proper app run loop with synthetic speech (performance checks).
@@ -239,6 +239,11 @@ public enum CLI {
 
         if CommandLine.arguments.contains("--models") {
             print(try await OpenAICompatible.models(settings.endpoint).sorted().joined(separator: "\n"))
+            return
+        }
+        if let path = value("--grammar-eval") {
+            try await GrammarEval.run(path: path, mode: value("--cleanup").flatMap(CleanupMode.init(rawValue:)), settings: settings,
+                                      verbose: CommandLine.arguments.contains("--verbose"), paceMs: Int(value("--pace") ?? "") ?? 0)
             return
         }
         if let instruction = value("--command") {

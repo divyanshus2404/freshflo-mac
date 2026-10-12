@@ -235,7 +235,7 @@ enum TextPolish {
 
     /// Safe, mechanical fixes only (the language model handles real grammar): a/an, "i" → "I", missing apostrophes, sentence capitals.
     static func grammarBasics(_ s: String, tone: Tone) -> String {
-        var out = s
+        var out = SpokenEnglish.fix(s)
         // a → an before a vowel sound; an → a before a consonant sound. Acronyms and numbers are left alone.
         out = out.replacingOccurrences(of: #"\b([Aa])\s+(?!\#(aNotAn))(?=[aeiouAEIOU][a-z])"#, with: "$1n ", options: .regularExpression)
         out = out.replacingOccurrences(of: #"\b([Aa])\s+(?=\#(anNotA))"#, with: "$1n ", options: [.regularExpression, .caseInsensitive])

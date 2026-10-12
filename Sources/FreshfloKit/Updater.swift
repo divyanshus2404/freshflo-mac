@@ -222,6 +222,10 @@ final class Updater {
 /// Shown once after an update, so people see what got better.
 enum WhatsNew {
     static let notes: [String: [String]] = [
+        "0.10.0": [
+            "Stronger grammar: “I am having two brothers”, “since two days”, “Where you are going?”, “Me and him went”, “didn't went” and dozens more spoken slips come out as correct English, with or without AI.",
+            "Faster through busy moments: if Groq's free tier is rate-limited, cleanup switches to another model instead of a weaker fallback.",
+        ],
         "0.9.9": [
             "Smart lists: say \u{201C}first… second… third…\u{201D} for a numbered list, or \u{201C}bullet point…\u{201D} for bullets. Everything else stays as sentences.",
             "Live captions (menu → Live Captions): see your words as you speak and what Freshflo detects: a list, a question, a correction, filler words.",
