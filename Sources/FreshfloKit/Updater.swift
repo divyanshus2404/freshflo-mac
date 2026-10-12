@@ -222,6 +222,11 @@ final class Updater {
 /// Shown once after an update, so people see what got better.
 enum WhatsNew {
     static let notes: [String: [String]] = [
+        "0.12.0": [
+            "Speaker names in meeting notes: everyone else on the call is told apart by voice, and named when they introduce themselves.",
+            "Scratchpad (menu → Scratchpad…): dictate notes to yourself. Anything dictated with no text field in front of you lands there too.",
+            "Meeting transcripts no longer pick up a phantom \u{201C}Thank you\u{201D} from silence.",
+        ],
         "0.11.1": [
             "A calmer, sharper dictation bar: a row of dots that rises with your voice, shimmers while polishing, and draws a check when done.",
             "Five more indicator styles to choose from in Settings → General: Orb, Island, Equalizer, Glow line and Compact bar.",

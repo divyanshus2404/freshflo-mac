@@ -11,6 +11,8 @@ struct FocusContext {
     /// Selected text; "" when nothing is selected, nil when the app doesn't expose it.
     var selectedText: String?
     var isSecureField = false
+    /// Accessibility role of the focused element (AXTextField, AXTextArea, AXWebArea…).
+    var role: String?
     /// The focused text element, kept so the correction learner can re-read it later.
     var element: AXUIElement?
     /// Where the text cursor is on screen (Cocoa coordinates), so the indicator can appear right there.
@@ -38,6 +40,7 @@ struct FocusContext {
         guard let focused: AXUIElement = element(appElement, kAXFocusedUIElementAttribute) else { return ctx }
         AXUIElementSetMessagingTimeout(focused, 0.25)
         ctx.element = focused
+        ctx.role = string(focused, kAXRoleAttribute)
 
         if string(focused, kAXSubroleAttribute) == (kAXSecureTextFieldSubrole as String) {
             ctx.isSecureField = true
@@ -186,3 +189,13 @@ struct FocusContext {
         return text
     }
 }
+
+extension FocusContext {
+    private static let textRoles: Set<String> = ["AXTextField", "AXTextArea", "AXComboBox", "AXSearchField", "AXWebArea"]
+    /// Nothing to type into: the desktop or a Finder window with no text field focused. (Only Finder, where this is
+    /// certain; apps that hide their text fields from Accessibility still get a normal paste.)
+    var hasNoTextTarget: Bool {
+        bundleID == "com.apple.finder" && !(role.map(Self.textRoles.contains) ?? false)
+    }
+}
+

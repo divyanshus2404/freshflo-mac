@@ -7,7 +7,7 @@ import Foundation
 ///   Freshflo --command "make this formal" [--selection "hey whats up"]
 public enum CLI {
     public static var isRequested: Bool {
-        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update", "--grammar-eval", "--ask-meetings", "--render-stats", "--render-styles"].contains(where: CommandLine.arguments.contains)
+        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update", "--grammar-eval", "--ask-meetings", "--render-stats", "--render-styles", "--diarize"].contains(where: CommandLine.arguments.contains)
     }
 
     /// Shows the real floating indicator inside a proper app run loop with synthetic speech (performance checks).
@@ -242,6 +242,22 @@ public enum CLI {
 
         if CommandLine.arguments.contains("--models") {
             print(try await OpenAICompatible.models(settings.endpoint).sorted().joined(separator: "\n"))
+            return
+        }
+        if let path = value("--diarize"), let starts = value("--starts") {
+            let samples = try AudioRecorder.load(url: URL(fileURLWithPath: path))
+            let times = starts.split(separator: ",").compactMap { Double($0) }
+            let threshold = Float(value("--threshold") ?? "") ?? 0.42
+            if CommandLine.arguments.contains("--dump") {
+                for (i, t) in times.enumerated() {
+                    let end = i + 1 < times.count ? times[i + 1] : Double(samples.count) / 16_000
+                    let f = Diarization.fingerprint(samples[Int(t * 16_000)..<min(samples.count, Int(end * 16_000))])
+                    print("F " + (f?.map { String(format: "%.3f", $0) }.joined(separator: " ") ?? "nil"))
+                }
+                return
+            }
+            let labels = Diarization.speakers(samples: samples, starts: times, threshold: threshold)
+            print("speakers: \(labels.map { $0.map(String.init).joined(separator: " ") } ?? "one voice")")
             return
         }
         if let out = value("--render-styles") {

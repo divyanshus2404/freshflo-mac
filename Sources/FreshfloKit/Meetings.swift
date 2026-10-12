@@ -108,17 +108,38 @@ enum MeetingProcessor {
         do {
             var lines: [(start: Double, speaker: String, text: String)] = []
             let tracks = [("you.m4a", "You", micHasAudio), ("them.m4a", "Them", systemHasAudio)]
+            var labelled: [String] = []
             for (file, speaker, hasAudio) in tracks where hasAudio {
                 let url = folder.appendingPathComponent(file)
                 guard FileManager.default.fileExists(atPath: url.path) else { continue }
-                for segment in try await segments(url, settings: settings) {
-                    lines.append((segment.start, speaker, segment.text))
+                let samples = try? AudioRecorder.load(url: url)
+                // Whisper invents "Thank you." and the like on silence; drop those when the audio underneath really is silent.
+                let segs = try await segments(url, settings: settings).filter { seg in
+                    let text = Transcriber.stripHallucinations(seg.text)
+                    guard !text.isEmpty else { return false }
+                    guard let samples, Self.ghostPhrases.contains(SnippetExpander.normalize(text)) else { return true }
+                    return Self.loudness(samples, from: seg.start, seconds: 2.5) > 0.004
                 }
+                var names = segs.map { _ in speaker }
+                // Tell the other people apart by voice: "Speaker 1", "Speaker 2"… (named below when the call makes it clear).
+                if speaker == "Them", segs.count >= 2, let samples,
+                   let ids = Diarization.speakers(samples: samples, starts: segs.map(\.start)) {
+                    names = ids.map { "Speaker \($0 + 1)" }
+                    labelled = Array(Set(names)).sorted()
+                }
+                for (k, segment) in segs.enumerated() { lines.append((segment.start, names[k], segment.text)) }
             }
             lines = removeEcho(lines).sorted { $0.start < $1.start }
             guard !lines.isEmpty else { throw MeetingError.nothingHeard }
 
             meeting.transcript = format(lines)
+            if !labelled.isEmpty {
+                let names = await SpeakerNames.resolve(transcript: meeting.transcript, labels: labelled, settings: settings)
+                if !names.isEmpty {
+                    lines = lines.map { ($0.start, names[$0.speaker] ?? $0.speaker, $0.text) }
+                    meeting.transcript = format(lines)
+                }
+            }
             meeting.onDevice = settings.provider == .local && !settings.canUseCloud
             store.save(meeting)
 
@@ -143,6 +164,17 @@ enum MeetingProcessor {
         }
     }
 
+    nonisolated static let ghostPhrases: Set<String> = ["thank you", "thanks", "thank you very much", "thank you so much", "bye", "you", "okay", "so", "oh", "hmm"]
+
+    /// RMS of a stretch of audio (16 kHz), for telling real speech from silence.
+    nonisolated static func loudness(_ samples: [Float], from start: Double, seconds: Double) -> Float {
+        let a = max(0, Int(start * 16_000)), b = min(samples.count, a + Int(seconds * 16_000))
+        guard b > a else { return 0 }
+        var sum: Float = 0
+        for i in a..<b { sum += samples[i] * samples[i] }
+        return sqrt(sum / Float(b - a))
+    }
+
     private static func segments(_ url: URL, settings: AppSettings) async throws -> [Transcriber.Segment] {
         if settings.provider == .local || !settings.canUseCloud {
             return try await LocalSpeech.transcribeSegments(file: url, language: settings.language, vocabulary: settings.dictionary)
@@ -155,7 +187,7 @@ enum MeetingProcessor {
 
     /// Without headphones the mic also hears the other side; drop "You" lines that duplicate a nearby "Them" line.
     static func removeEcho(_ lines: [(start: Double, speaker: String, text: String)]) -> [(start: Double, speaker: String, text: String)] {
-        let them = lines.filter { $0.speaker == "Them" }
+        let them = lines.filter { $0.speaker != "You" }
         guard !them.isEmpty else { return lines }
         return lines.filter { line in
             guard line.speaker == "You" else { return true }
@@ -188,7 +220,7 @@ enum MeetingProcessor {
 
     private static func notesInstructions(_ settings: AppSettings) -> String {
         var text = """
-        You write meeting notes from a transcript. "You" is the user; "Them" is everyone else on the call.
+        You write meeting notes from a transcript. "You" is the user. Everyone else is "Them", or labelled by name or as "Speaker 1", "Speaker 2"… when their voices could be told apart.
         Output Markdown in exactly this shape, omitting any section that would be empty:
         # <short, specific title>
         ## Summary
@@ -198,7 +230,7 @@ enum MeetingProcessor {
         ## Decisions
         - …
         ## Action items
-        - [ ] <task> — <owner: You / Them / a name if mentioned>, <due date if mentioned>
+        - [ ] <task> — <owner: You / a name / Speaker N / Them>, <due date if mentioned>
         ## Open questions
         - …
         Be factual: never invent names, numbers or commitments that aren't in the transcript.

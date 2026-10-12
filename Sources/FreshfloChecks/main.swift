@@ -377,6 +377,22 @@ try! FolderSync.write(both, to: syncFile)
 expect(FolderSync.read(syncFile)?.dictionary, both.dictionary, "shared file round-trips")
 try? FileManager.default.removeItem(at: syncFile)
 
+// MARK: - Speakers and Scratchpad
+section("Speakers and Scratchpad")
+let voices: [[Float]] = [[10, 2, 1], [10.3, 2.2, 0.8], [2, 8, 5], [9.8, 1.9, 1.2], [2.2, 8.3, 4.9]]
+expect(Diarization.cluster(voices, threshold: 1.5, maxClusters: 6), [0, 0, 1, 0, 1], "two voices grouped")
+expect(Set(Diarization.cluster([[1, 1, 1], [1.1, 0.9, 1], [0.95, 1.05, 1]], threshold: 1.5, maxClusters: 6)).count, 1, "one voice stays one")
+expect(Diarization.speakers(samples: [Float](repeating: 0, count: 16_000 * 10), starts: [0, 5]), nil, "silence isn't two speakers")
+expectTrue(MeetingProcessor.loudness([Float](repeating: 0.1, count: 32_000), from: 0, seconds: 1) > 0.09, "loudness of speech")
+expect(MeetingProcessor.loudness([Float](repeating: 0, count: 32_000), from: 0, seconds: 1), 0, "loudness of silence")
+var desktop = FocusContext(); desktop.bundleID = "com.apple.finder"; desktop.role = "AXList"
+expectTrue(desktop.hasNoTextTarget, "Finder file list has nothing to type into")
+desktop.role = "AXTextField"
+expect(desktop.hasNoTextTarget, false, "renaming a file in Finder is a text field")
+var slack = FocusContext(); slack.bundleID = "com.tinyspeck.slackmacgap"; slack.role = nil
+expect(slack.hasNoTextTarget, false, "apps that hide their fields still get a normal paste")
+expect(ScratchNote(text: "\nGroceries\nmilk").title, "Groceries", "note title is the first line")
+
 // MARK: - Result
 
 if failures.isEmpty {

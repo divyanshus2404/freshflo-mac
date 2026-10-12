@@ -18,6 +18,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
     private var onboardingWindow: NSWindow?
     private var feedbackWindow: NSWindow?
     private var statsWindow: NSWindow?
+    private var scratchpadWindow: NSWindow?
     private var meetingTimer: Timer?
     private var hotkeyRetry: Timer?
     private var cancellables = Set<AnyCancellable>()
@@ -215,6 +216,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         }
         menu.addItem(item("Meeting Notes…", #selector(openMeetings)))
         menu.addItem(item("Transcribe Audio File…", #selector(transcribeFile)))
+        menu.addItem(item("Scratchpad…", #selector(openScratchpad)))
         menu.addItem(item("Your Week…", #selector(openStats)))
         menu.addItem(item("History…", #selector(openHistory)))
         menu.addItem(item("Settings…", #selector(openSettings), key: ","))
@@ -303,6 +305,21 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
     @objc private func openMeetings() { showMeetings() }
 
     @objc private func openOnboarding() { showOnboarding() }
+
+    @objc func openScratchpad() {
+        if scratchpadWindow == nil {
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 760, height: 500), styleMask: [.titled, .closable, .resizable, .miniaturizable],
+                                  backing: .buffered, defer: false)
+            window.title = "Scratchpad"
+            window.isReleasedWhenClosed = false
+            window.setFrameAutosaveName("FreshfloScratchpad")
+            window.contentView = NSHostingView(rootView: ScratchpadView())
+            window.center()
+            scratchpadWindow = window
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        scratchpadWindow?.makeKeyAndOrderFront(nil)
+    }
 
     @objc func openStats() {
         if statsWindow == nil {

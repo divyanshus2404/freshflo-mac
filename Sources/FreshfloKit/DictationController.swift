@@ -380,6 +380,21 @@ final class DictationController {
 
             trace.cleanup = engine
             trace.polishMs = ms(polishStarted)
+            // Nowhere to type (the desktop, Finder): keep the thought in Scratchpad instead of losing it.
+            if mode == .dictation, context.hasNoTextTarget {
+                ScratchpadStore.shared.capture(output)
+                history.add(HistoryItem(
+                    date: Date(), appName: "Scratchpad", bundleID: context.bundleID, raw: transcript.text,
+                    text: output.trimmingCharacters(in: .whitespaces), tone: settings.tone(for: context.bundleID),
+                    duration: duration, cleanup: engine, mode: mode, transcriber: transcript.engine, latencyMs: ms(started)
+                ))
+                trace.outcome = "scratchpad"
+                trace.totalMs = ms(started)
+                Diagnostics.record(trace)
+                pill.success("Saved to Scratchpad", typed: output)
+                play(.done)
+                return
+            }
             let insertStarted = Date()
             let element = context.element
             let tail = String(output.trimmingCharacters(in: .whitespacesAndNewlines).suffix(30))
@@ -388,7 +403,10 @@ final class DictationController {
                 guard let element, !tail.isEmpty, let now = FocusContext.textBeforeCaret(element) else { return true }
                 return now.trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix(tail)
             }, onFailed: { [weak self] in
-                self?.pill.flash("This app blocked pasting: text is on your clipboard, press ⌘V", seconds: 4)
+                DispatchQueue.main.async {
+                    ScratchpadStore.shared.capture(output)
+                    self?.pill.flash("This app blocked pasting: it's on your clipboard and in Scratchpad", seconds: 4)
+                }
             })
             trace.insertMs = ms(insertStarted)
             trace.totalMs = ms(started)
