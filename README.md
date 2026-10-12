@@ -1,138 +1,179 @@
-# Freshflo
+<p align="center">
+  <img src="docs/banner.png" alt="Freshflo: say it messy, send it fresh." width="100%">
+</p>
 
-Voice dictation for macOS. Hold a key, speak, and polished text appears wherever your cursor is. A native, private, free alternative to Wispr Flow.
+<h1 align="center">Freshflo</h1>
 
-## Features
+<p align="center">
+  <b>Voice dictation for Mac that writes the way you meant it.</b><br>
+  Hold a key, talk naturally, let go. Clean, punctuated, grammatically correct text appears in any app.
+</p>
 
-**Dictation**
-- Hold **Fn** (or Right ⌥ / ⌘ / ⌃) to talk, release to insert. Tap once for hands-free (with a timer), tap again to finish, Esc to cancel.
-- Removes fillers, applies self-corrections ("Tuesday, no wait, Wednesday" → "Wednesday"), fixes punctuation, formats lists.
-- **Fast path:** short, clean dictations skip the LLM, so quick replies land about 0.3 s after you release the key.
-- **Screen context:** reads the text before your cursor so it adds spaces only when needed and continues mid-sentence in lowercase. Never reads password fields.
-- **Per-app tone** (formal / casual / very casual) and **custom instructions** ("Use British spelling").
+<p align="center">
+  <a href="https://freshflo.vercel.app"><b>Website</b></a> ·
+  <a href="https://freshflo.vercel.app/welcome"><b>Download</b></a> ·
+  <a href="https://freshflo.vercel.app/changelog">Changelog</a> ·
+  <a href="https://freshflo.vercel.app/help">Help</a> ·
+  <a href="https://freshflo.vercel.app/vs-wispr-flow">vs Wispr Flow</a>
+</p>
 
-**Beyond Wispr Flow**
-- **Live words while you speak:** the pill streams what it hears, on-device and private. Wispr shows nothing until it's done.
-- **"Scratch that"** removes your last dictation. **Voice edits without selecting:** hold Fn + Control right after dictating and say "make that shorter" or "change Friday to Monday". Wispr's Command Mode needs existing text, is paid-only, and is experimental.
-- **Speak one language, write another:** speak Hindi or Hinglish, get English (or the reverse). Wispr only transcribes in the language you spoke.
-- **Regional formatting:** India gets ₹ amounts with lakh/crore and Indian digit grouping. Spoken emails ("rahul at the rate gmail dot com") become `rahul@gmail.com` everywhere.
-- **Transcribe audio files and WhatsApp voice notes** (.opus/.ogg, .m4a, .mp3, .wav…) into clean paragraphs from the menu.
-- **Never lose a dictation:** failed audio is saved to disk (it survives a restart) for one-click retry. If the network drops, the live on-device transcript is used instantly. A dead or muted mic is detected and switched automatically. If an app blocks pasting, the text stays on your clipboard and you're told.
-- **Privacy log:** every history entry says whether it stayed on this Mac or went to the cloud. Context comes from accessibility text only, never screenshots.
+<p align="center">
+  <img alt="macOS 14+" src="https://img.shields.io/badge/macOS-14%2B-0c2421?logo=apple&logoColor=white">
+  <img alt="Swift 6" src="https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white">
+  <img alt="Universal" src="https://img.shields.io/badge/Apple%20Silicon%20%2B%20Intel-universal-35d6a6">
+  <img alt="Checks" src="https://img.shields.io/badge/checks-252%20passing-35d6a6">
+  <img alt="Grammar" src="https://img.shields.io/badge/grammar%20eval-76%2F76-35d6a6">
+  <img alt="Size" src="https://img.shields.io/badge/app-~10%20MB-0c2421">
+</p>
 
-**Private meeting notes** (menu bar → Start Meeting Notes)
-- Records your mic and the call audio (Zoom, Meet, Teams, Slack…) as **separate tracks**, so the transcript is labelled **You / Them** without a diarization model. Echo from speakers is removed.
-- Writes notes: title, summary, key points, decisions, **action items with owners and due dates**, and open questions. Export as Markdown.
-- Audio is deleted once notes are written (configurable). With the on-device engine, nothing leaves the Mac.
+---
 
-**Ask mode** (hold Fn + Shift)
-- Ask about anything, or about the selected text ("what does this error mean?"), and get an answer card with Copy / Insert.
-- **Voice actions on this Mac, confirmed before they run:** "remind me to call Rahul at 5" (Reminders), "lunch with Priya Friday 1pm at Social" (Calendar), "email Sam I'll be late" (Mail draft, signed with your name), "open Figma", "search …".
+## What it does
 
-**Re-polish from History:** redo any past dictation as more formal, more casual, shorter, bullets, grammar-only, or translated.
-
-**Snippet variables:** `{date}`, `{time}`, `{day}`, `{tomorrow}`, `{clipboard}`.
-
-**Command mode** (hold Fn + Control)
-- With text selected: "make this more formal", "translate to Hindi", "turn this into bullet points".
-- With nothing selected: "write a polite reply declining the meeting on Friday".
-
-**Accuracy**
-- **Personal dictionary**, passed to Whisper as vocabulary and to the cleanup model as exact spellings.
-- **Auto-learn:** fix a misheard name after dictating (Devianchu → Divyanshu) and it's added to the dictionary.
-- Guards reject LLM output that answers the question instead of transcribing it, or that summarizes.
-
-**Engines**
-- Transcription: Groq `whisper-large-v3-turbo` (free tier), OpenAI, any OpenAI-compatible server, or **Apple on-device** (free, offline).
-- Cleanup: **Auto** (cloud LLM → Apple on-device → rules), or pick one. Retired models are replaced automatically.
-- **Offline fallback:** if the network fails, it transcribes on-device instead of failing.
-
-**Reliability**
-- Silence is trimmed before upload, so Whisper doesn't invent "Thank you." from silence. Known hallucinated phrases are stripped.
-- Long clips are uploaded as AAC (about 5× smaller). The connection is opened while you talk. Network errors are retried once.
-- **Retry Last Dictation** in the menu when something fails. Recording stops automatically after 6 minutes.
-
-**App**
-- Microphone picker, launch at login, snippets, searchable history with the original transcript, usage stats (words, WPM, time saved).
-- About 55 MB of memory, 0% CPU when idle, a 3.8 MB app.
-
-## vs Wispr Flow
-
-| | Freshflo | Wispr Flow |
-|---|---|---|
-| Price | Free (Groq free tier, or fully on-device) | $12–15/month after 2,000 words/week |
-| Privacy | Fully on-device mode available | Cloud only |
-| App size | 3.8 MB (native Swift) | ~400 MB (Electron 42: 272 MB framework + 127 MB app archive) |
-| Command mode, dictionary, auto-learn, snippets, per-app tone | ✓ | ✓ |
-| Offline fallback | ✓ | ✗ |
-| Live transcript while speaking | ✓ | ✗ |
-| Voice-edit last dictation without selecting ("scratch that", "make that shorter") | ✓ | Partial (needs selection/text, Pro only) |
-| Speak one language, write another | ✓ | ✗ |
-| ₹ / lakh-crore and spoken-email formatting | ✓ | ✗ |
-| Audio file and voice note transcription | ✓ | ✗ |
-| Failed audio kept on disk, auto mic recovery, paste verification | ✓ | Known issues: lost chunks, missing first words |
-| Per-dictation privacy log | ✓ | ✗ |
-| Meeting notes | ✓ Free, private, separate-track speaker labels | Paid; cloud; weekly limit on Free |
-| Ask about anything, or the selection, in a floating card | ✓ | Opens Perplexity / notification |
-| Local voice actions (Reminders, Calendar, Mail, open apps) | ✓ | Via MCP setup |
-| Re-polish past dictations | ✓ | ✗ |
-| Snippet variables | ✓ | ✗ |
-| Custom LLM / bring your own server | ✓ | ✗ |
-| Platforms | macOS | Mac, Windows, iOS, Android |
-
-## Build & run
-
-Requirements: macOS 14+ (on-device engines need macOS 26), Apple Silicon, Swift 6 command line tools.
-
-```bash
-./scripts/build-app.sh            # → build/Freshflo.app
-./scripts/build-app.sh --install  # also copies to /Applications and launches
-```
-
-The script signs with your first "Apple Development" identity if present, so permissions survive rebuilds. Set `SIGN_IDENTITY=-` for ad-hoc signing.
-
-## First launch
-
-1. **Accessibility:** System Settings → Privacy & Security → Accessibility → enable Freshflo. It's needed for the global key, reading context, and pasting.
-2. **Microphone:** allow when prompted.
-3. **Engine:** paste a free Groq key (console.groq.com/keys) or choose *On-device*.
-4. Using Fn? Set System Settings → Keyboard → "Press 🌐 key to" → **Do Nothing**.
-
-## Testing from the command line
-
-The app binary has a headless mode that runs the real pipeline with your saved settings:
-
-```bash
-say -o /tmp/test.aiff "um can you send the deck to Divyanshu"
-/Applications/Freshflo.app/Contents/MacOS/Freshflo --transcribe /tmp/test.aiff --vocab Divyanshu --app com.apple.mail
-/Applications/Freshflo.app/Contents/MacOS/Freshflo --transcribe /tmp/test.aiff --local            # on-device engine
-/Applications/Freshflo.app/Contents/MacOS/Freshflo --command "make this formal" --selection "hey whats up"
-/Applications/Freshflo.app/Contents/MacOS/Freshflo --models                                        # provider's models
-```
-
-Other flags: `--cleanup auto|apple|api|rules|off`, `--before "text before the cursor"`, `--write-in English`, `--region india`, `--file voice-note.opus`, `--preview clip.aiff` (live streaming test). Set `FRESHFLO_DEBUG=1` to see raw model outputs. More: `--ask "remind me…" [--selection …]`, `--meeting --you a.aiff --them b.aiff` (runs the meeting processor on two tracks).
-
-## Architecture
-
-```
-HotkeyMonitor (CGEventTap) ─► DictationController
-  AudioRecorder (AVAudioEngine → 16 kHz) ─► trimSilence
-  FocusContext (AX: app, window, text before caret, selection)
-  Pipeline.transcribe ─► Transcriber (Groq/OpenAI, WAV/AAC, retry) │ LocalSpeech (Apple SpeechAnalyzer)
-  Pipeline.polish ─► snippets ─► fast path │ Cleanup (cloud LLM / Apple FoundationModels / rules) + guards
-  Pipeline.command ─► Command (rewrite selection or generate)
-  TextInserter (pasteboard + ⌘V, clipboard restored) ─► CorrectionLearner ─► dictionary
-```
-
-| File | Role |
+| You say | Freshflo types |
 |---|---|
-| `DictationController.swift` | State machine, modes, retry |
-| `HotkeyMonitor.swift` | Global key + modifier detection |
-| `AudioRecorder.swift` | Capture, device selection, silence trim, WAV/AAC |
-| `FocusContext.swift` | Accessibility context, smart spacing and casing |
-| `Transcriber.swift` / `LocalSpeech.swift` | Cloud and on-device transcription |
-| `Cleanup.swift` | Prompting, fast path, guards, command mode, Apple model |
-| `ModelResolver.swift` | Replaces retired provider models |
-| `CorrectionLearner.swift` | Learns corrected words |
-| `Pipeline.swift` / `CLI.swift` | Shared pipeline, headless test hook |
-| `Pill.swift`, `SettingsView.swift`, `AppDelegate.swift` | UI |
+| “um so I think we should push the launch to Tuesday, no wait, Wednesday” | I think we should push the launch to Wednesday. |
+| “first my charger, second my passport, third sunscreen” | 1. My charger<br>2. My passport<br>3. Sunscreen |
+| “hi marcus can you send the deck before friday thanks priya” *(in Mail)* | Hi Marcus,<br><br>Can you send the deck before Friday?<br><br>Thanks,<br>Priya |
+| “rename it to camel case fetch user profile in package dot json” | Rename it to fetchUserProfile in package.json. |
+| “he is having fever since two days, me and him will come later” | He has had a fever for two days. He and I will come later. |
+| “send the invoice for two lakh fifty thousand rupees” *(Indian formats)* | Send the invoice for ₹2,50,000. |
+
+It works in every app with a text field: Slack, Gmail, Notion, Cursor, the terminal, WhatsApp, Google Docs. Free and unlimited, no account.
+
+## Highlights
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**Writing**
+- Removes fillers, stutters and repeats; applies self-corrections.
+- Fixes grammar, including Indian-English patterns, while keeping your words.
+- **Smart lists**, **email mode**, **code words**, and **Prompt mode** for Cursor, Claude, ChatGPT and Claude Code.
+- Per-app style, personal dictionary that learns your corrections, snippets.
+- About 100 languages; speak one, write another (Hindi or Hinglish in, English out).
+
+</td>
+<td width="50%" valign="top">
+
+**Everything around it**
+- **Live captions** of what you're saying and what Freshflo detects.
+- **Meeting notes** with who said what, a clean transcript, follow-up email and Slack summary; offered automatically when a call starts.
+- **Ask your meetings**, and use them inside **Claude and Cursor** (MCP).
+- **Scratchpad**, **Your Week** stats, sync through iCloud Drive or a team folder.
+- Automatic mic choice (AirPods-aware), whisper mode, on-device mode.
+
+</td>
+</tr>
+</table>
+
+<p align="center">
+  <img src="docs/indicator-and-captions.jpg" alt="The Glass dictation bar in every state, and live captions" width="92%"><br>
+  <sub>The Glass bar (left) and live captions with what Freshflo detects (right), rendered from the app's code.</sub>
+</p>
+
+<table>
+<tr>
+<td width="55%"><img src="docs/indicator-styles.jpg" alt="Six indicator styles"></td>
+<td width="45%"><img src="docs/your-week.png" alt="Your Week dashboard"></td>
+</tr>
+<tr>
+<td align="center"><sub>Six indicator styles to choose from</sub></td>
+<td align="center"><sub>Your Week: words, time saved, streak</sub></td>
+</tr>
+</table>
+
+## How it works
+
+```mermaid
+flowchart LR
+    K[Hold talk key] --> R[AudioRecorder<br/>16 kHz, auto mic]
+    R --> L[LivePreview<br/>on-device captions]
+    R --> T{Transcriber}
+    T -->|Groq / OpenAI| W[Whisper large-v3-turbo]
+    T -->|Built-in| A[Apple Speech<br/>SpeechAnalyzer / SFSpeech]
+    W --> P[SpokenEnglish + CodeTerms<br/>pre-pass]
+    A --> P
+    P --> C{Cleanup}
+    C -->|cloud| G[LLM with app context]
+    C -->|on-device| F[Apple Foundation Models]
+    C -->|offline| U[Rules]
+    G --> X[TextPolish<br/>lists · email · grammar · profanity · dictionary]
+    F --> X
+    U --> X
+    X --> I[TextInserter<br/>paste + verify]
+    I -->|no text field| S[Scratchpad]
+```
+
+Every engine's output goes through the same deterministic final pass (`TextPolish`), so lists, grammar fixes, swear-word handling and dictionary spellings come out the same whether the cloud model, Apple's model or the offline rules did the cleanup. Model output is checked (`Cleanup.sanitize`) so a model that answers or summarises instead of cleaning up is rejected.
+
+Meetings record two tracks (your mic, and the call via ScreenCaptureKit with music apps excluded). The call track is split into voices locally with MFCC fingerprints and clustering (`Diarization`), then named from introductions.
+
+## Project layout
+
+```
+Sources/
+  Freshflo/            app entry point (CLI and MCP modes first, then the menu-bar app)
+  FreshfloKit/         everything else, ~12k lines of Swift
+    DictationController   hotkey → record → transcribe → clean up → insert
+    AudioRecorder         capture, silence trimming, whisper-mode gain, mic ranking
+    Transcriber, LocalSpeech, LivePreview    cloud / Apple speech engines, live captions
+    Cleanup, TextPolish, SpokenEnglish, ListFormat, Formatting   the writing pipeline
+    Pill, StatsView, Scratchpad, MeetingsView, SettingsView, Onboarding   UI (SwiftUI)
+    Meetings, MeetingRecorder, Diarization, CallDetection, Knowledge   meeting notes, MCP
+    Updater, Insights, Sync, Permissions, FocusContext   updates, opt-in telemetry, plumbing
+  FreshfloChecks/      252 behaviour checks (no XCTest needed)
+Benchmarks/           real-speech clips, cases, grammar eval set, reports
+scripts/              build-app.sh, make-dmg.sh, benchmark audio
+```
+
+## Build and run
+
+Needs macOS 14+ and the Swift 6 toolchain (Xcode Command Line Tools are enough).
+
+```bash
+swift build                          # debug build
+swift run FreshfloChecks             # 252 checks
+./scripts/build-app.sh               # universal, signed build/Freshflo.app (runs the checks first)
+./scripts/build-app.sh --install     # …and install to /Applications
+./scripts/make-dmg.sh                # build/Freshflo-<version>.dmg
+```
+
+Grant Microphone and Accessibility when asked. For the fastest engine, add a free [Groq](https://console.groq.com/keys) key in Settings; it's stored in the Keychain.
+
+### Developer tools (CLI)
+
+The same binary has test hooks, so behaviour can be checked without clicking through the UI:
+
+| Command | What it does |
+|---|---|
+| `--transcribe clip.wav --app <bundle id>` | Full pipeline on an audio file, as if dictated into that app |
+| `--grammar-eval Benchmarks/grammar.json --pace 4000` | Grammar test set (76 cases) through the real cleanup |
+| `--benchmark Benchmarks/audio` | Accuracy and latency benchmark on real speech |
+| `--meeting --you a.wav --them b.wav [--actions]` | Meeting pipeline end to end: speakers, notes, clean transcript, follow-ups |
+| `--diarize call.wav --starts 0,4.2,…` | Speaker clustering on a recording |
+| `--ask-meetings "question" --demo` | Ask your meetings against sample notes |
+| `--render-pill` / `--render-styles` / `--render-stats out.png` | Render UI states to PNG for design review |
+| `--mic-info` | Every mic, how it's classified, the automatic choice, call detection |
+| `--mcp` | Run as an MCP server over stdio (for Claude, Cursor, Claude Code) |
+| `--check-update` | Check the update feed, verify checksum and signature |
+
+## Use it from Claude and Cursor
+
+```bash
+claude mcp add -s user freshflo -- "/Applications/Freshflo.app/Contents/MacOS/Freshflo" --mcp
+```
+
+Or Settings → General → *Use Freshflo in Claude and Cursor* → Connect. Tools: `search_meetings`, `list_meetings`, `get_meeting`, and `search_dictations` when allowed.
+
+## Releasing
+
+1. Bump `CFBundleShortVersionString` / `CFBundleVersion` in `Resources/Info.plist` and add notes to `WhatsNew` in `Updater.swift`.
+2. `./scripts/build-app.sh && ./scripts/make-dmg.sh`
+3. In [freshflo-website](https://github.com/divyanshus2404/freshflo-website): `./release.sh ../ExcuseMe/build/Freshflo-X.Y.Z.dmg "note" …`, add a changelog entry, build and deploy.
+4. Installed apps pick it up from `updates.json`; each update is checked against its SHA-256 and code signature before it's installed.
+
+## Privacy
+
+No account and no tracking by default. Dictations, history, dictionary and meeting notes stay on the Mac. Audio only leaves the Mac when you choose a cloud engine, and History marks every dictation as on-device or cloud. Anonymous usage counts and crash reports are opt-in. Details: [privacy policy](https://freshflo.vercel.app/privacy).
