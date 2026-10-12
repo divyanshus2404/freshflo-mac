@@ -39,6 +39,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
             .sink { [weak self] key in self?.hotkey.key = key }
             .store(in: &cancellables)
 
+        NotificationCenter.default.addObserver(forName: .toggleMeeting, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.toggleMeeting() }
+        }
         NotificationCenter.default.addObserver(forName: .openSettings, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.showSettings(tab: .general) }
         }
@@ -294,7 +297,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
                         MainActor.assumeIsolated { self?.updateStatusIcon() }
                     }
                     updateStatusIcon()
-                    dictation.pill.flash(warning ?? "Meeting notes started: recording you and the call", seconds: warning == nil ? 2 : 5, isError: warning != nil)
+                    let call = meetings.status.sources.first.map { "you and \($0)" } ?? "you and the call"
+                    dictation.pill.flash(warning ?? "Meeting notes started: recording \(call)", seconds: warning == nil ? 2 : 5, isError: warning != nil)
+                    showMeetings()
                 } else {
                     dictation.pill.flash(warning ?? "Couldn't start recording", seconds: 3)
                 }

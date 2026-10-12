@@ -64,6 +64,8 @@ final class AppSettings: ObservableObject {
     @Published var blockedApps: [String] { didSet { save(blockedApps, "blockedApps") } }
     /// Folder holding "Freshflo Shared.json" (iCloud Drive or a team folder); empty = sync off.
     @Published var syncFolder: String { didSet { defaults.set(syncFolder, forKey: "syncFolder") } }
+    /// After meeting notes, also make a grammatically clean copy of the transcript.
+    @Published var meetingCleanTranscript: Bool { didSet { defaults.set(meetingCleanTranscript, forKey: "meetingCleanTranscript") } }
     @Published var mcpShareHistory: Bool { didSet { defaults.set(mcpShareHistory, forKey: "mcpShareHistory") } }
     /// Language to write in regardless of the spoken language (empty = same as spoken).
     @Published var outputLanguage: String { didSet { defaults.set(outputLanguage, forKey: "outputLanguage") } }
@@ -127,6 +129,7 @@ final class AppSettings: ObservableObject {
         smartLists = d.object(forKey: "smartLists") as? Bool ?? true
         emailFormatting = d.object(forKey: "emailFormatting") as? Bool ?? true
         mcpShareHistory = d.object(forKey: "mcpShareHistory") as? Bool ?? false
+        meetingCleanTranscript = d.object(forKey: "meetingCleanTranscript") as? Bool ?? true
         blockedApps = Self.load("blockedApps") ?? []
         syncFolder = d.string(forKey: "syncFolder") ?? ""
         keepMeetingAudio = d.object(forKey: "keepMeetingAudio") as? Bool ?? false

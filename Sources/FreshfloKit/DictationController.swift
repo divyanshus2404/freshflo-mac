@@ -495,4 +495,5 @@ final class DictationController {
 
 extension Notification.Name {
     static let openSettings = Notification.Name("Freshflo.openSettings")
+    static let toggleMeeting = Notification.Name("Freshflo.toggleMeeting")
 }

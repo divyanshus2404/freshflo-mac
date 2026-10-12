@@ -201,7 +201,14 @@ public enum CLI {
             let start = Date()
             await MeetingProcessor.process(id)
             let m = store.meetings.first { $0.id == id }!
-            print("meeting [\(m.status.rawValue), \(ms(since: start))] \(m.title)\n--- transcript ---\n\(m.transcript)\n--- notes ---\n\(m.notes)\(m.error.map { "\nerror: " + $0 } ?? "")")
+            print("meeting [\(m.status.rawValue), \(ms(since: start))] \(m.title)\n--- transcript ---\n\(m.transcript)\n--- clean ---\n\(m.cleanTranscript ?? "(none)")\n--- notes ---\n\(m.notes)\(m.error.map { "\nerror: " + $0 } ?? "")")
+            if CommandLine.arguments.contains("--actions") {
+                for action in [MeetingTools.Action.followUp, .slack] {
+                    print("--- \(action.label) ---\n" + ((try? await MeetingTools.run(action, meeting: m, settings: settings)) ?? "(failed)"))
+                }
+                let renamed = MeetingTools.rename(m, from: m.speakers.first { $0.hasPrefix("Speaker") } ?? "Speaker 3", to: "Arjun")
+                print("--- renamed speakers: \(renamed.speakers)")
+            }
             if !CommandLine.arguments.contains("--keep") { store.delete(m) }
             return
         }

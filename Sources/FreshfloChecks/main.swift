@@ -397,6 +397,20 @@ section("Numbers survive the safety check")
 expectTrue(Cleanup.sanitize("Send the invoice for ₹2,50,000.", raw: "send the invoice for two lakh fifty thousand rupees") != nil, "spoken amount → digits is not a summary")
 expect(Cleanup.sanitize("Send it.", raw: "send the invoice for the new office chairs to rahul and priya today"), nil, "real summaries are still rejected")
 
+section("Meeting tools")
+var mt = Meeting(id: "m", title: "Sync", date: Date(), duration: 60, status: .ready, appName: "Zoom",
+                 notes: "- **Speaker 2**: will send mockups\n- [ ] Mockups — Speaker 2", transcript: "[00:00] Priya: hi\n[00:03] Speaker 2: I'll send mockups\n[00:05] You: great\n[00:07] Speaker 2: by Wednesday",
+                 error: nil, onDevice: nil)
+expect(mt.speakers, ["Priya", "Speaker 2", "You"], "speakers in order of first appearance")
+mt.cleanTranscript = "[00:03] Speaker 2: I will send the mockups."
+let named = MeetingTools.rename(mt, from: "Speaker 2", to: "Arjun")
+expect(named.speakers, ["Priya", "Arjun", "You"], "rename updates the transcript")
+expectTrue(named.notes.contains("**Arjun**") && !named.notes.contains("Speaker 2"), "rename updates the notes")
+expect(named.cleanTranscript, "[00:03] Arjun: I will send the mockups.", "rename updates the clean transcript")
+expect(MeetingTools.rename(mt, from: "Speaker 2", to: "  ").speakers, mt.speakers, "blank name changes nothing")
+expect(MeetingTools.prefix("[01:02] Rahul: yes"), "[01:02] Rahul:", "line prefix")
+expect(MeetingTools.prefix("no prefix here"), "", "no prefix")
+
 // MARK: - Result
 
 if failures.isEmpty {

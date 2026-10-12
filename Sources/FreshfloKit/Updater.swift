@@ -225,7 +225,9 @@ enum WhatsNew {
         "0.12.0": [
             "Speaker names in meeting notes: everyone else on the call is told apart by voice, and named when they introduce themselves.",
             "Scratchpad (menu → Scratchpad…): dictate notes to yourself. Anything dictated with no text field in front of you lands there too.",
-            "Meeting transcripts no longer pick up a phantom \u{201C}Thank you\u{201D} from silence.",
+            "Meeting notes: a live recording card shows both your mic and the call being heard, warns if the call isn't captured, and leaves music apps out.",
+            "After a meeting: a grammatically clean transcript next to the original, Who said what, rename any speaker, and one-click follow-up email, Slack summary or action items.",
+            "Amounts like \u{201C}two lakh fifty thousand rupees\u{201D} reliably become ₹2,50,000. Meeting transcripts no longer pick up a phantom \u{201C}Thank you\u{201D}.",
         ],
         "0.11.1": [
             "A calmer, sharper dictation bar: a row of dots that rises with your voice, shimmers while polishing, and draws a check when done.",

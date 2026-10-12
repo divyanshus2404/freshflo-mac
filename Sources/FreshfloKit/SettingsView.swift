@@ -277,6 +277,7 @@ private struct GeneralTab: View {
                 Text("Start from the menu bar during any call (Zoom, Meet, Teams, Slack…). Your mic and the call audio are recorded as separate tracks, so the transcript knows who said what. You get a summary, decisions and action items.")
                     .font(.callout).foregroundStyle(.secondary)
                 Toggle("Keep the audio after notes are written", isOn: $settings.keepMeetingAudio)
+                Toggle("Also make a grammatically clean copy of the transcript", isOn: $settings.meetingCleanTranscript)
                 HStack {
                     Text("Capturing the other side needs “Screen & System Audio Recording” permission.").font(.callout).foregroundStyle(.secondary)
                     Spacer()

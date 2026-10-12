@@ -9,6 +9,10 @@ final class ChunkWriter {
     private let format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16_000, channels: 1, interleaved: false)!
     private(set) var peak: Float = 0
     private(set) var frames: Int = 0
+    /// Recent loudness (RMS of the last chunk, decaying) for the live meters. Written on the writer queue, read on main.
+    nonisolated(unsafe) private(set) var level: Float = 0
+    /// When this track last carried sound clearly above silence.
+    nonisolated(unsafe) private(set) var lastHeard: Date?
 
     init(url: URL, label: String) throws {
         queue = DispatchQueue(label: "Freshflo.writer.\(label)")
@@ -30,6 +34,11 @@ final class ChunkWriter {
             try? file.write(from: buffer)
             peak = max(peak, samples.map(abs).max() ?? 0)
             frames += samples.count
+            var sum: Float = 0
+            for x in samples { sum += x * x }
+            let rms = sqrt(sum / Float(samples.count))
+            level = max(rms, level * 0.6)
+            if rms > 0.004 { lastHeard = Date() }
         }
     }
 
@@ -45,12 +54,32 @@ enum MeetingRecorderError: LocalizedError {
     var errorDescription: String? { "Couldn't access system audio" }
 }
 
-/// Records the meeting as two separate tracks: your microphone ("You") and everything your Mac plays ("Them").
-/// Separate tracks give speaker labels for free, without a diarization model.
+/// Records the meeting as two separate tracks: your microphone ("You") and what the call plays on your Mac ("Them").
+/// Separate tracks give "You" for free; the other voices are told apart later (Diarization).
+/// Music and video players are left out of the call track, so a song in the background doesn't end up in the notes.
 final class MeetingRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
     private(set) var isRecording = false
     private(set) var startedAt = Date()
     private(set) var capturesSystemAudio = false
+    /// The meeting app(s) running when recording started ("Zoom", "Google Chrome"…), for the title and the status card.
+    private(set) var sources: [String] = []
+
+    /// Apps whose sound is never part of a meeting.
+    static let excludedAudioApps: Set<String> = [
+        "com.apple.Music", "com.spotify.client", "com.apple.podcasts", "com.apple.TV", "org.videolan.vlc", "com.colliderli.iina",
+        "com.apple.QuickTimePlayerX", "com.tidal.desktop", "com.deezer.deezer-desktop", "com.amazon.music", "com.apple.Photos",
+    ]
+    /// Apps people take calls in, by bundle ID → display name.
+    static let meetingApps: [String: String] = [
+        "us.zoom.xos": "Zoom", "com.microsoft.teams2": "Microsoft Teams", "com.microsoft.teams": "Microsoft Teams",
+        "com.tinyspeck.slackmacgap": "Slack", "com.apple.FaceTime": "FaceTime", "com.cisco.webexmeetingsapp": "Webex",
+        "Cisco-Systems.Spark": "Webex", "com.hnc.Discord": "Discord", "com.skype.skype": "Skype", "net.whatsapp.WhatsApp": "WhatsApp",
+        "com.loom.desktop": "Loom", "com.around.Around": "Around", "com.tuple.app": "Tuple", "com.gather.Gather": "Gather",
+    ]
+    var micLevelNow: Float { micWriter?.level ?? 0 }
+    var callLevelNow: Float { systemWriter?.level ?? 0 }
+    var micLastHeard: Date? { micWriter?.lastHeard }
+    var callLastHeard: Date? { systemWriter?.lastHeard }
 
     private let mic = AudioRecorder()
     private var micWriter: ChunkWriter?
@@ -81,7 +110,9 @@ final class MeetingRecorder: NSObject, SCStreamOutput, SCStreamDelegate {
     private func startSystemAudio() async throws {
         let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
         guard let display = content.displays.first else { throw MeetingRecorderError.noDisplay }
-        let filter = SCContentFilter(display: display, excludingApplications: [], exceptingWindows: [])
+        let skip = content.applications.filter { Self.excludedAudioApps.contains($0.bundleIdentifier) }
+        sources = content.applications.compactMap { Self.meetingApps[$0.bundleIdentifier] }
+        let filter = SCContentFilter(display: display, excludingApplications: skip, exceptingWindows: [])
         let config = SCStreamConfiguration()
         config.capturesAudio = true
         config.excludesCurrentProcessAudio = true
