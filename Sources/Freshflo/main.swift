@@ -1,6 +1,7 @@
 import AppKit
 import FreshfloKit
 
+if CLI.isMCPRequested { CLI.runMCP() }
 if CLI.isRequested { CLI.run() }
 if CLI.isDemoRequested { MainActor.assumeIsolated { CLI.runDemo() } }
 

@@ -222,6 +222,15 @@ final class Updater {
 /// Shown once after an update, so people see what got better.
 enum WhatsNew {
     static let notes: [String: [String]] = [
+        "0.11.0": [
+            "Ask your meetings: \u{201C}What did we decide about pricing?\u{201D} answered from your notes, with the meetings it came from (Meeting Notes → Ask).",
+            "Use Freshflo in Claude, Cursor and Claude Code: connect in Settings → General and ask them about your meetings.",
+            "Email mode: in Mail, Outlook and Gmail you get a greeting line, short paragraphs and a sign-off.",
+            "Say \u{201C}camel case user id\u{201D} or \u{201C}package dot json\u{201D} and get userId and package.json.",
+            "Whisper mode: quiet speech is boosted automatically. 100 languages. Turn Freshflo off in chosen apps from the menu.",
+            "Sync your dictionary, snippets and styles through iCloud Drive, or share them with your team through a shared folder.",
+            "Your Week: words, time saved, speaking speed, streak and where you dictate most (menu → Your Week…).",
+        ],
         "0.10.0": [
             "Stronger grammar: “I am having two brothers”, “since two days”, “Where you are going?”, “Me and him went”, “didn't went” and dozens more spoken slips come out as correct English, with or without AI.",
             "Faster through busy moments: if Groq's free tier is rate-limited, cleanup switches to another model instead of a weaker fallback.",

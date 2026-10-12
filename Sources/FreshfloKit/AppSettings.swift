@@ -41,7 +41,6 @@ final class AppSettings: ObservableObject {
     /// ISO-639-1 code, or empty for automatic detection.
     @Published var language: String { didSet { defaults.set(language, forKey: "language") } }
     @Published var cleanupMode: CleanupMode { didSet { defaults.set(cleanupMode.rawValue, forKey: "cleanupMode") } }
-    @Published var playSounds: Bool { didSet { defaults.set(playSounds, forKey: "playSounds") } }
     @Published var addTrailingSpace: Bool { didSet { defaults.set(addTrailingSpace, forKey: "addTrailingSpace") } }
     @Published var defaultTone: Tone { didSet { defaults.set(defaultTone.rawValue, forKey: "defaultTone") } }
     @Published var toneRules: [AppToneRule] { didSet { save(toneRules, "toneRules") } }
@@ -58,6 +57,14 @@ final class AppSettings: ObservableObject {
     @Published var showCaptions: Bool { didSet { defaults.set(showCaptions, forKey: "showCaptions") } }
     /// Spoken lists ("first… second…", "bullet point…") become real lists.
     @Published var smartLists: Bool { didSet { defaults.set(smartLists, forKey: "smartLists") } }
+    /// Mail apps and webmail tabs: greeting line, short paragraphs, sign-off block.
+    @Published var emailFormatting: Bool { didSet { defaults.set(emailFormatting, forKey: "emailFormatting") } }
+    /// Let connected AI apps (MCP) search dictation history, not just meeting notes.
+    /// Apps where the dictation key does nothing (bundle IDs), e.g. games, remote desktops, password managers.
+    @Published var blockedApps: [String] { didSet { save(blockedApps, "blockedApps") } }
+    /// Folder holding "Freshflo Shared.json" (iCloud Drive or a team folder); empty = sync off.
+    @Published var syncFolder: String { didSet { defaults.set(syncFolder, forKey: "syncFolder") } }
+    @Published var mcpShareHistory: Bool { didSet { defaults.set(mcpShareHistory, forKey: "mcpShareHistory") } }
     /// Language to write in regardless of the spoken language (empty = same as spoken).
     @Published var outputLanguage: String { didSet { defaults.set(outputLanguage, forKey: "outputLanguage") } }
     @Published var regionalFormat: RegionalFormat { didSet { defaults.set(regionalFormat.rawValue, forKey: "regionalFormat") } }
@@ -102,7 +109,6 @@ final class AppSettings: ObservableObject {
             if d.string(forKey: "cleanupMode") == CleanupMode.apple.rawValue { d.removeObject(forKey: "cleanupMode") }
         }
         cleanupMode = CleanupMode(rawValue: d.string(forKey: "cleanupMode") ?? "") ?? .auto
-        playSounds = d.object(forKey: "playSounds") as? Bool ?? true
         addTrailingSpace = d.object(forKey: "addTrailingSpace") as? Bool ?? true
         defaultTone = Tone(rawValue: d.string(forKey: "defaultTone") ?? "") ?? .casual
         toneRules = Self.load("toneRules") ?? Self.defaultToneRules
@@ -119,6 +125,10 @@ final class AppSettings: ObservableObject {
         livePreview = d.object(forKey: "livePreview") as? Bool ?? true
         showCaptions = d.object(forKey: "showCaptions") as? Bool ?? false
         smartLists = d.object(forKey: "smartLists") as? Bool ?? true
+        emailFormatting = d.object(forKey: "emailFormatting") as? Bool ?? true
+        mcpShareHistory = d.object(forKey: "mcpShareHistory") as? Bool ?? false
+        blockedApps = Self.load("blockedApps") ?? []
+        syncFolder = d.string(forKey: "syncFolder") ?? ""
         keepMeetingAudio = d.object(forKey: "keepMeetingAudio") as? Bool ?? false
         askModeEnabled = d.object(forKey: "askModeEnabled") as? Bool ?? true
         indicatorStyle = IndicatorStyle(rawValue: d.string(forKey: "indicatorStyle") ?? "") ?? .halo

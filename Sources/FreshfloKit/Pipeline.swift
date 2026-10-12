@@ -53,7 +53,8 @@ enum Pipeline {
             longForm: longForm,
             profanity: settings.profanity,
             fixGrammar: settings.fixGrammar,
-            smartLists: settings.smartLists
+            smartLists: settings.smartLists,
+            emailMode: settings.emailFormatting && EmailFormat.isMailTarget(bundleID: context.bundleID, windowTitle: context.windowTitle)
         )
         var result = await Cleanup.run(input, mode: mode ?? settings.cleanupMode, endpoint: settings.endpoint, canUseAPI: settings.canUseCloud)
         result.text = SnippetExpander.applyInline(result.text, snippets: snippets)

@@ -7,11 +7,14 @@ import Foundation
 ///   Freshflo --command "make this formal" [--selection "hey whats up"]
 public enum CLI {
     public static var isRequested: Bool {
-        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update", "--grammar-eval"].contains(where: CommandLine.arguments.contains)
+        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update", "--grammar-eval", "--ask-meetings", "--render-stats"].contains(where: CommandLine.arguments.contains)
     }
 
     /// Shows the real floating indicator inside a proper app run loop with synthetic speech (performance checks).
     public static var isDemoRequested: Bool { CommandLine.arguments.contains("--demo-pill") }
+    /// Launched by Claude Desktop, Claude Code or Cursor as an MCP server.
+    public static var isMCPRequested: Bool { CommandLine.arguments.contains("--mcp") }
+    public static func runMCP() -> Never { MCPServer.run() }
 
     @MainActor
     public static func runDemo() -> Never {
@@ -239,6 +242,36 @@ public enum CLI {
 
         if CommandLine.arguments.contains("--models") {
             print(try await OpenAICompatible.models(settings.endpoint).sorted().joined(separator: "\n"))
+            return
+        }
+        if let out = value("--render-stats") {
+            let renderer = ImageRenderer(content: StatsView(preview: StatsView.demo))
+            renderer.scale = 2
+            if let cg = renderer.cgImage {
+                let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])
+                try png?.write(to: URL(fileURLWithPath: out))
+            }
+            print("rendered \(out)")
+            return
+        }
+        if let question = value("--ask-meetings") {
+            // --demo uses made-up meetings so the answer path can be tested without real notes.
+            var meetings = MeetingStore.shared.meetings
+            if CommandLine.arguments.contains("--demo") {
+                func m(_ t: String, _ n: String, _ d: Double, _ tr: String) -> Meeting {
+                    Meeting(id: UUID().uuidString, title: t, date: Date().addingTimeInterval(-d * 86_400), duration: 1800, status: .ready,
+                            appName: "Zoom", notes: n, transcript: tr, error: nil, onDevice: nil)
+                }
+                meetings = [
+                    m("Pricing sync", "## Decisions\n- Pro plan at $8/month, annual $72.\n- Free tier stays unlimited.\n## Action items\n- Priya: update the pricing page by Friday.", 2,
+                      "You: so are we doing eight or ten\nThem: eight, and seventy two a year\nYou: okay Priya can you update the page by Friday"),
+                    m("Hiring plan", "## Decisions\n- Open two backend roles.\n## Action items\n- Rahul: screen candidates this week.", 1, ""),
+                    m("Customer call: Acme", "## Summary\nAcme wants SSO and an invoice option.\n## Action items\n- You: send a quote by Wednesday.", 4, ""),
+                ]
+            }
+            let start = Date()
+            let answer = try await Knowledge.ask(question, meetings: meetings, settings: settings)
+            print("answer [\(ms(since: start))]:\n\(answer.text)\nsources: \(answer.sources.map(Knowledge.label))")
             return
         }
         if let path = value("--grammar-eval") {

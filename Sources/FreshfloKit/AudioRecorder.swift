@@ -196,13 +196,34 @@ final class AudioRecorder {
             rms[f] = sqrt(sum / Float(frame))
         }
         let noiseFloor = rms.sorted()[frames / 10]
-        let threshold = max(0.006, noiseFloor * 3)
+        // Low absolute floor so whispered speech (RMS ≈ 0.003) still counts as voice in a quiet room.
+        let threshold = max(0.0025, noiseFloor * 3)
         let voiced = rms.indices.filter { rms[$0] > threshold }
         guard let first = voiced.first, let last = voiced.last else { return ([], 0) }
         let pad = 15 // 300 ms
         let start = max(0, first - pad) * frame
         let end = min(frames, last + pad + 1) * frame
         return (Array(s[start..<end]), Double(voiced.count) * 0.02)
+    }
+
+    /// Whisper mode: quiet or distant speech is boosted to a normal level before transcription (gain up to 12×,
+    /// soft-limited so peaks never clip). Normal-level speech is returned unchanged.
+    static func normalizeQuiet(_ s: [Float]) -> [Float] {
+        let frame = 320
+        guard s.count >= frame * 5 else { return s }
+        var levels: [Float] = []
+        for f in 0..<(s.count / frame) {
+            var sum: Float = 0
+            for i in (f * frame)..<((f + 1) * frame) { sum += s[i] * s[i] }
+            levels.append(sqrt(sum / Float(frame)))
+        }
+        // Loudness of the speech itself: the louder frames, not the pauses.
+        let sorted = levels.sorted()
+        let speech = sorted[Int(Double(sorted.count) * 0.85)]
+        let target: Float = 0.06
+        guard speech > 0.0008, speech < target * 0.6 else { return s }
+        let gain = min(12, target / speech)
+        return s.map { x in let y = x * gain; return abs(y) < 0.8 ? y : (y > 0 ? 1 : -1) * (0.8 + 0.2 * tanh((abs(y) - 0.8) / 0.2)) }
     }
 
     /// Loads any audio file as 16 kHz mono samples (used by the CLI test hook).

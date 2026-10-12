@@ -41,10 +41,12 @@ enum TextPolish {
         /// Format spoken lists ("first… second…", "bullet point…") as one item per line.
         var lists = true
         var bullet = "• "
+        /// Mail apps: greeting line, short paragraphs, sign-off block.
+        var email = false
     }
 
     static func apply(_ text: String, _ o: Options) -> String {
-        var s = text
+        var s = CodeTerms.apply(text)
         s = removeStutters(s)
         s = removeRepeats(s)
         s = filterProfanity(s, mode: o.profanity)
@@ -54,6 +56,7 @@ enum TextPolish {
         }
         s = tidy(s)
         if o.lists { s = ListFormat.apply(s, bullet: o.bullet, capitalize: o.tone != .veryCasual) }
+        if o.email { s = EmailFormat.apply(s) }
         return s
     }
 

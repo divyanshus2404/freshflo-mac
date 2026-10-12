@@ -77,7 +77,8 @@ enum Transcriber {
     /// Clips longer than this are uploaded as AAC instead of WAV.
     private static let compressAfterSeconds = 10.0
 
-    static func transcribe(samples: [Float], endpoint: ProviderEndpoint, vocabulary: [String]) async throws -> String {
+    static func transcribe(samples raw: [Float], endpoint: ProviderEndpoint, vocabulary: [String]) async throws -> String {
+        let samples = AudioRecorder.normalizeQuiet(raw)
         do {
             return try await transcribeOnce(samples: samples, endpoint: endpoint, vocabulary: vocabulary)
         } catch where ModelResolver.isModelMissing(error) {

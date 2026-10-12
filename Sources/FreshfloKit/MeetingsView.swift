@@ -10,6 +10,12 @@ struct MeetingsView: View {
     var body: some View {
         NavigationSplitView {
             List(selection: $selection) {
+                if !store.meetings.isEmpty {
+                    Label("Ask your meetings", systemImage: "sparkles")
+                        .font(.body.weight(.medium))
+                        .padding(.vertical, 4)
+                        .tag("ask")
+                }
                 ForEach(store.meetings) { meeting in
                     VStack(alignment: .leading, spacing: 3) {
                         Text(meeting.title).font(.body.weight(.medium)).lineLimit(2)
@@ -38,7 +44,9 @@ struct MeetingsView: View {
                 }
             }
         } detail: {
-            if let id = selection, let meeting = store.meetings.first(where: { $0.id == id }) {
+            if selection == "ask" {
+                AskMeetingsView(selection: $selection)
+            } else if let id = selection, let meeting = store.meetings.first(where: { $0.id == id }) {
                 MeetingDetail(meeting: meeting)
             } else {
                 Text("Select a meeting").foregroundStyle(.secondary)
@@ -140,5 +148,79 @@ private struct MeetingDetail: View {
         guard panel.runModal() == .OK, let url = panel.url else { return }
         let content = "# \(meeting.title)\n\n_\(meeting.date.formatted(date: .complete, time: .shortened))_\n\n\(meeting.notes)\n\n## Transcript\n\n\(meeting.transcript)\n"
         try? content.write(to: url, atomically: true, encoding: .utf8)
+    }
+}
+
+
+/// "What did we decide about pricing?" across every meeting, answered from your notes with the meetings it came from.
+private struct AskMeetingsView: View {
+    @Binding var selection: String?
+    @ObservedObject private var store = MeetingStore.shared
+    @State private var question = ""
+    @State private var answer: Knowledge.Answer?
+    @State private var asking = false
+    @State private var error: String?
+    @FocusState private var focused: Bool
+
+    private let suggestions = ["What did we decide this week?", "What are my action items?", "What did the client ask for?", "Summarise my last meeting"]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Ask your meetings").font(.system(size: 26, design: .serif))
+            Text("Answers come only from your notes, and say which meeting each point came from.")
+                .foregroundStyle(.secondary)
+            HStack {
+                TextField("e.g. What did we decide about pricing?", text: $question)
+                    .textFieldStyle(.roundedBorder)
+                    .controlSize(.large)
+                    .focused($focused)
+                    .onSubmit(ask)
+                Button(asking ? "Asking…" : "Ask", action: ask)
+                    .controlSize(.large)
+                    .buttonStyle(.borderedProminent)
+                    .disabled(asking || question.trimmingCharacters(in: .whitespaces).count < 3)
+            }
+            if answer == nil, !asking {
+                HStack(spacing: 8) {
+                    ForEach(suggestions, id: \.self) { s in
+                        Button(s) { question = s; ask() }.buttonStyle(.bordered).controlSize(.small)
+                    }
+                }
+            }
+            if let error { Text(error).foregroundStyle(.red) }
+            if asking { ProgressView().controlSize(.small) }
+            if let answer {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        Text(answer.text).textSelection(.enabled).font(.body).fixedSize(horizontal: false, vertical: true)
+                        if !answer.sources.isEmpty {
+                            Divider()
+                            Text("From").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                            ForEach(answer.sources) { m in
+                                Button { selection = m.id } label: {
+                                    Label(Knowledge.label(m), systemImage: "doc.text")
+                                }
+                                .buttonStyle(.link)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            Spacer()
+        }
+        .padding(24)
+        .onAppear { focused = true }
+    }
+
+    private func ask() {
+        let q = question.trimmingCharacters(in: .whitespaces)
+        guard q.count >= 3, !asking else { return }
+        asking = true; error = nil; answer = nil
+        Task { @MainActor in
+            do { answer = try await Knowledge.ask(q, meetings: store.meetings, settings: AppSettings.shared) }
+            catch { self.error = error.localizedDescription }
+            asking = false
+        }
     }
 }

@@ -309,6 +309,74 @@ for ok in ["He left office in 2019.", "I'm going home since it's late.", "There 
     expect(se(ok), ok, "unchanged: \(ok)")
 }
 
+// MARK: - Email and code
+section("Email and code")
+expect(EmailFormat.apply("Hi Marcus can you let the team know the launch is slipping to Monday? Thanks, Divyanshu."),
+       "Hi Marcus,\n\nCan you let the team know the launch is slipping to Monday?\n\nThanks,\nDivyanshu", "greeting and sign-off")
+expect(EmailFormat.apply("Hi sir, I will not be able to attend the meeting tomorrow. Regards."),
+       "Hi sir,\n\nI will not be able to attend the meeting tomorrow.\n\nRegards,", "sir + regards")
+expect(EmailFormat.apply("Thanks for the update, I'll take a look tomorrow."), "Thanks for the update, I'll take a look tomorrow.", "thanks in a sentence isn't a sign-off")
+expect(EmailFormat.apply("Hey."), "Hey.", "too short to format")
+expect(EmailFormat.apply("Hello team, one. Two is here. Three is here. Four is here. Best, Ana"),
+       "Hello team,\n\nOne. Two is here.\n\nThree is here. Four is here.\n\nBest,\nAna", "paragraphs every two sentences")
+expectTrue(EmailFormat.isMailTarget(bundleID: "com.apple.mail", windowTitle: ""), "Mail is a mail app")
+expectTrue(EmailFormat.isMailTarget(bundleID: "com.google.Chrome", windowTitle: "Inbox (3) - me@gmail.com - Gmail"), "Gmail tab")
+expect(EmailFormat.isMailTarget(bundleID: "com.tinyspeck.slackmacgap", windowTitle: "general"), false, "Slack isn't mail")
+expect(CodeTerms.apply("rename it to camel case user id please"), "rename it to userId please", "camel case")
+expect(CodeTerms.apply("call it snake case max retry count"), "call it max_retry_count", "snake case")
+expect(CodeTerms.apply("make it pascal case user profile card."), "make it UserProfileCard.", "pascal case")
+expect(CodeTerms.apply("constant case api base url and kebab case nav bar"), "API_BASE_URL and nav-bar", "constant + kebab")
+expect(CodeTerms.apply("open package dot json and the dot env file"), "open package.json and the .env file", "file names")
+expect(CodeTerms.apply("the user underscore id column"), "the user_id column", "underscore")
+expect(CodeTerms.apply("In any case we should ship it"), "In any case we should ship it", "'in any case' untouched")
+expect(CodeTerms.apply("visit example dot com"), "visit example dot com", "dot com left to the URL rules")
+
+// MARK: - Meetings knowledge and MCP
+section("Knowledge and MCP")
+func meeting(_ id: String, _ title: String, _ notes: String, daysAgo: Double, transcript: String = "") -> Meeting {
+    Meeting(id: id, title: title, date: Date().addingTimeInterval(-daysAgo * 86_400), duration: 1800, status: .ready, appName: "Zoom",
+            notes: notes, transcript: transcript, error: nil, onDevice: nil)
+}
+let sample = [
+    meeting("a", "Pricing sync", "Decided: Pro at $8/month. Owner: Priya.", daysAgo: 2),
+    meeting("b", "Hiring plan", "Two backend roles open. Rahul screens candidates.", daysAgo: 1),
+    meeting("c", "Old pricing chat", "Talked about pricing tiers, nothing decided.", daysAgo: 60),
+]
+let hits = Knowledge.search("what did we decide about pricing", in: sample)
+expect(hits.first?.meeting.id, "a", "recent, on-topic meeting ranks first")
+expect(hits.count, 2, "only meetings that mention the topic")
+expect(Knowledge.search("hiring", in: sample).first?.meeting.id, "b", "title match")
+expect(Knowledge.excerpt("Them: hello\nYou: the pricing is fine\nThem: ok\nYou: bye\nThem: x", for: "pricing"), "Them: hello\nYou: the pricing is fine\nThem: ok", "excerpt keeps neighbouring lines")
+let initReply = try! MCPServer.handle(method: "initialize", params: ["protocolVersion": "2025-03-26"])
+expect(initReply["protocolVersion"] as? String, "2025-03-26", "MCP echoes the client's protocol version")
+let toolNames = ((try! MCPServer.handle(method: "tools/list", params: [:]))["tools"] as? [[String: Any]] ?? []).compactMap { $0["name"] as? String }
+expectTrue(toolNames.contains("search_meetings") && toolNames.contains("get_meeting"), "MCP lists meeting tools")
+expectTrue((try? MCPServer.handle(method: "bogus", params: [:])) == nil, "MCP rejects unknown methods")
+let cfg = FileManager.default.temporaryDirectory.appendingPathComponent("freshflo-mcp-test-\(UUID().uuidString).json")
+try! #"{"mcpServers":{"other":{"command":"x"}},"theme":"dark"}"#.write(to: cfg, atomically: true, encoding: .utf8)
+try! MCPServer.connect(cfg)
+let merged = try! JSONSerialization.jsonObject(with: Data(contentsOf: cfg)) as! [String: Any]
+expectTrue((merged["mcpServers"] as? [String: Any])?["other"] != nil && merged["theme"] as? String == "dark", "connect keeps the client's other settings")
+expectTrue(MCPServer.isConnected(cfg), "connected")
+try! MCPServer.disconnect(cfg)
+expect(MCPServer.isConnected(cfg), false, "disconnected")
+try? FileManager.default.removeItem(at: cfg)
+
+// MARK: - Sync
+section("Sync")
+let mine = FolderSync.Payload(dictionary: ["Divyanshu", "Freshflo"], snippets: [Snippet(trigger: "my email", expansion: "me@a.com")],
+                              toneRules: [AppToneRule(bundleID: "com.tinyspeck.slackmacgap", appName: "Slack", tone: .casual)])
+let theirs = FolderSync.Payload(dictionary: ["freshflo", "Priya"], snippets: [Snippet(trigger: "My Email", expansion: "other@b.com"), Snippet(trigger: "address", expansion: "1 Main St")],
+                                toneRules: [AppToneRule(bundleID: "com.tinyspeck.slackmacgap", appName: "Slack", tone: .formal), AppToneRule(bundleID: "com.apple.mail", appName: "Mail", tone: .formal)])
+let both = FolderSync.merge(local: mine, remote: theirs)
+expect(both.dictionary, ["Divyanshu", "Freshflo", "Priya"], "words merge, case-insensitive")
+expect(both.snippets.map(\.expansion), ["me@a.com", "1 Main St"], "my snippet wins; new ones added")
+expect(both.toneRules.map(\.tone), [.casual, .formal], "my app style wins; new app added")
+let syncFile = FileManager.default.temporaryDirectory.appendingPathComponent("freshflo-sync-\(UUID().uuidString).json")
+try! FolderSync.write(both, to: syncFile)
+expect(FolderSync.read(syncFile)?.dictionary, both.dictionary, "shared file round-trips")
+try? FileManager.default.removeItem(at: syncFile)
+
 // MARK: - Result
 
 if failures.isEmpty {

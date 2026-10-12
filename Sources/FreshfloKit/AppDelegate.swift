@@ -17,6 +17,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
     private var meetingsWindow: NSWindow?
     private var onboardingWindow: NSWindow?
     private var feedbackWindow: NSWindow?
+    private var statsWindow: NSWindow?
     private var meetingTimer: Timer?
     private var hotkeyRetry: Timer?
     private var cancellables = Set<AnyCancellable>()
@@ -45,6 +46,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         Updater.shared.onChange = { [weak self] in self?.updateStatusIcon() }
         Updater.shared.start()
         Insights.start()
+        FolderSync.shared.start()
 
         // People who already set things up before onboarding existed skip it.
         let defaults = UserDefaults.standard
@@ -193,6 +195,12 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
             menu.addItem(recent)
         }
 
+        if let app = NSWorkspace.shared.frontmostApplication, let id = app.bundleIdentifier, id != Bundle.main.bundleIdentifier {
+            let off = settings.blockedApps.contains(id)
+            let toggle = item(off ? "Turn On in \(app.localizedName ?? id)" : "Turn Off in \(app.localizedName ?? id)", #selector(toggleBlocked(_:)))
+            toggle.representedObject = id
+            menu.addItem(toggle)
+        }
         let captions = item("Live Captions", #selector(toggleCaptions))
         captions.state = settings.showCaptions ? .on : .off
         captions.toolTip = "Show your words and what Freshflo detects while you speak"
@@ -207,6 +215,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         }
         menu.addItem(item("Meeting Notes…", #selector(openMeetings)))
         menu.addItem(item("Transcribe Audio File…", #selector(transcribeFile)))
+        menu.addItem(item("Your Week…", #selector(openStats)))
         menu.addItem(item("History…", #selector(openHistory)))
         menu.addItem(item("Settings…", #selector(openSettings), key: ","))
         menu.addItem(item("Setup Guide…", #selector(openOnboarding)))
@@ -214,6 +223,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         menu.addItem(item("Check for Updates…", #selector(checkForUpdates)))
         menu.addItem(.separator())
         menu.addItem(item("Quit Freshflo", #selector(NSApplication.terminate(_:)), key: "q", target: NSApp))
+    }
+
+    @objc private func toggleBlocked(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? String else { return }
+        if let i = settings.blockedApps.firstIndex(of: id) { settings.blockedApps.remove(at: i) } else { settings.blockedApps.append(id) }
     }
 
     @objc private func toggleCaptions() {
@@ -289,6 +303,21 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
     @objc private func openMeetings() { showMeetings() }
 
     @objc private func openOnboarding() { showOnboarding() }
+
+    @objc func openStats() {
+        if statsWindow == nil {
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 640, height: 560), styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
+            window.titlebarAppearsTransparent = true
+            window.titleVisibility = .hidden
+            window.isReleasedWhenClosed = false
+            window.appearance = NSAppearance(named: .aqua)
+            window.center()
+            statsWindow = window
+        }
+        statsWindow?.contentView = NSHostingView(rootView: StatsView())
+        NSApp.activate(ignoringOtherApps: true)
+        statsWindow?.makeKeyAndOrderFront(nil)
+    }
 
     @objc func openFeedback() {
         if feedbackWindow == nil {

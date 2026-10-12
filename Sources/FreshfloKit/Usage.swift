@@ -26,6 +26,8 @@ final class UsageStats {
         }
     }
 
+    func words(on date: Date) -> Int { Int(days[formatter.string(from: date)]?[0] ?? 0) }
+
     func record(words: Int, seconds: Double, on date: Date = Date()) {
         add(words: words, seconds: seconds, on: date)
         save()

@@ -145,6 +145,10 @@ final class DictationController {
             return
         }
 
+        if let app = NSWorkspace.shared.frontmostApplication, let id = app.bundleIdentifier, settings.blockedApps.contains(id) {
+            pill.flash("Freshflo is off in \(app.localizedName ?? "this app")", seconds: 1.4, isError: false)
+            return
+        }
         learner.check()
         let previewReady = LivePreview.isReady
         previewEnabled = (settings.livePreview || settings.showCaptions) && previewReady

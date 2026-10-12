@@ -50,11 +50,12 @@ enum LocalSpeech {
     }
 
     static func transcribe(
-        _ samples: [Float],
+        _ raw: [Float],
         language: String,
         vocabulary: [String],
         onStatus: @escaping (String) -> Void = { _ in }
     ) async throws -> String {
+        let samples = AudioRecorder.normalizeQuiet(raw)
         #if canImport(Speech)
         guard #available(macOS 26.0, *), !forceLegacy else {
             return try await legacyTranscribe(samples, language: language, vocabulary: vocabulary).text

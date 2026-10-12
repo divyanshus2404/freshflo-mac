@@ -211,6 +211,18 @@ private struct GeneralTab: View {
                         }
                     }
                 }
+                LabeledContent("Turned off in") {
+                    VStack(alignment: .trailing, spacing: 4) {
+                        ForEach(settings.blockedApps, id: \.self) { id in
+                            HStack(spacing: 6) {
+                                Text(appName(id)).foregroundStyle(.secondary)
+                                Button { settings.blockedApps.removeAll { $0 == id } } label: { Image(systemName: "xmark.circle.fill") }
+                                    .buttonStyle(.borderless).help("Turn Freshflo back on here")
+                            }
+                        }
+                        Button(settings.blockedApps.isEmpty ? "Choose apps…" : "Add app…", action: addBlockedApp)
+                    }
+                }
                 Toggle("Use text around the cursor for smarter spacing and capitalization", isOn: $settings.useScreenContext)
                 Toggle("Learn words I correct after dictating", isOn: $settings.autoLearn)
                 Toggle("Add a space after text when context isn't available", isOn: $settings.addTrailingSpace)
@@ -222,6 +234,43 @@ private struct GeneralTab: View {
                             launchAtLogin = SMAppService.mainApp.status == .enabled
                         }
                     }
+            }
+
+            Section {
+                ConnectRow(name: "Claude Desktop", url: MCPServer.claudeConfigURL, note: "Restart Claude after connecting.")
+                ConnectRow(name: "Cursor", url: MCPServer.cursorConfigURL, note: "Cursor picks it up in Settings → MCP.")
+                LabeledContent("Claude Code, other apps") {
+                    HStack {
+                        Button("Copy command") {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString("claude mcp add freshflo -- \"\(MCPServer.executablePath)\" --mcp", forType: .string)
+                        }
+                        Button("Copy JSON") {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(MCPServer.configSnippet, forType: .string)
+                        }
+                    }
+                }
+                Toggle(isOn: $settings.mcpShareHistory) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Also let them search what I dictate")
+                        Text("Off: they can only read meeting notes. Nothing is uploaded by Freshflo; the AI app reads it only when it needs to.").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            } header: {
+                Text("Use Freshflo in Claude and Cursor")
+            } footer: {
+                Text("Ask Claude things like \u{201C}What did we decide in Tuesday's sync?\u{201D} or \u{201C}Draft a follow-up from my last meeting.\u{201D} It searches your Freshflo notes on this Mac.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
+            Section {
+                SyncRow()
+            } header: {
+                Text("Sync and share")
+            } footer: {
+                Text("Your dictionary, snippets and app styles are kept in one file. iCloud Drive keeps your Macs in step; a shared Dropbox, Google Drive or OneDrive folder shares them with your team. New items from anyone are added everywhere.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
 
             Section("Meeting notes") {
@@ -343,6 +392,23 @@ private struct GeneralTab: View {
         }
     }
 
+    private func appName(_ bundleID: String) -> String {
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else { return bundleID }
+        return FileManager.default.displayName(atPath: url.path).replacingOccurrences(of: ".app", with: "")
+    }
+
+    private func addBlockedApp() {
+        let panel = NSOpenPanel()
+        panel.directoryURL = URL(fileURLWithPath: "/Applications")
+        panel.allowedContentTypes = [.application]
+        panel.allowsMultipleSelection = true
+        panel.prompt = "Turn Off Here"
+        guard panel.runModal() == .OK else { return }
+        for url in panel.urls {
+            if let id = Bundle(url: url)?.bundleIdentifier, !settings.blockedApps.contains(id) { settings.blockedApps.append(id) }
+        }
+    }
+
     private func fieldRow(_ title: String, text: Binding<String>, prompt: String) -> some View {
         LabeledContent(title) {
             TextField("", text: text, prompt: Text(prompt))
@@ -443,6 +509,12 @@ private struct ToneTab: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Smart lists")
                         Text("Say \u{201C}first… second… third…\u{201D} for a numbered list, or \u{201C}bullet point…\u{201D} for bullets. Everything else stays as sentences.").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                Toggle(isOn: $settings.emailFormatting) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Email formatting")
+                        Text("In Mail, Outlook, Gmail and other mail apps: greeting on its own line, short paragraphs, sign-off at the end.").font(.caption).foregroundStyle(.secondary)
                     }
                 }
                 Toggle(isOn: $settings.fixGrammar) {
@@ -802,5 +874,84 @@ private struct HistoryRow: View {
             }
         }
         .padding(.vertical, 4)
+    }
+}
+
+
+/// One AI app that can read Freshflo through MCP: connect or disconnect it by editing its config file.
+private struct ConnectRow: View {
+    let name: String
+    let url: URL
+    let note: String
+    @State private var connected = false
+    @State private var error: String?
+
+    var body: some View {
+        LabeledContent(name) {
+            HStack(spacing: 8) {
+                if connected {
+                    Label("Connected", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                    Button("Disconnect") { act { try MCPServer.disconnect(url) } }
+                } else {
+                    Button("Connect") { act { try MCPServer.connect(url) } }
+                }
+            }
+        }
+        .help(error ?? note)
+        .onAppear { connected = MCPServer.isConnected(url) }
+    }
+
+    private func act(_ change: () throws -> Void) {
+        do { try change(); error = nil } catch { self.error = "Couldn't update \(url.lastPathComponent): \(error.localizedDescription)" }
+        connected = MCPServer.isConnected(url)
+    }
+}
+
+
+private struct SyncRow: View {
+    @ObservedObject private var settings = AppSettings.shared
+    @ObservedObject private var sync = FolderSync.shared
+
+    private var mode: String {
+        if settings.syncFolder.isEmpty { return "off" }
+        return settings.syncFolder == FolderSync.iCloudFolder.path ? "icloud" : "folder"
+    }
+
+    var body: some View {
+        Picker("Sync dictionary, snippets and styles", selection: Binding(get: { mode }, set: choose)) {
+            Text("Off").tag("off")
+            Text("iCloud Drive").tag("icloud").disabled(!FolderSync.iCloudAvailable)
+            Text(mode == "folder" ? URL(fileURLWithPath: settings.syncFolder).lastPathComponent : "Shared folder…").tag("folder")
+        }
+        if mode != "off" {
+            LabeledContent("Status") {
+                HStack {
+                    if let error = sync.lastError {
+                        Text(error).foregroundStyle(.red).lineLimit(2)
+                    } else if let last = sync.lastSynced {
+                        Text("Synced \(last.formatted(.relative(presentation: .named)))").foregroundStyle(.secondary)
+                    } else {
+                        Text("Waiting…").foregroundStyle(.secondary)
+                    }
+                    Button("Sync now") { sync.syncNow() }
+                    Button("Show") { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: settings.syncFolder) }
+                }
+            }
+        }
+    }
+
+    private func choose(_ value: String) {
+        switch value {
+        case "icloud": settings.syncFolder = FolderSync.iCloudFolder.path
+        case "folder":
+            let panel = NSOpenPanel()
+            panel.canChooseDirectories = true
+            panel.canChooseFiles = false
+            panel.canCreateDirectories = true
+            panel.prompt = "Share Here"
+            panel.message = "Choose a folder you share with your team (Dropbox, Google Drive, OneDrive…)."
+            if panel.runModal() == .OK, let url = panel.url { settings.syncFolder = url.path }
+        default: settings.syncFolder = ""
+        }
     }
 }
