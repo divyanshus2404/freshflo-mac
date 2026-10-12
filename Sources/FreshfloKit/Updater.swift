@@ -222,6 +222,10 @@ final class Updater {
 /// Shown once after an update, so people see what got better.
 enum WhatsNew {
     static let notes: [String: [String]] = [
+        "0.11.1": [
+            "A calmer, sharper dictation bar: a row of dots that rises with your voice, shimmers while polishing, and draws a check when done.",
+            "Five more indicator styles to choose from in Settings → General: Orb, Island, Equalizer, Glow line and Compact bar.",
+        ],
         "0.11.0": [
             "Ask your meetings: \u{201C}What did we decide about pricing?\u{201D} answered from your notes, with the meetings it came from (Meeting Notes → Ask).",
             "Use Freshflo in Claude, Cursor and Claude Code: connect in Settings → General and ask them about your meetings.",

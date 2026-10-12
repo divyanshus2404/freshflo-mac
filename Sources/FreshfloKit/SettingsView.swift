@@ -169,7 +169,7 @@ private struct GeneralTab: View {
                 Picker("Indicator", selection: $settings.indicatorStyle) {
                     ForEach(IndicatorStyle.allCases) { Text($0.label).tag($0) }
                 }
-                if settings.indicatorStyle == .halo {
+                if settings.indicatorStyle != .minimal {
                     Picker("Theme", selection: $settings.indicatorTheme) {
                         ForEach(IndicatorTheme.allCases) { Text($0.label).tag($0) }
                     }
