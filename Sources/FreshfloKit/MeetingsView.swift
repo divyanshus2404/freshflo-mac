@@ -315,6 +315,8 @@ private struct LiveRecordingCard: View {
             .frame(height: 8)
             Text(off ? "Not recording" : level > 0.004 ? "Hearing" : "Quiet").font(.caption).foregroundStyle(.secondary).frame(width: 90, alignment: .trailing)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(label): \(off ? "not recording" : level > 0.004 ? "hearing sound" : "quiet")")
     }
 }
 

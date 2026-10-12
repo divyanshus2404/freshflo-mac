@@ -28,7 +28,7 @@ struct OnboardingView: View {
 
     private let steps: [(title: String, icon: String)] = [
         ("Welcome", "hand.wave"), ("Permissions", "lock.shield"), ("Talk key", "keyboard"),
-        ("First dictation", "waveform"), ("Finish", "flag.checkered"),
+        ("First dictation", "waveform"), ("Extras", "sparkles"), ("Finish", "flag.checkered"),
     ]
 
     init(initialStep: Int = 0, onFinish: @escaping () -> Void) {
@@ -46,6 +46,7 @@ struct OnboardingView: View {
                     case 1: permissionsStep
                     case 2: keyStep
                     case 3: tryItStep
+                    case 4: extrasStep
                     default: finishStep
                     }
                 }
@@ -406,6 +407,40 @@ struct OnboardingView: View {
         .animation(.spring(response: 0.45, dampingFraction: 0.8), value: practiced)
     }
 
+    // MARK: Extras
+
+    /// What Freshflo does beyond typing, with the switches right there.
+    private var extrasStep: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            title("It does more than type", "Turn on what you like now; everything is also in the menu bar and Settings.")
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+                extra("captions.bubble", "Live captions", "See your words as you speak, and what Freshflo will fix.", toggle: $settings.showCaptions)
+                extra("person.2.wave.2", "Meeting notes", "Offers to take notes when a call starts, with who said what.", toggle: $settings.offerMeetingNotes)
+                extra("list.number", "Lists, emails, code", "Say \u{201C}first… second…\u{201D}, \u{201C}Hi Marcus… thanks\u{201D} or \u{201C}camel case user id\u{201D}.", toggle: $settings.smartLists)
+                extra("sparkles", "Claude and Cursor", "Let them read your meeting notes. Connect in Settings → Meetings.", toggle: nil)
+                extra("note.text", "Scratchpad", "Dictate with nothing selected and it lands here, never lost.", toggle: nil)
+                extra("chart.bar.xaxis", "Your Week", "Words, time saved and your streak, from the menu bar.", toggle: nil)
+            }
+        }
+    }
+
+    private func extra(_ icon: String, _ name: String, _ detail: String, toggle: Binding<Bool>?) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: icon).font(.system(size: 16)).foregroundStyle(Brand.mint).frame(width: 22)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(name).font(.callout.weight(.semibold))
+                Text(detail).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 4)
+            if let toggle { Toggle("", isOn: toggle).toggleStyle(.switch).labelsHidden().controlSize(.small) }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, minHeight: 86, alignment: .topLeading)
+        .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.85)))
+        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.black.opacity(0.06)))
+        .accessibilityElement(children: .combine)
+    }
+
     // MARK: Finish
 
     private var finishStep: some View {
@@ -520,7 +555,7 @@ struct OnboardingView: View {
                 Button("Continue") { step += 1 }.keyboardShortcut(.defaultAction).controlSize(.large).buttonStyle(.borderedProminent).disabled(!permissionsDone)
             case 3:
                 Button(practiced ? "Continue" : "Skip") { step += 1 }.keyboardShortcut(.defaultAction).controlSize(.large).buttonStyle(.borderedProminent)
-            case 4:
+            case 5:
                 Button("Start using Freshflo") { finish() }.keyboardShortcut(.defaultAction).controlSize(.large).buttonStyle(.borderedProminent)
             default:
                 Button("Continue") { step += 1 }.keyboardShortcut(.defaultAction).controlSize(.large).buttonStyle(.borderedProminent)

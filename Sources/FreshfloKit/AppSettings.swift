@@ -54,7 +54,18 @@ final class AppSettings: ObservableObject {
     @Published var offlineFallback: Bool { didSet { defaults.set(offlineFallback, forKey: "offlineFallback") } }
     @Published var livePreview: Bool { didSet { defaults.set(livePreview, forKey: "livePreview") } }
     /// Live captions above the bar: what you're saying and what Freshflo detects (list, sentences, question, the app's style).
-    @Published var showCaptions: Bool { didSet { defaults.set(showCaptions, forKey: "showCaptions") } }
+    @Published var showCaptions: Bool {
+        didSet {
+            defaults.set(showCaptions, forKey: "showCaptions")
+            // Wherever captions are switched on (menu, Settings, setup), make sure the recognizer can run.
+            guard showCaptions, !oldValue else { return }
+            let language = self.language
+            Task { @MainActor in
+                _ = await LocalSpeech.requestAuthorization()
+                LivePreview.prepare(language: language)
+            }
+        }
+    }
     /// Spoken lists ("first… second…", "bullet point…") become real lists.
     @Published var smartLists: Bool { didSet { defaults.set(smartLists, forKey: "smartLists") } }
     /// Mail apps and webmail tabs: greeting line, short paragraphs, sign-off block.

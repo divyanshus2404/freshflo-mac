@@ -853,6 +853,14 @@ final class PillController {
         model.startedAt = Date()
         model.phase = .recording
         present()
+        announce(mode == .dictation ? "Listening" : mode == .ask ? "Ask: listening" : "Command: listening")
+    }
+
+    /// The floating bar can't take focus, so VoiceOver users hear what it shows instead.
+    private func announce(_ text: String) {
+        guard NSWorkspace.shared.isVoiceOverEnabled else { return }
+        NSAccessibility.post(element: NSApp as Any, notification: .announcementRequested,
+                             userInfo: [.announcement: text, .priority: NSAccessibilityPriorityLevel.high.rawValue])
     }
 
     func showProcessing(_ label: String) {
@@ -865,12 +873,14 @@ final class PillController {
         model.finalText = model.captionsOn ? typed?.trimmingCharacters(in: .whitespacesAndNewlines) : nil
         model.phase = .done(label)
         present()
+        announce("Typed: " + label)
         scheduleHide(after: model.finalText == nil ? 0.9 : 2.6)
     }
 
     func flash(_ message: String, seconds: Double = 2.4, isError: Bool = true) {
         model.phase = .message(message, isError: isError)
         present()
+        announce(message)
         scheduleHide(after: seconds)
     }
 

@@ -3,7 +3,7 @@ import ServiceManagement
 import SwiftUI
 
 enum SettingsTab: Hashable {
-    case general, tone, dictionary, snippets, history
+    case general, tone, dictionary, snippets, history, meetings, advanced
 }
 
 final class SettingsRouter: ObservableObject {
@@ -20,6 +20,8 @@ struct SettingsView: View {
             DictionaryTab().tabItem { Label("Dictionary", systemImage: "character.book.closed") }.tag(SettingsTab.dictionary)
             SnippetsTab().tabItem { Label("Snippets", systemImage: "text.badge.plus") }.tag(SettingsTab.snippets)
             HistoryTab().tabItem { Label("History", systemImage: "clock") }.tag(SettingsTab.history)
+            MeetingsTab().tabItem { Label("Meetings", systemImage: "person.2.wave.2") }.tag(SettingsTab.meetings)
+            AdvancedTab().tabItem { Label("Advanced", systemImage: "slider.horizontal.3") }.tag(SettingsTab.advanced)
         }
         .padding(12)
         .frame(minWidth: 600, minHeight: 520)
@@ -251,69 +253,6 @@ private struct GeneralTab: View {
                     }
             }
 
-            Section {
-                ConnectRow(name: "Claude Desktop", url: MCPServer.claudeConfigURL, note: "Restart Claude after connecting.")
-                ConnectRow(name: "Cursor", url: MCPServer.cursorConfigURL, note: "Cursor picks it up in Settings → MCP.")
-                LabeledContent("Claude Code, other apps") {
-                    HStack {
-                        Button("Copy command") {
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString("claude mcp add freshflo -- \"\(MCPServer.executablePath)\" --mcp", forType: .string)
-                        }
-                        Button("Copy JSON") {
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString(MCPServer.configSnippet, forType: .string)
-                        }
-                    }
-                }
-                Toggle(isOn: $settings.mcpShareHistory) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Also let them search what I dictate")
-                        Text("Off: they can only read meeting notes. Nothing is uploaded by Freshflo; the AI app reads it only when it needs to.").font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-            } header: {
-                Text("Use Freshflo in Claude and Cursor")
-            } footer: {
-                Text("Ask Claude things like \u{201C}What did we decide in Tuesday's sync?\u{201D} or \u{201C}Draft a follow-up from my last meeting.\u{201D} It searches your Freshflo notes on this Mac.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-
-            Section {
-                SyncRow()
-            } header: {
-                Text("Sync and share")
-            } footer: {
-                Text("Your dictionary, snippets and app styles are kept in one file. iCloud Drive keeps your Macs in step; a shared Dropbox, Google Drive or OneDrive folder shares them with your team. New items from anyone are added everywhere.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-
-            Section("Meeting notes") {
-                Text("Start from the menu bar during any call (Zoom, Meet, Teams, Slack…). Your mic and the call audio are recorded as separate tracks, so the transcript knows who said what. You get a summary, decisions and action items.")
-                    .font(.callout).foregroundStyle(.secondary)
-                Toggle("Keep the audio after notes are written", isOn: $settings.keepMeetingAudio)
-                Toggle("Also make a grammatically clean copy of the transcript", isOn: $settings.meetingCleanTranscript)
-                Toggle("Offer to take notes when a call starts (Zoom, Teams, Meet…)", isOn: $settings.offerMeetingNotes)
-                HStack {
-                    Text("Capturing the other side needs “Screen & System Audio Recording” permission.").font(.callout).foregroundStyle(.secondary)
-                    Spacer()
-                    Button("Open Settings…") {
-                        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
-                    }
-                }
-            }
-
-            Section("Diagnostics") {
-                DiagnosticsSummary()
-                Toggle(isOn: $settings.shareUsage) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Share anonymous usage counts and crash reports")
-                        Text("Once a day: how many dictations, words and failures, and which engine. Never your words or app names.").font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-                Button("Send Feedback…") { (NSApp.delegate as? AppDelegate)?.openFeedback() }
-            }
-
             Section("Permissions") {
                 permissionRow(
                     "Microphone",
@@ -465,6 +404,91 @@ private struct DiagnosticsSummary: View {
 }
 
 // MARK: - Style
+
+/// Meeting notes and the AI apps that can read them.
+private struct MeetingsTab: View {
+    @ObservedObject private var settings = AppSettings.shared
+
+    var body: some View {
+        Form {
+            Section("Meeting notes") {
+                Text("Start from the menu bar during any call (Zoom, Meet, Teams, Slack…). Your mic and the call audio are recorded as separate tracks, so the transcript knows who said what. You get a summary, decisions and action items.")
+                    .font(.callout).foregroundStyle(.secondary)
+                Toggle("Keep the audio after notes are written", isOn: $settings.keepMeetingAudio)
+                Toggle("Also make a grammatically clean copy of the transcript", isOn: $settings.meetingCleanTranscript)
+                Toggle("Offer to take notes when a call starts (Zoom, Teams, Meet…)", isOn: $settings.offerMeetingNotes)
+                HStack {
+                    Text("Capturing the other side needs “Screen & System Audio Recording” permission.").font(.callout).foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Open Settings…") {
+                        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
+                    }
+                }
+            }
+
+            Section {
+                ConnectRow(name: "Claude Desktop", url: MCPServer.claudeConfigURL, note: "Restart Claude after connecting.")
+                ConnectRow(name: "Cursor", url: MCPServer.cursorConfigURL, note: "Cursor picks it up in Settings → MCP.")
+                LabeledContent("Claude Code, other apps") {
+                    HStack {
+                        Button("Copy command") {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString("claude mcp add freshflo -- \"\(MCPServer.executablePath)\" --mcp", forType: .string)
+                        }
+                        Button("Copy JSON") {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(MCPServer.configSnippet, forType: .string)
+                        }
+                    }
+                }
+                Toggle(isOn: $settings.mcpShareHistory) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Also let them search what I dictate")
+                        Text("Off: they can only read meeting notes. Nothing is uploaded by Freshflo; the AI app reads it only when it needs to.").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            } header: {
+                Text("Use Freshflo in Claude and Cursor")
+            } footer: {
+                Text("Ask Claude things like \u{201C}What did we decide in Tuesday's sync?\u{201D} or \u{201C}Draft a follow-up from my last meeting.\u{201D} It searches your Freshflo notes on this Mac.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
+        }
+        .formStyle(.grouped)
+    }
+}
+
+/// Sync, diagnostics and feedback: things most people set once or never.
+private struct AdvancedTab: View {
+    @ObservedObject private var settings = AppSettings.shared
+
+    var body: some View {
+        Form {
+            Section {
+                SyncRow()
+            } header: {
+                Text("Sync and share")
+            } footer: {
+                Text("Your dictionary, snippets and app styles are kept in one file. iCloud Drive keeps your Macs in step; a shared Dropbox, Google Drive or OneDrive folder shares them with your team. New items from anyone are added everywhere.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
+            Section("Diagnostics") {
+                DiagnosticsSummary()
+                Toggle(isOn: $settings.shareUsage) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Share anonymous usage counts and crash reports")
+                        Text("Once a day: how many dictations, words and failures, and which engine. Never your words or app names.").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                Button("Send Feedback…") { (NSApp.delegate as? AppDelegate)?.openFeedback() }
+            }
+
+        }
+        .formStyle(.grouped)
+    }
+}
 
 private struct ToneTab: View {
     @ObservedObject private var settings = AppSettings.shared

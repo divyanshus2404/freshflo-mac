@@ -137,7 +137,7 @@ public enum CLI {
         // Website screenshots: one retina PNG per setup step, without the footer bar.
         if let dir = value("--render-onboarding-steps") {
             _ = NSApplication.shared
-            for step in 0..<5 {
+            for step in 0..<6 {
                 let view = OnboardingView(initialStep: step) {}
                     .frame(width: 820, height: 580)
                     .frame(width: 820, height: 492, alignment: .top) // drop the footer buttons
