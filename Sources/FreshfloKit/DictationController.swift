@@ -8,8 +8,10 @@ final class DictationController {
     }
 
     private(set) var state: State = .idle {
-        didSet { onStateChange?(state) }
+        didSet { onStateChange?(state); Self.busy = state != .idle }
     }
+    /// True while a dictation is recording or processing (so call detection ignores Freshflo's own mic use).
+    static var busy = false
     var onStateChange: ((State) -> Void)?
 
     let pill = PillController()
@@ -31,6 +33,8 @@ final class DictationController {
     private var chunkCut = 0
     private var chunkTasks: [Task<String, Error>] = []
     private var previewEnabled = false
+    /// Audio recorded on a mic that disappeared mid-dictation; the rest continues on the next best mic.
+    private var carried: [Float] = []
 
     /// The most recent paste, so "scratch that" or "make that shorter" can act on it without selecting.
     private struct Insertion {
@@ -55,6 +59,7 @@ final class DictationController {
     init() {
         recorder.onLevel = { [weak self] level in self?.pill.model.push(level) }
         recorder.onBands = { [weak self] bands in self?.pill.model.pushBands(bands) }
+        recorder.onDeviceLost = { [weak self] in self?.continueOnNextMic() }
         recorder.onChunk = { [weak self] chunk in
             guard let self, self.previewEnabled else { return }
             self.preview.feed(chunk)
@@ -149,6 +154,7 @@ final class DictationController {
             pill.flash("Freshflo is off in \(app.localizedName ?? "this app")", seconds: 1.4, isError: false)
             return
         }
+        carried = []
         learner.check()
         let previewReady = LivePreview.isReady
         previewEnabled = (settings.livePreview || settings.showCaptions) && previewReady
@@ -197,13 +203,12 @@ final class DictationController {
     /// A muted or disconnected device delivers pure digital silence; recover instead of recording nothing.
     private func checkMicIsAlive() {
         guard state == .recording, recorder.peakSoFar < 0.0001 else { return }
-        // A silent Bluetooth headset: switch to the Mac's own microphone and keep going.
-        if recorder.deviceUID.isEmpty, let current = AudioDevices.defaultInputID(), AudioDevices.isBluetooth(current),
-           let builtIn = AudioDevices.builtInMic() {
+        // A silent mic (a headset still switching modes, a muted interface): move to the next best mic and keep going.
+        if let next = AudioDevices.fallback(after: recorder.deviceUID, preferBuiltIn: settings.preferBuiltInMic) {
             _ = recorder.stop()
-            recorder.deviceUID = builtIn.uid
+            recorder.deviceUID = next.uid
             if (try? recorder.start()) != nil {
-                pill.flash("Headset mic is silent, switched to \(builtIn.name)", seconds: 2)
+                pill.flash("That mic is silent, switched to \(next.name)", seconds: 2)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
                     guard let self, self.state == .recording else { return }
                     self.pill.showRecording(mode: self.mode, locked: self.locked)
@@ -252,6 +257,28 @@ final class DictationController {
         })
     }
 
+    /// The mic disappeared or changed mid-dictation (AirPods connected, USB mic unplugged): keep what was said,
+    /// and carry on with the next best mic. Streaming in pieces stops; the whole thing is transcribed at the end.
+    private func continueOnNextMic() {
+        guard state == .recording else { return }
+        let lost = recorder.deviceUID
+        carried += recorder.stop()
+        stopChunking().tasks.forEach { $0.cancel() }
+        let uid = AudioDevices.preferredUID(chosen: settings.inputDeviceUID == lost ? "" : settings.inputDeviceUID, preferBuiltIn: settings.preferBuiltInMic)
+        recorder.deviceUID = uid
+        do {
+            try recorder.start()
+            let name = AudioDevices.inputs().first { $0.uid == uid }?.name ?? "the default mic"
+            pill.flash("Mic changed, now using \(name)", seconds: 1.6, isError: false)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) { [weak self] in
+                guard let self, self.state == .recording else { return }
+                self.pill.showRecording(mode: self.mode, locked: self.locked)
+            }
+        } catch {
+            finish()
+        }
+    }
+
     private func stopChunking() -> (tasks: [Task<String, Error>], cut: Int) {
         chunkTimer?.invalidate()
         chunkTimer = nil
@@ -267,6 +294,7 @@ final class DictationController {
         maxTimer?.invalidate()
         micCheck?.invalidate()
         _ = recorder.stop()
+        carried = []
         _ = stopPreview()
         state = .idle
         if let message { pill.flash(message, seconds: 1.2) } else { pill.hide() }
@@ -276,7 +304,8 @@ final class DictationController {
     private func finish() {
         maxTimer?.invalidate()
         micCheck?.invalidate()
-        let captured = recorder.stop()
+        let captured = carried + recorder.stop()
+        carried = []
         let chunks = stopChunking()
         let heard = stopPreview()
         play(.stop)
@@ -511,4 +540,5 @@ final class DictationController {
 extension Notification.Name {
     static let openSettings = Notification.Name("Freshflo.openSettings")
     static let toggleMeeting = Notification.Name("Freshflo.toggleMeeting")
+    static let audioDevicesChanged = Notification.Name("Freshflo.audioDevicesChanged")
 }

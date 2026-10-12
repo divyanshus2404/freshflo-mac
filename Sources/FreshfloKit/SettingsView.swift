@@ -182,9 +182,16 @@ private struct GeneralTab: View {
                     ForEach(SoundTheme.allCases) { Text($0.label).tag($0) }
                 }
                 Picker("Microphone", selection: $settings.inputDeviceUID) {
-                    Text("System default").tag("")
-                    ForEach(devices) { Text($0.name).tag($0.uid) }
+                    Text("Automatic (\(AudioDevices.automatic(preferBuiltIn: settings.preferBuiltInMic)?.name ?? "none found"))").tag("")
+                    Divider()
+                    ForEach(devices) { device in
+                        Text(device.name + (AudioDevices.kind(device) == .loopback ? " (system audio)" : "")).tag(device.uid)
+                    }
+                    if !settings.inputDeviceUID.isEmpty, !devices.contains(where: { $0.uid == settings.inputDeviceUID }) {
+                        Text("Not connected: using Automatic").tag(settings.inputDeviceUID)
+                    }
                 }
+                .help("Automatic picks the best mic that's connected right now and follows you as devices come and go.")
                 if settings.inputDeviceUID.isEmpty {
                     Toggle(isOn: $settings.preferBuiltInMic) {
                         VStack(alignment: .leading, spacing: 2) {
@@ -286,6 +293,7 @@ private struct GeneralTab: View {
                     .font(.callout).foregroundStyle(.secondary)
                 Toggle("Keep the audio after notes are written", isOn: $settings.keepMeetingAudio)
                 Toggle("Also make a grammatically clean copy of the transcript", isOn: $settings.meetingCleanTranscript)
+                Toggle("Offer to take notes when a call starts (Zoom, Teams, Meet…)", isOn: $settings.offerMeetingNotes)
                 HStack {
                     Text("Capturing the other side needs “Screen & System Audio Recording” permission.").font(.callout).foregroundStyle(.secondary)
                     Spacer()
@@ -334,6 +342,7 @@ private struct GeneralTab: View {
             devices = AudioDevices.inputs()
             refreshLocalStatus()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .audioDevicesChanged)) { _ in devices = AudioDevices.inputs() }
         .onDisappear { permissions.stopPolling() }
     }
 

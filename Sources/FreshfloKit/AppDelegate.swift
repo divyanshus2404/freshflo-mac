@@ -51,6 +51,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         Updater.shared.start()
         Insights.start()
         FolderSync.shared.start()
+        AudioDevices.watch { NotificationCenter.default.post(name: .audioDevicesChanged, object: nil) }
+        MeetingDetector.shared.start()
 
         // People who already set things up before onboarding existed skip it.
         let defaults = UserDefaults.standard

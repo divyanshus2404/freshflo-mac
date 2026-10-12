@@ -272,6 +272,9 @@ public enum CLI {
             let name = AudioDevices.inputs().first { $0.id == current }?.name ?? "none"
             print("default input: \(name), bluetooth: \(current.map(AudioDevices.isBluetooth) ?? false)")
             print("built-in mic: \(AudioDevices.builtInMic()?.name ?? "none")")
+            for d in AudioDevices.inputs() { print("  • \(d.name): \(AudioDevices.kind(d))") }
+            print("automatic: \(AudioDevices.automatic(preferBuiltIn: settings.preferBuiltInMic)?.name ?? "none"); ranked: \(AudioDevices.ranked(preferBuiltIn: settings.preferBuiltInMic).map(\.name))")
+            print("mic in use by an app: \(AudioDevices.someoneIsRecording()); call app: \(MeetingDetector.callApp() ?? "none")")
             let uid = AudioDevices.preferredUID(chosen: settings.inputDeviceUID, preferBuiltIn: settings.preferBuiltInMic)
             print("Freshflo will record from: \(uid.isEmpty ? name : AudioDevices.inputs().first { $0.uid == uid }?.name ?? uid)")
             return

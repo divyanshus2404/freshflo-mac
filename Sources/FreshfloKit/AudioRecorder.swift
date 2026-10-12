@@ -21,6 +21,8 @@ final class AudioRecorder {
     private var lp2k: Float = 0
     /// CoreAudio UID of the device to record from; empty uses the system default.
     var deviceUID = ""
+    /// Recording stopped because the input device changed or disappeared; the owner restarts on the next best mic.
+    var onDeviceLost: (() -> Void)?
     /// When false, audio is only streamed through `onChunk` (long meetings would otherwise fill memory).
     var retainSamples = true
     private(set) var isRecording = false
@@ -61,6 +63,8 @@ final class AudioRecorder {
             forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main
         ) { [weak self] _ in
             self?.reusableEngine = nil
+            // The engine stops itself when its device changes (AirPods connected, USB mic unplugged).
+            if self?.isRecording == true { self?.onDeviceLost?() }
         }
         reusableEngine = engine
         reusableDeviceUID = deviceUID
@@ -348,12 +352,87 @@ enum AudioDevices {
         inputs().first { transport($0.id) == kAudioDeviceTransportTypeBuiltIn }
     }
 
-    /// The mic to record from. AirPods and other Bluetooth headsets switch to low-quality call mode when an app opens
-    /// their mic, which takes a moment (cutting off the first words) and dulls your music; so unless you picked a mic
-    /// yourself, a Bluetooth default is swapped for the Mac's built-in one.
+    // MARK: Automatic choice
+
+    enum Kind: Int, Comparable {
+        case external, builtIn, other, bluetooth, virtual, loopback   // best first
+        static func < (a: Kind, b: Kind) -> Bool { a.rawValue < b.rawValue }
+    }
+
+    /// Virtual devices that carry other apps' sound rather than a voice; never chosen automatically.
+    private static let loopbackNames = ["blackhole", "loopback", "soundflower", "multi-output", "aggregate", "zoomaudiodevice",
+                                        "microsoft teams audio", "ms teams audio", "background music", "audio hijack", "obs"]
+
+    static func kind(_ device: AudioDevice) -> Kind {
+        let name = device.name.lowercased()
+        if loopbackNames.contains(where: name.contains) { return .loopback }
+        switch transport(device.id) {
+        case kAudioDeviceTransportTypeBuiltIn: return .builtIn
+        case kAudioDeviceTransportTypeUSB, kAudioDeviceTransportTypeFireWire, kAudioDeviceTransportTypeThunderbolt,
+             kAudioDeviceTransportTypePCI, kAudioDeviceTransportTypeAVB, kAudioDeviceTransportTypeHDMI, kAudioDeviceTransportTypeDisplayPort:
+            return .external
+        case kAudioDeviceTransportTypeBluetooth, kAudioDeviceTransportTypeBluetoothLE: return .bluetooth
+        case kAudioDeviceTransportTypeVirtual, kAudioDeviceTransportTypeAggregate, kAudioDeviceTransportTypeAutoAggregate: return .virtual
+        default: return .other
+        }
+    }
+
+    /// The mic Freshflo uses when you haven't picked one:
+    /// 1. the macOS default, if it's a real mic (built-in, USB, an interface, or a voice tool like Krisp that you set as default);
+    /// 2. otherwise (a Bluetooth headset while "use the Mac's mic" is on, or a loopback like BlackHole) the best real mic:
+    ///    USB/external, then built-in, then anything else, then Bluetooth.
+    static func automatic(preferBuiltIn: Bool) -> AudioDevice? {
+        let all = inputs()
+        if let current = defaultInputID(), let device = all.first(where: { $0.id == current }) {
+            switch kind(device) {
+            case .external, .builtIn, .other, .virtual: return device
+            case .bluetooth where !preferBuiltIn: return device
+            default: break
+            }
+        }
+        return ranked(all, preferBuiltIn: preferBuiltIn).first
+    }
+
+    /// Real mics, best first (loopbacks excluded).
+    static func ranked(_ all: [AudioDevice] = inputs(), preferBuiltIn: Bool) -> [AudioDevice] {
+        all.filter { kind($0) != .loopback }.sorted { a, b in
+            var ka = kind(a), kb = kind(b)
+            // With "use the Mac's mic" off, a Bluetooth headset counts as good as anything else.
+            if !preferBuiltIn { if ka == .bluetooth { ka = .other }; if kb == .bluetooth { kb = .other } }
+            return ka < kb
+        }
+    }
+
+    /// The mic to record from: the one you picked (if it's still connected), otherwise the automatic choice.
     static func preferredUID(chosen: String, preferBuiltIn: Bool) -> String {
-        guard chosen.isEmpty, preferBuiltIn, let current = defaultInputID(), isBluetooth(current), let builtIn = builtInMic() else { return chosen }
-        return builtIn.uid
+        let all = inputs()
+        if !chosen.isEmpty, all.contains(where: { $0.uid == chosen }) { return chosen }
+        return automatic(preferBuiltIn: preferBuiltIn)?.uid ?? ""
+    }
+
+    /// The next mic to try when `current` delivers silence.
+    static func fallback(after current: String, preferBuiltIn: Bool) -> AudioDevice? {
+        ranked(preferBuiltIn: preferBuiltIn).first { $0.uid != current }
+    }
+
+    /// Calls back on the main queue whenever a mic is connected or removed, or the macOS default changes.
+    static func watch(_ onChange: @escaping () -> Void) {
+        let system = AudioObjectID(kAudioObjectSystemObject)
+        for selector in [kAudioHardwarePropertyDevices, kAudioHardwarePropertyDefaultInputDevice] {
+            var address = AudioObjectPropertyAddress(mSelector: selector, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+            AudioObjectAddPropertyListenerBlock(system, &address, DispatchQueue.main) { _, _ in onChange() }
+        }
+    }
+
+    /// Whether any app is currently recording from any mic (a call in progress, usually).
+    static func someoneIsRecording() -> Bool {
+        inputs().contains { device in
+            var address = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyDeviceIsRunningSomewhere,
+                                                     mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+            var running = UInt32(0)
+            var size = UInt32(MemoryLayout<UInt32>.size)
+            return AudioObjectGetPropertyData(device.id, &address, 0, nil, &size, &running) == noErr && running != 0
+        }
     }
 
     private static func inputChannels(_ id: AudioDeviceID) -> Int {

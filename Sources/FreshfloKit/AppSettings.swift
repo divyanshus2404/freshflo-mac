@@ -67,6 +67,8 @@ final class AppSettings: ObservableObject {
     /// After meeting notes, also make a grammatically clean copy of the transcript.
     /// Use the Mac's microphone instead of AirPods and other Bluetooth headsets (unless a mic is picked explicitly).
     @Published var preferBuiltInMic: Bool { didSet { defaults.set(preferBuiltInMic, forKey: "preferBuiltInMic") } }
+    /// Offer to take meeting notes when a call starts.
+    @Published var offerMeetingNotes: Bool { didSet { defaults.set(offerMeetingNotes, forKey: "offerMeetingNotes") } }
     @Published var meetingCleanTranscript: Bool { didSet { defaults.set(meetingCleanTranscript, forKey: "meetingCleanTranscript") } }
     @Published var mcpShareHistory: Bool { didSet { defaults.set(mcpShareHistory, forKey: "mcpShareHistory") } }
     /// Language to write in regardless of the spoken language (empty = same as spoken).
@@ -133,6 +135,7 @@ final class AppSettings: ObservableObject {
         mcpShareHistory = d.object(forKey: "mcpShareHistory") as? Bool ?? false
         meetingCleanTranscript = d.object(forKey: "meetingCleanTranscript") as? Bool ?? true
         preferBuiltInMic = d.object(forKey: "preferBuiltInMic") as? Bool ?? true
+        offerMeetingNotes = d.object(forKey: "offerMeetingNotes") as? Bool ?? true
         blockedApps = Self.load("blockedApps") ?? []
         syncFolder = d.string(forKey: "syncFolder") ?? ""
         keepMeetingAudio = d.object(forKey: "keepMeetingAudio") as? Bool ?? false

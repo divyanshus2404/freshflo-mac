@@ -411,6 +411,14 @@ expect(MeetingTools.rename(mt, from: "Speaker 2", to: "  ").speakers, mt.speaker
 expect(MeetingTools.prefix("[01:02] Rahul: yes"), "[01:02] Rahul:", "line prefix")
 expect(MeetingTools.prefix("no prefix here"), "", "no prefix")
 
+section("Microphones")
+expect(AudioDevices.kind(AudioDevice(id: 0, uid: "bh", name: "BlackHole 2ch")), .loopback, "BlackHole is a loopback, never auto-picked")
+expect(AudioDevices.kind(AudioDevice(id: 0, uid: "z", name: "ZoomAudioDevice")), .loopback, "Zoom's virtual device is a loopback")
+expect(AudioDevices.kind(AudioDevice(id: 0, uid: "m", name: "Multi-Output Device")), .loopback, "multi-output is a loopback")
+expectTrue(AudioDevices.Kind.external < .builtIn && .builtIn < .bluetooth && .bluetooth < .virtual, "external > built-in > Bluetooth > virtual")
+expect(AudioDevices.preferredUID(chosen: "no-such-mic-uid", preferBuiltIn: true) == "no-such-mic-uid", false, "a disconnected chosen mic falls back to automatic")
+_ = AudioDevices.someoneIsRecording()
+
 // MARK: - Result
 
 if failures.isEmpty {

@@ -222,6 +222,11 @@ final class Updater {
 /// Shown once after an update, so people see what got better.
 enum WhatsNew {
     static let notes: [String: [String]] = [
+        "0.12.2": [
+            "Automatic microphone: Freshflo picks the best mic that's connected (USB, then your Mac's, then a headset), skips system-audio devices like BlackHole, and follows you as devices come and go.",
+            "Unplug a mic or connect AirPods mid-sentence and Freshflo carries on with the next mic without losing what you said.",
+            "Call detection: when a Zoom, Teams, Meet or FaceTime call starts, Freshflo offers to take notes with one click.",
+        ],
         "0.12.1": [
             "With AirPods or another Bluetooth headset connected, Freshflo now uses your Mac's microphone, so your first words aren't cut off and your music stays at full quality. Change it in Settings → General.",
             "If a microphone goes silent mid-dictation, Freshflo switches to the Mac's microphone instead of stopping.",
