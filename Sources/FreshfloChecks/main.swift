@@ -393,6 +393,10 @@ var slack = FocusContext(); slack.bundleID = "com.tinyspeck.slackmacgap"; slack.
 expect(slack.hasNoTextTarget, false, "apps that hide their fields still get a normal paste")
 expect(ScratchNote(text: "\nGroceries\nmilk").title, "Groceries", "note title is the first line")
 
+section("Numbers survive the safety check")
+expectTrue(Cleanup.sanitize("Send the invoice for ₹2,50,000.", raw: "send the invoice for two lakh fifty thousand rupees") != nil, "spoken amount → digits is not a summary")
+expect(Cleanup.sanitize("Send it.", raw: "send the invoice for the new office chairs to rahul and priya today"), nil, "real summaries are still rejected")
+
 // MARK: - Result
 
 if failures.isEmpty {

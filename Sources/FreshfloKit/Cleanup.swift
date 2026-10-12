@@ -215,12 +215,19 @@ enum Cleanup {
         let novel = outWords.filter { !known.contains($0) && !$0.allSatisfy(\.isNumber) }
         if outWords.count >= 4, Double(novel.count) / Double(outWords.count) > 0.35 { return nil }
         // Losing most of what was said means the model summarized.
-        let spoken = rawWords.filter { !fillerWords.contains($0) }
+        // Spoken numbers ("two lakh fifty thousand rupees") legitimately become digits ("₹2,50,000").
+        let hasDigits = text.contains { $0.isNumber }
+        let spoken = rawWords.filter { !fillerWords.contains($0) && !(hasDigits && numberWords.contains($0)) }
         let outSet = Set(outWords)
         if spoken.count >= 6, Double(spoken.filter(outSet.contains).count) / Double(spoken.count) < 0.5 { return nil }
         return text
     }
 
+    private static let numberWords: Set<String> = [
+        "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen",
+        "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety",
+        "hundred", "thousand", "lakh", "lakhs", "crore", "crores", "million", "billion", "rupees", "rupee", "dollars", "dollar", "percent", "point", "and",
+    ]
     private static let fillerWords: Set<String> = ["um", "umm", "uh", "uhh", "er", "erm", "ah", "hmm", "like", "so", "you", "know"]
     private static let questionStarters: Set<String> = [
         "what", "why", "how", "who", "whom", "whose", "when", "where", "which",
