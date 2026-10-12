@@ -185,6 +185,14 @@ private struct GeneralTab: View {
                     Text("System default").tag("")
                     ForEach(devices) { Text($0.name).tag($0.uid) }
                 }
+                if settings.inputDeviceUID.isEmpty {
+                    Toggle(isOn: $settings.preferBuiltInMic) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Use the Mac's microphone instead of AirPods")
+                            Text("Bluetooth headsets switch to call quality when their mic opens, which can cut off your first words and dull your music.").font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
                 Toggle(isOn: $settings.showCaptions) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Live captions while I speak")

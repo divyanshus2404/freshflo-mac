@@ -299,7 +299,8 @@ final class MeetingController: ObservableObject {
         MeetingStore.shared.save(meeting)
         let recorder = MeetingRecorder()
         do {
-            try await recorder.start(folder: MeetingStore.shared.folder(for: id), micDeviceUID: AppSettings.shared.inputDeviceUID)
+            let mic = AudioDevices.preferredUID(chosen: AppSettings.shared.inputDeviceUID, preferBuiltIn: AppSettings.shared.preferBuiltInMic)
+            try await recorder.start(folder: MeetingStore.shared.folder(for: id), micDeviceUID: mic)
         } catch {
             meeting.status = .failed
             meeting.error = error.localizedDescription

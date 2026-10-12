@@ -154,7 +154,7 @@ final class DictationController {
         previewEnabled = (settings.livePreview || settings.showCaptions) && previewReady
         if previewEnabled { preview.start() }
         pill.model.captionsAvailable = previewReady
-        recorder.deviceUID = settings.inputDeviceUID
+        recorder.deviceUID = AudioDevices.preferredUID(chosen: settings.inputDeviceUID, preferBuiltIn: settings.preferBuiltInMic)
         do {
             try recorder.start()
         } catch {
@@ -185,7 +185,8 @@ final class DictationController {
             guard self?.state == .recording else { return }
             self?.finish()
         }
-        micCheck = Timer.scheduledTimer(withTimeInterval: 0.9, repeats: false) { [weak self] _ in self?.checkMicIsAlive() }
+        // Bluetooth mics can take a couple of seconds to start delivering sound, so only judge after 2.5 s.
+        micCheck = Timer.scheduledTimer(withTimeInterval: 2.5, repeats: false) { [weak self] _ in self?.checkMicIsAlive() }
         chunkCut = 0
         chunkTasks = []
         if settings.provider.isCloud, settings.canUseCloud {
@@ -196,6 +197,20 @@ final class DictationController {
     /// A muted or disconnected device delivers pure digital silence; recover instead of recording nothing.
     private func checkMicIsAlive() {
         guard state == .recording, recorder.peakSoFar < 0.0001 else { return }
+        // A silent Bluetooth headset: switch to the Mac's own microphone and keep going.
+        if recorder.deviceUID.isEmpty, let current = AudioDevices.defaultInputID(), AudioDevices.isBluetooth(current),
+           let builtIn = AudioDevices.builtInMic() {
+            _ = recorder.stop()
+            recorder.deviceUID = builtIn.uid
+            if (try? recorder.start()) != nil {
+                pill.flash("Headset mic is silent, switched to \(builtIn.name)", seconds: 2)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+                    guard let self, self.state == .recording else { return }
+                    self.pill.showRecording(mode: self.mode, locked: self.locked)
+                }
+                return
+            }
+        }
         if !recorder.deviceUID.isEmpty {
             _ = recorder.stop()
             recorder.deviceUID = ""

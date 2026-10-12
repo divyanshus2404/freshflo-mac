@@ -7,7 +7,7 @@ import Foundation
 ///   Freshflo --command "make this formal" [--selection "hey whats up"]
 public enum CLI {
     public static var isRequested: Bool {
-        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update", "--grammar-eval", "--ask-meetings", "--render-stats", "--render-styles", "--diarize"].contains(where: CommandLine.arguments.contains)
+        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update", "--grammar-eval", "--ask-meetings", "--render-stats", "--render-styles", "--diarize", "--mic-info"].contains(where: CommandLine.arguments.contains)
     }
 
     /// Shows the real floating indicator inside a proper app run loop with synthetic speech (performance checks).
@@ -265,6 +265,15 @@ public enum CLI {
             }
             let labels = Diarization.speakers(samples: samples, starts: times, threshold: threshold)
             print("speakers: \(labels.map { $0.map(String.init).joined(separator: " ") } ?? "one voice")")
+            return
+        }
+        if CommandLine.arguments.contains("--mic-info") {
+            let current = AudioDevices.defaultInputID()
+            let name = AudioDevices.inputs().first { $0.id == current }?.name ?? "none"
+            print("default input: \(name), bluetooth: \(current.map(AudioDevices.isBluetooth) ?? false)")
+            print("built-in mic: \(AudioDevices.builtInMic()?.name ?? "none")")
+            let uid = AudioDevices.preferredUID(chosen: settings.inputDeviceUID, preferBuiltIn: settings.preferBuiltInMic)
+            print("Freshflo will record from: \(uid.isEmpty ? name : AudioDevices.inputs().first { $0.uid == uid }?.name ?? uid)")
             return
         }
         if let out = value("--render-styles") {

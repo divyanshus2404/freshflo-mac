@@ -316,6 +316,46 @@ enum AudioDevices {
         inputs().first { $0.uid == uid }?.id
     }
 
+    static func defaultInputID() -> AudioDeviceID? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var id = AudioDeviceID(0)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &id) == noErr, id != 0 else { return nil }
+        return id
+    }
+
+    static func transport(_ id: AudioDeviceID) -> UInt32 {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyTransportType,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var value = UInt32(0)
+        var size = UInt32(MemoryLayout<UInt32>.size)
+        return AudioObjectGetPropertyData(id, &address, 0, nil, &size, &value) == noErr ? value : 0
+    }
+
+    static func isBluetooth(_ id: AudioDeviceID) -> Bool {
+        [kAudioDeviceTransportTypeBluetooth, kAudioDeviceTransportTypeBluetoothLE].contains(transport(id))
+    }
+
+    /// The Mac's own microphone (MacBook / iMac / Studio Display), if there is one.
+    static func builtInMic() -> AudioDevice? {
+        inputs().first { transport($0.id) == kAudioDeviceTransportTypeBuiltIn }
+    }
+
+    /// The mic to record from. AirPods and other Bluetooth headsets switch to low-quality call mode when an app opens
+    /// their mic, which takes a moment (cutting off the first words) and dulls your music; so unless you picked a mic
+    /// yourself, a Bluetooth default is swapped for the Mac's built-in one.
+    static func preferredUID(chosen: String, preferBuiltIn: Bool) -> String {
+        guard chosen.isEmpty, preferBuiltIn, let current = defaultInputID(), isBluetooth(current), let builtIn = builtInMic() else { return chosen }
+        return builtIn.uid
+    }
+
     private static func inputChannels(_ id: AudioDeviceID) -> Int {
         var address = AudioObjectPropertyAddress(
             mSelector: kAudioDevicePropertyStreamConfiguration,

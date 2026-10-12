@@ -222,6 +222,10 @@ final class Updater {
 /// Shown once after an update, so people see what got better.
 enum WhatsNew {
     static let notes: [String: [String]] = [
+        "0.12.1": [
+            "With AirPods or another Bluetooth headset connected, Freshflo now uses your Mac's microphone, so your first words aren't cut off and your music stays at full quality. Change it in Settings → General.",
+            "If a microphone goes silent mid-dictation, Freshflo switches to the Mac's microphone instead of stopping.",
+        ],
         "0.12.0": [
             "Speaker names in meeting notes: everyone else on the call is told apart by voice, and named when they introduce themselves.",
             "Scratchpad (menu → Scratchpad…): dictate notes to yourself. Anything dictated with no text field in front of you lands there too.",
