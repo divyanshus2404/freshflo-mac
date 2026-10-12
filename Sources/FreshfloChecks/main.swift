@@ -236,6 +236,40 @@ expectTrue(Cleanup.sanitize("Explain why my React component re-renders twice.", 
 expect(Cleanup.sanitize("Explain why my React component re-renders twice.", raw: "can you explain why my react component re-renders twice"), nil, "chat style still guards questions")
 expect(Cleanup.sanitize("Because the effect runs twice in development strict mode when components mount.", raw: "why does my react component render twice", promptStyle: true), nil, "an answer is still rejected")
 
+// MARK: - Lists
+section("Lists")
+func list(_ s: String, _ bullet: String = "• ") -> String { ListFormat.apply(s, bullet: bullet) }
+expect(list("For the trip I need three things. First my charger, second my passport, and third sunscreen."),
+       "For the trip I need three things:\n1. My charger\n2. My passport\n3. Sunscreen", "ordinals → numbered list with lead-in")
+expect(list("first eggs second milk third bread"), "1. Eggs\n2. Milk\n3. Bread", "unpunctuated ordinals")
+expect(list("Step one, open settings. Step two, turn on captions. Step three, start talking."),
+       "1. Open settings\n2. Turn on captions\n3. Start talking", "step one / step two")
+expect(list("Agenda for today. Bullet point budget review. Next point hiring plan. Next point launch date."),
+       "Agenda for today:\n- Budget review\n- Hiring plan\n- Launch date".replacingOccurrences(of: "- ", with: "• "), "bullet point / next point")
+expect(list("Agenda bullet point budget bullet point hiring", "- "), "Agenda:\n- Budget\n- Hiring", "markdown bullets for AI and editor apps")
+expect(list("I need three things: eggs, milk and bread."), "I need three things:\n• Eggs\n• Milk\n• Bread", "spoken count matches the items")
+expect(list("First, update the API. Second, write the tests. Finally, ship it. Let me know if that works."),
+       "1. Update the API\n2. Write the tests\n3. Ship it\n\nLet me know if that works.", "finally ends the list, closing sentence kept")
+expect(list("Here's the plan:\n1. Draft\n2. Review\n3. Send"), "Here's the plan:\n1. Draft\n2. Review\n3. Send", "already a list stays a list")
+expect(list("Notes:\n* one\n* two", "- "), "Notes:\n- One\n- Two", "model's markers normalised")
+expect(list("Wait a second, I'll be there in a minute."), "Wait a second, I'll be there in a minute.", "'a second' isn't a list")
+expect(list("I came first in the race and my friend came second."), "I came first in the race and my friend came second.", "ordinals in prose aren't a list")
+expect(list("We have two options, but I'm not sure which one is better."), "We have two options, but I'm not sure which one is better.", "count without items isn't a list")
+expect(list("Buy eggs, milk and bread on the way home."), "Buy eggs, milk and bread on the way home.", "a comma list in a sentence stays a sentence")
+expect(list("First of all, thanks for coming."), "First of all, thanks for coming.", "a lone 'first' isn't a list")
+expect(ListFormat.detect("um so first eggs uh second milk"), ListFormat.Detection(kind: .numbered, items: 2), "live detection: numbered")
+expect(ListFormat.detect("okay for the trip I need first my charger second my passport and third"), ListFormat.Detection(kind: .numbered, items: 2), "live detection mid-list")
+expect(list("i came first in the race and my friend came second"), "i came first in the race and my friend came second", "unpunctuated prose ordinals aren't a list")
+expect(ListFormat.detect("OK, so for the trip I need three things first my charger second, my passport and third"), ListFormat.Detection(kind: .numbered, items: 2), "live captions with stray commas")
+expect(ListFormat.detect("OK, so for the trip I need three things first my charger second my passport and third sunscreen"), ListFormat.Detection(kind: .numbered, items: 3), "live captions, list complete")
+expect(ListFormat.detect("I came first, and my friend came second"), .sentences, "commas but prose")
+expect(ListFormat.detect("bullet point budget"), ListFormat.Detection(kind: .bulleted, items: 1), "live detection: bullets")
+expect(ListFormat.detect("so I was thinking we could meet on Wednesday"), .sentences, "live detection: sentences")
+expect(ListFormat.bullet(for: "com.tinyspeck.slackmacgap"), "• ", "Slack gets round bullets")
+expect(ListFormat.bullet(for: "com.todesktop.230313mzl4w4u92"), "- ", "Cursor gets Markdown bullets")
+expect(TextPolish.apply("first eggs second milk third bread", .init(lists: false)), "first eggs second milk third bread", "Smart lists off keeps sentences")
+expect(TextPolish.apply("um so first eggs, second milk", .init()), "1. Eggs\n2. Milk", "polish pass formats lists")
+
 // MARK: - Result
 
 if failures.isEmpty {

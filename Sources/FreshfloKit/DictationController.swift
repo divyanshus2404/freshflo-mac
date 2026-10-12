@@ -146,8 +146,10 @@ final class DictationController {
         }
 
         learner.check()
-        previewEnabled = settings.livePreview && LivePreview.isReady
+        let previewReady = LivePreview.isReady
+        previewEnabled = (settings.livePreview || settings.showCaptions) && previewReady
         if previewEnabled { preview.start() }
+        pill.model.captionsAvailable = previewReady
         recorder.deviceUID = settings.inputDeviceUID
         do {
             try recorder.start()
@@ -169,6 +171,8 @@ final class DictationController {
         locked = false
         pressedAt = Date()
         state = .recording
+        let style = settings.tone(for: context)
+        pill.model.appLabel = context.appName.isEmpty ? style.shortLabel : "\(context.appName) · \(style.shortLabel)"
         pill.showRecording(mode: mode, locked: false, anchor: context.caretRect)
         play(.start)
         if settings.canUseCloud { OpenAICompatible.prewarm(settings.endpoint) }
@@ -398,7 +402,9 @@ final class DictationController {
             ))
             if pasted {
                 let words = output.split(whereSeparator: \.isWhitespace).count
-                pill.success(mode == .command ? "Done" : "\(words) word\(words == 1 ? "" : "s")")
+                let list = ListFormat.detect(output)
+                let label = mode == .command ? "Done" : list.kind != nil ? "\(list.items)-item list" : "\(words) word\(words == 1 ? "" : "s")"
+                pill.success(label, typed: mode == .dictation ? output : nil)
                 play(.done)
             } else {
                 pill.flash("Copied to clipboard — grant Accessibility to auto-paste", seconds: 3.5)

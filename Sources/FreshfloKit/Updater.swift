@@ -222,6 +222,11 @@ final class Updater {
 /// Shown once after an update, so people see what got better.
 enum WhatsNew {
     static let notes: [String: [String]] = [
+        "0.9.9": [
+            "Smart lists: say \u{201C}first… second… third…\u{201D} for a numbered list, or \u{201C}bullet point…\u{201D} for bullets. Everything else stays as sentences.",
+            "Live captions (menu → Live Captions): see your words as you speak and what Freshflo detects: a list, a question, a correction, filler words.",
+            "A smaller, quieter dictation bar.",
+        ],
         "0.9.8": [
             "Prompt mode: in Cursor, Claude, ChatGPT and Claude Code, rambling becomes a clear, structured prompt.",
             "Ten Indian languages, from Tamil to Punjabi, in and English out. Pick yours in Settings → General.",

@@ -86,8 +86,20 @@ final class PillModel: ObservableObject {
             let count = liveText.split(separator: " ").count
             if count > liveWordCount { newWordID += 1 }
             liveWordCount = count
+            let next = CaptionInsight.of(liveText)
+            if next != insight { insight = next }
         }
     }
+    /// Live captions card above the bar.
+    @Published var captionsOn = false
+    /// False when this Mac can't recognise the language on-device (captions show how to fix it).
+    @Published var captionsAvailable = true
+    /// "Slack · Casual": where the text goes and in which style.
+    @Published var appLabel = ""
+    /// What was typed, shown briefly in the captions card after a dictation.
+    @Published var finalText: String?
+    /// What Freshflo detects in the words so far: list or sentences, a self-correction, fillers.
+    @Published private(set) var insight = CaptionInsight.empty
     @Published private(set) var newWordID = 0
     private var liveWordCount = 0
 
@@ -119,6 +131,46 @@ final class PillModel: ObservableObject {
         quietSince = nil
         liveWordCount = 0
         liveText = ""
+        finalText = nil
+    }
+}
+
+// MARK: - Caption insight
+
+/// What the captions card says it detects, from the raw words heard so far.
+struct CaptionInsight: Equatable {
+    var structure: String
+    var isList = false
+    var correction = false
+    var fillers = 0
+
+    static let empty = CaptionInsight(structure: "")
+    static let fillerWords: Set<String> = ["um", "umm", "uh", "uhh", "er", "erm", "ah", "hmm", "mm"]
+    static let correctionPhrases = ["no wait", "wait no", "i mean", "scratch that", "or rather", "sorry i meant", "let me rephrase", "actually no"]
+    private static let questionStarters: Set<String> = ["what", "why", "how", "who", "when", "where", "which", "can", "could", "would", "should",
+                                                         "is", "are", "do", "does", "did", "will", "have", "has"]
+
+    static func of(_ text: String) -> CaptionInsight {
+        let words = text.lowercased().split(whereSeparator: { !$0.isLetter && $0 != "'" }).map(String.init)
+        guard !words.isEmpty else { return .empty }
+        let fillers = words.filter(fillerWords.contains).count
+        let joined = " " + words.joined(separator: " ") + " "
+        let correction = correctionPhrases.contains { joined.contains(" \($0) ") }
+        let list = ListFormat.detect(text)
+        var structure: String
+        switch list.kind {
+        case .numbered: structure = "Numbered list · \(list.items)"
+        case .bulleted: structure = list.items == 1 ? "Bullet points" : "Bullet points · \(list.items)"
+        case nil:
+            let first = words.first { !fillerWords.contains($0) && $0 != "so" && $0 != "okay" }
+            let sentences = text.split(whereSeparator: { ".!?".contains($0) }).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count
+            if text.trimmingCharacters(in: .whitespaces).hasSuffix("?") || (first.map(questionStarters.contains) ?? false) {
+                structure = "Question"
+            } else {
+                structure = sentences > 1 ? "\(sentences) sentences" : "Sentence"
+            }
+        }
+        return CaptionInsight(structure: structure, isList: list.kind != nil, correction: correction, fillers: fillers)
     }
 }
 
@@ -194,9 +246,9 @@ private struct HaloView: View {
     @ObservedObject var model: PillModel
     private let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
 
-    /// Fixed centre width so the capsule never resizes as words arrive.
-    static let centerWidth: CGFloat = 230
-    static let height: CGFloat = 38
+    /// Fixed centre width so the capsule never resizes while you talk.
+    static let centerWidth: CGFloat = 112
+    static let height: CGFloat = 32
 
     private var isError: Bool {
         if case .message(_, true) = model.phase { return true }
@@ -219,46 +271,24 @@ private struct HaloView: View {
 
     var body: some View {
         if model.phase != .hidden {
-            HStack(spacing: 10) {
+            HStack(spacing: 9) {
                 leading
                 center
                 trailing
             }
-            .padding(.leading, 13)
-            .padding(.trailing, 15)
+            .padding(.leading, 11)
+            .padding(.trailing, 13)
             .frame(height: Self.height)
             .background(
                 Capsule(style: .continuous)
-                    .fill(Color.black.opacity(0.62))
+                    .fill(Color.black.opacity(0.74))
                     .background(Capsule(style: .continuous).fill(.ultraThinMaterial))
-                    .overlay(Capsule(style: .continuous).strokeBorder(Color.white.opacity(0.10), lineWidth: 0.5))
-                    .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
+                    .overlay(Capsule(style: .continuous).strokeBorder(Color.white.opacity(0.12), lineWidth: 0.5))
+                    .shadow(color: .black.opacity(0.28), radius: 10, y: 4)
             )
-            .overlay(edgeLight)
             .environment(\.colorScheme, .dark)
             .animation(.smooth(duration: 0.3), value: model.phase)
             .animation(.smooth(duration: 0.3), value: model.mode)
-        }
-    }
-
-    /// A faint arc of light travelling around the edge while listening or thinking.
-    @ViewBuilder private var edgeLight: some View {
-        if animating {
-            // Slow-moving light: 30 fps looks identical and halves its cost.
-            clock(fps: 30) { t in
-                let angle = (t * (isProcessing ? 140 : 70)).truncatingRemainder(dividingBy: 360)
-                Capsule(style: .continuous)
-                    .strokeBorder(
-                        AngularGradient(stops: [
-                            .init(color: accent.opacity(0), location: 0),
-                            .init(color: accent.opacity(0.75), location: 0.12),
-                            .init(color: accent.opacity(0), location: 0.3),
-                            .init(color: accent.opacity(0), location: 1),
-                        ], center: .center, angle: .degrees(angle)),
-                        lineWidth: 1)
-            }
-            .allowsHitTesting(false)
-            .transition(.opacity)
         }
     }
 
@@ -268,10 +298,10 @@ private struct HaloView: View {
             clock { _ in
                 let l = CGFloat(model.meter.level)
                 ZStack {
-                    Circle().fill(accent.opacity(0.22)).frame(width: 16, height: 16).scaleEffect(0.6 + l * 0.7)
-                    Circle().fill(accent).frame(width: 7, height: 7).scaleEffect(1 + l * 0.35)
+                    Circle().fill(accent.opacity(0.25)).frame(width: 14, height: 14).scaleEffect(0.5 + l * 0.8)
+                    Circle().fill(accent).frame(width: 6, height: 6).scaleEffect(1 + l * 0.3)
                 }
-                .frame(width: 16, height: 16)
+                .frame(width: 14, height: 14)
             }
         case .processing:
             clock { t in
@@ -302,41 +332,33 @@ private struct HaloView: View {
     @ViewBuilder private var center: some View {
         switch model.phase {
         case .recording:
-            ZStack(alignment: .trailing) {
-                if !model.liveText.isEmpty {
-                    LiveWords(text: model.liveText, newWordID: model.newWordID)
-                        .frame(width: Self.centerWidth, height: 20, alignment: .trailing)
-                        .clipped()
-                        .mask(LinearGradient(stops: [.init(color: .black.opacity(0), location: 0), .init(color: .black, location: 0.16)],
-                                             startPoint: .leading, endPoint: .trailing))
-                        .transition(.opacity)
-                } else if let hint = model.hint {
+            // Just the voice: words go to the captions card (when on), so the bar stays small and quiet.
+            Group {
+                if let hint = model.hint {
                     Text(hint)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.white.opacity(0.55))
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(.white.opacity(0.6))
                         .lineLimit(1)
-                        .frame(width: Self.centerWidth, alignment: .leading)
+                        .fixedSize()
                         .transition(.opacity)
                 } else {
                     clock { t in
                         VoiceWave(time: t, level: Double(model.meter.level), bands: model.meter.bands, accent: accent)
                     }
-                    .frame(width: Self.centerWidth, height: 20)
+                    .frame(width: Self.centerWidth, height: 16)
                     .transition(.opacity)
                 }
             }
-            .frame(width: Self.centerWidth, height: 20)
-            .animation(.smooth(duration: 0.25), value: model.liveText.isEmpty)
             .animation(.smooth(duration: 0.25), value: model.hint)
         case .processing(let label):
             Text(label.replacingOccurrences(of: "…", with: ""))
-                .font(.system(size: 12.5))
+                .font(.system(size: 12))
                 .foregroundStyle(.white.opacity(0.62))
                 .fixedSize()
         case .done(let label):
             Text(label)
-                .font(.system(size: 12.5))
-                .foregroundStyle(.white.opacity(0.7))
+                .font(.system(size: 12))
+                .foregroundStyle(.white.opacity(0.72))
                 .fixedSize()
         case .message(let text, _):
             Text(text)
@@ -374,36 +396,143 @@ private struct HaloView: View {
     }
 }
 
-/// Only the newest word materializes out of a blur; earlier text stays perfectly still.
-private struct LiveWords: View {
-    let text: String
-    let newWordID: Int
+// MARK: - Live captions
+
+/// What you're saying (fillers and self-corrections shown struck through, the way Freshflo will drop them)
+/// and what it detects: a list or sentences, a question, a correction. After a dictation it shows what was typed.
+private struct CaptionsCard: View {
+    @ObservedObject var model: PillModel
+    let accent: Color
+    static let width: CGFloat = 460
+
+    private var phaseKey: Int {
+        switch model.phase {
+        case .recording: return 1
+        case .processing: return 2
+        case .done: return 3
+        default: return 0
+        }
+    }
 
     var body: some View {
-        let words = text.split(separator: " ")
-        HStack(spacing: 4) {
-            if words.count > 1 {
-                Text(words.dropLast().joined(separator: " "))
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(spacing: 6) {
+                header
+                Spacer(minLength: 10)
+                chips
             }
-            if let last = words.last {
-                Text(last)
-                    .id(newWordID)
-                    .transition(.modifier(active: BlurFade(amount: 1), identity: BlurFade(amount: 0)))
-            }
+            content
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .font(.system(size: 13))
-        .foregroundStyle(.white.opacity(0.92))
-        .lineLimit(1)
-        .fixedSize()
-        .animation(.easeOut(duration: 0.22), value: newWordID)
+        .padding(.horizontal, 16)
+        .padding(.top, 11)
+        .padding(.bottom, 13)
+        .frame(width: Self.width, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.black.opacity(0.74))
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(.ultraThinMaterial))
+                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.white.opacity(0.12), lineWidth: 0.5))
+                .shadow(color: .black.opacity(0.3), radius: 14, y: 6)
+        )
+        .environment(\.colorScheme, .dark)
+        .animation(.smooth(duration: 0.25), value: model.insight)
+        .animation(.smooth(duration: 0.25), value: phaseKey)
+    }
+
+    @ViewBuilder private var header: some View {
+        let label: String = {
+            switch model.phase {
+            case .done: return model.appLabel.isEmpty ? "Typed" : "Typed into \(model.appLabel.components(separatedBy: " · ").first ?? "")"
+            case .processing: return "Polishing"
+            default: return model.appLabel.isEmpty ? "Listening" : model.appLabel
+            }
+        }()
+        Text(label)
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(.white.opacity(0.5))
+            .lineLimit(1)
+    }
+
+    @ViewBuilder private var chips: some View {
+        let insight = model.finalText.map(CaptionInsight.of) ?? model.insight
+        HStack(spacing: 5) {
+            if model.finalText == nil {
+                if insight.fillers > 0 { chip(insight.fillers == 1 ? "1 filler" : "\(insight.fillers) fillers", strong: false) }
+                if insight.correction { chip("Correction", strong: false) }
+            }
+            if !insight.structure.isEmpty { chip(insight.structure, strong: insight.isList) }
+        }
+    }
+
+    private func chip(_ text: String, strong: Bool) -> some View {
+        Text(text)
+            .font(.system(size: 10.5, weight: .semibold))
+            .foregroundStyle(strong ? accent : .white.opacity(0.6))
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(Capsule().fill(strong ? accent.opacity(0.16) : Color.white.opacity(0.08)))
+            .transition(.opacity.combined(with: .scale(scale: 0.9)))
+    }
+
+    @ViewBuilder private var content: some View {
+        if let final = model.finalText {
+            Text(final)
+                .font(.system(size: 14))
+                .foregroundStyle(.white.opacity(0.92))
+                .lineLimit(7)
+                .transition(.opacity)
+        } else if !model.captionsAvailable {
+            Text("Captions need Apple's on-device speech for your language. Turn on Speech Recognition, or download the speech model, in Settings → General.")
+                .font(.system(size: 12.5))
+                .foregroundStyle(.white.opacity(0.6))
+        } else if model.liveText.isEmpty {
+            Text(model.phase == .recording ? "Start talking…" : "")
+                .font(.system(size: 14))
+                .foregroundStyle(.white.opacity(0.4))
+        } else {
+            CaptionText(text: model.liveText)
+                .opacity(model.phase == .recording ? 1 : 0.55)
+        }
     }
 }
 
-private struct BlurFade: ViewModifier {
-    let amount: CGFloat
+/// The words heard so far: the last few lines, with fillers and self-corrections struck through.
+private struct CaptionText: View {
+    let text: String
+    private static let maxWords = 48
 
-    func body(content: Content) -> some View {
-        content.blur(radius: amount * 4).opacity(1 - amount)
+    var body: some View {
+        var words = text.split(separator: " ").map(String.init)
+        let trimmed = words.count > Self.maxWords
+        if trimmed { words = Array(words.suffix(Self.maxWords)) }
+        let marked = Self.marks(words)
+        var line = Text(trimmed ? "… " : "")
+        for (i, word) in words.enumerated() {
+            let piece = Text(word)
+            line = line + (marked[i] ? piece.foregroundColor(.white.opacity(0.32)).strikethrough(true, color: .white.opacity(0.32)) : piece.foregroundColor(.white.opacity(0.94)))
+            if i < words.count - 1 { line = line + Text(" ") }
+        }
+        return line
+            .font(.system(size: 14.5))
+            .lineLimit(3)
+            .truncationMode(.head)
+    }
+
+    /// Fillers ("um", "uh") and the words a self-correction replaces ("Tuesday no wait" in "Tuesday no wait Wednesday").
+    static func marks(_ words: [String]) -> [Bool] {
+        let keys = words.map { $0.lowercased().trimmingCharacters(in: .punctuationCharacters) }
+        var marked = keys.map { CaptionInsight.fillerWords.contains($0) }
+        for i in keys.indices where i + 1 < keys.count {
+            let pair = keys[i] + " " + keys[i + 1]
+            guard CaptionInsight.correctionPhrases.contains(pair) else { continue }
+            marked[i] = true
+            marked[i + 1] = true
+            // The word just before "no wait" is the one being replaced.
+            if i > 0 { marked[i - 1] = true }
+        }
+        return marked
     }
 }
 
@@ -497,7 +626,23 @@ struct PillView: View {
     }
 
     @ViewBuilder private var indicator: some View {
-        if model.style == .halo { HaloView(model: model) } else { MinimalPillView(model: model) }
+        VStack(spacing: 10) {
+            if showCaptions {
+                CaptionsCard(model: model, accent: IndicatorAccent.color(mode: model.mode, theme: model.theme, error: false))
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+            if model.style == .halo { HaloView(model: model) } else { MinimalPillView(model: model) }
+        }
+        .animation(.smooth(duration: 0.3), value: showCaptions)
+    }
+
+    private var showCaptions: Bool {
+        guard model.captionsOn, model.mode == .dictation else { return false }
+        switch model.phase {
+        case .recording, .processing: return true
+        case .done: return model.finalText != nil
+        default: return false
+        }
     }
 }
 
@@ -507,7 +652,7 @@ struct PillView: View {
 final class PillController {
     static let bottomInset: CGFloat = 22
     static let leadingInset: CGFloat = 40
-    private static let capsuleHeight: CGFloat = 38
+    private static let capsuleHeight: CGFloat = 32
 
     let model = PillModel()
     private let panel: NSPanel
@@ -520,7 +665,7 @@ final class PillController {
     init() {
         // Extra room around the capsule so the glow is never clipped.
         panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 760, height: 130),
+            contentRect: NSRect(x: 0, y: 0, width: 760, height: 330),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: true
@@ -537,7 +682,9 @@ final class PillController {
 
     func showRecording(mode: DictationMode, locked: Bool, anchor: CGRect? = nil) {
         let settings = AppSettings.shared
-        self.anchor = settings.indicatorPosition == .caret ? anchor : nil
+        model.captionsOn = settings.showCaptions
+        // Captions sit above the bar, so with them on the bar stays at the bottom of the screen instead of covering the line you're writing.
+        self.anchor = settings.indicatorPosition == .caret && !settings.showCaptions ? anchor : nil
         model.anchoredLeading = self.anchor != nil
         model.style = settings.indicatorStyle
         model.theme = settings.indicatorTheme
@@ -554,11 +701,12 @@ final class PillController {
         present()
     }
 
-    /// Brief confirmation (ripple + check) after text lands, then dissolves.
-    func success(_ label: String) {
+    /// Brief confirmation (check + label) after text lands, then dissolves. With captions on, shows what was typed a little longer.
+    func success(_ label: String, typed: String? = nil) {
+        model.finalText = model.captionsOn ? typed?.trimmingCharacters(in: .whitespacesAndNewlines) : nil
         model.phase = .done(label)
         present()
-        scheduleHide(after: 0.9)
+        scheduleHide(after: model.finalText == nil ? 0.9 : 2.6)
     }
 
     func flash(_ message: String, seconds: Double = 2.4, isError: Bool = true) {
@@ -642,28 +790,53 @@ enum PillPreview {
             m.meter.freeze(level: level, bands: bands)
             return m
         }
-        let states: [(String, PillModel)] = [
-            ("Dictating", model(.recording)),
-            ("Bass-heavy voice", model(.recording, bands: SIMD3(0.95, 0.4, 0.1))),
-            ("Hands-free + too quiet", model(.recording, locked: true, level: 0.05, bands: .zero, hint: "Too quiet? Speak up or check your mic")),
-            ("Live words", model(.recording, live: "so I was thinking we could meet on Wednesday and can you send the deck")),
-            ("Theme: Sunset", model(.recording, theme: .sunset)),
+        func captioned(_ phase: PillModel.Phase, live: String, final: String? = nil, app: String = "Slack · Casual", available: Bool = true) -> PillModel {
+            let m = model(phase, live: live)
+            m.captionsOn = true
+            m.captionsAvailable = available
+            m.appLabel = app
+            m.finalText = final
+            return m
+        }
+        let bars: [(String, PillModel)] = [
+            ("Listening", model(.recording)),
+            ("Hands-free", model(.recording, locked: true, level: 0.35)),
+            ("Too quiet", model(.recording, locked: true, level: 0.05, bands: .zero, hint: "Too quiet? Speak up or check your mic")),
             ("Command", model(.recording, mode: .command, level: 0.4)),
-            ("Ask", model(.recording, mode: .ask, level: 0.5)),
-            ("Processing", model(.processing("Polishing…"))),
+            ("Polishing", model(.processing("Polishing…"))),
             ("Done", model(.done("24 words"))),
             ("Error", model(.message("Network is offline — audio saved, retry from the menu", isError: true))),
         ]
-        let view = VStack(alignment: .center, spacing: 18) {
-            ForEach(Array(states.enumerated()), id: \.offset) { _, item in
-                VStack(spacing: 6) {
-                    Text(item.0).font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.6))
-                    HaloView(model: item.1)
+        let captions: [(String, PillModel)] = [
+            ("Captions · sentences, a correction", captioned(.recording, live: "um so I think we should push the launch to Tuesday no wait Wednesday because the payment fix isn't in")),
+            ("Captions · a list", captioned(.recording, live: "OK, so for the trip I need three things first my charger second, my passport and third", app: "Notes · Casual")),
+            ("Captions · Prompt mode", captioned(.recording, live: "can you refactor the login page and uh add tests for the token refresh", app: "Cursor · Prompt mode")),
+            ("Captions · typed", captioned(.done("3-item list"), live: "", final: "For the trip I need:\n1. My charger\n2. My passport\n3. Sunscreen", app: "Notes · Casual")),
+            ("Captions · unavailable", captioned(.recording, live: "", available: false)),
+        ]
+        let view = HStack(alignment: .top, spacing: 40) {
+            VStack(alignment: .center, spacing: 18) {
+                ForEach(Array(bars.enumerated()), id: \.offset) { _, item in
+                    VStack(spacing: 6) {
+                        Text(item.0).font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.6))
+                        HaloView(model: item.1)
+                    }
+                }
+            }
+            VStack(alignment: .center, spacing: 22) {
+                ForEach(Array(captions.enumerated()), id: \.offset) { _, item in
+                    VStack(spacing: 6) {
+                        Text(item.0).font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.6))
+                        VStack(spacing: 10) {
+                            CaptionsCard(model: item.1, accent: IndicatorAccent.color(mode: .dictation, theme: .fresh, error: false))
+                            HaloView(model: item.1)
+                        }
+                    }
                 }
             }
         }
         .padding(40)
-        .frame(width: 760)
+        .frame(width: 1080)
         .background(LinearGradient(colors: [Color(red: 0.12, green: 0.14, blue: 0.22), Color(red: 0.22, green: 0.18, blue: 0.3)],
                                    startPoint: .top, endPoint: .bottom))
         let renderer = ImageRenderer(content: view)

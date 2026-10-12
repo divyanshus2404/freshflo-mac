@@ -13,6 +13,8 @@ enum Tone: String, Codable, CaseIterable, Identifiable {
         case .prompt: return "Prompt (for AI tools)"
         }
     }
+    /// For the captions card: "Slack · Casual".
+    var shortLabel: String { self == .prompt ? "Prompt mode" : label }
 
     var example: String {
         switch self {

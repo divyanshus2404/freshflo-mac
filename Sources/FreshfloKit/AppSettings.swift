@@ -54,6 +54,10 @@ final class AppSettings: ObservableObject {
     @Published var useScreenContext: Bool { didSet { defaults.set(useScreenContext, forKey: "useScreenContext") } }
     @Published var offlineFallback: Bool { didSet { defaults.set(offlineFallback, forKey: "offlineFallback") } }
     @Published var livePreview: Bool { didSet { defaults.set(livePreview, forKey: "livePreview") } }
+    /// Live captions above the bar: what you're saying and what Freshflo detects (list, sentences, question, the app's style).
+    @Published var showCaptions: Bool { didSet { defaults.set(showCaptions, forKey: "showCaptions") } }
+    /// Spoken lists ("first… second…", "bullet point…") become real lists.
+    @Published var smartLists: Bool { didSet { defaults.set(smartLists, forKey: "smartLists") } }
     /// Language to write in regardless of the spoken language (empty = same as spoken).
     @Published var outputLanguage: String { didSet { defaults.set(outputLanguage, forKey: "outputLanguage") } }
     @Published var regionalFormat: RegionalFormat { didSet { defaults.set(regionalFormat.rawValue, forKey: "regionalFormat") } }
@@ -113,6 +117,8 @@ final class AppSettings: ObservableObject {
         offlineFallback = d.object(forKey: "offlineFallback") as? Bool ?? true
         autoLearn = d.object(forKey: "autoLearn") as? Bool ?? true
         livePreview = d.object(forKey: "livePreview") as? Bool ?? true
+        showCaptions = d.object(forKey: "showCaptions") as? Bool ?? false
+        smartLists = d.object(forKey: "smartLists") as? Bool ?? true
         keepMeetingAudio = d.object(forKey: "keepMeetingAudio") as? Bool ?? false
         askModeEnabled = d.object(forKey: "askModeEnabled") as? Bool ?? true
         indicatorStyle = IndicatorStyle(rawValue: d.string(forKey: "indicatorStyle") ?? "") ?? .halo

@@ -185,8 +185,25 @@ private struct GeneralTab: View {
                     Text("System default").tag("")
                     ForEach(devices) { Text($0.name).tag($0.uid) }
                 }
-                Toggle("Show my words live while I speak (on-device, private)", isOn: $settings.livePreview)
-                if settings.livePreview, localStatus != "Ready" {
+                Toggle(isOn: $settings.showCaptions) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Live captions while I speak")
+                        Text("A card above the bar shows your words as you say them, and what Freshflo detects: a list or sentences, a question, a self-correction, filler words. Recognised on your Mac; nothing extra is sent.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                .onChange(of: settings.showCaptions) { _, on in
+                    guard on else { return }
+                    Task { @MainActor in
+                        // Captions fall back to Apple's older on-device recognizer, which needs Speech Recognition permission.
+                        _ = await LocalSpeech.requestAuthorization()
+                        LivePreview.prepare(language: settings.language)
+                        refreshLocalStatus()
+                        // macOS 26: fetch Apple's speech model for the language so captions are instant and fully on-device.
+                        if #available(macOS 26.0, *), !LivePreview.isReady, !downloading { downloadLocal() }
+                    }
+                }
+                if settings.showCaptions, localStatus != "Ready" {
                     LabeledContent("On-device speech model") {
                         HStack {
                             Text(localStatus).foregroundStyle(.secondary)
@@ -306,7 +323,7 @@ private struct GeneralTab: View {
     }
 
     private func refreshLocalStatus() {
-        guard settings.provider == .local || settings.offlineFallback || settings.livePreview else { return }
+        guard settings.provider == .local || settings.offlineFallback || settings.livePreview || settings.showCaptions else { return }
         let language = settings.language
         Task { @MainActor in localStatus = await LocalSpeech.status(language: language) }
     }
@@ -420,6 +437,12 @@ private struct ToneTab: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Prompt mode in AI tools")
                         Text("In Cursor, Claude, ChatGPT, AI chat sites and terminals running Claude Code or Codex, write a clear, structured prompt.").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                Toggle(isOn: $settings.smartLists) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Smart lists")
+                        Text("Say \u{201C}first… second… third…\u{201D} for a numbered list, or \u{201C}bullet point…\u{201D} for bullets. Everything else stays as sentences.").font(.caption).foregroundStyle(.secondary)
                     }
                 }
                 Toggle(isOn: $settings.fixGrammar) {

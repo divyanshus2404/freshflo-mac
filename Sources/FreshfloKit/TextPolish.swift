@@ -38,6 +38,9 @@ enum TextPolish {
         var grammar = true
         var tone: Tone = .casual
         var translating = false
+        /// Format spoken lists ("first… second…", "bullet point…") as one item per line.
+        var lists = true
+        var bullet = "• "
     }
 
     static func apply(_ text: String, _ o: Options) -> String {
@@ -49,7 +52,9 @@ enum TextPolish {
             s = snapToDictionary(s, dictionary: o.dictionary)
             if o.grammar { s = grammarBasics(s, tone: o.tone) }
         }
-        return tidy(s)
+        s = tidy(s)
+        if o.lists { s = ListFormat.apply(s, bullet: o.bullet, capitalize: o.tone != .veryCasual) }
+        return s
     }
 
     // MARK: Stutters and repeats

@@ -193,6 +193,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
             menu.addItem(recent)
         }
 
+        let captions = item("Live Captions", #selector(toggleCaptions))
+        captions.state = settings.showCaptions ? .on : .off
+        captions.toolTip = "Show your words and what Freshflo detects while you speak"
+        menu.addItem(captions)
+
         menu.addItem(.separator())
         if MeetingController.shared.isRecording {
             let s = Int(MeetingController.shared.elapsed)
@@ -209,6 +214,15 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         menu.addItem(item("Check for Updates…", #selector(checkForUpdates)))
         menu.addItem(.separator())
         menu.addItem(item("Quit Freshflo", #selector(NSApplication.terminate(_:)), key: "q", target: NSApp))
+    }
+
+    @objc private func toggleCaptions() {
+        settings.showCaptions.toggle()
+        guard settings.showCaptions else { return }
+        Task { @MainActor in
+            _ = await LocalSpeech.requestAuthorization()
+            LivePreview.prepare(language: settings.language)
+        }
     }
 
     private func item(_ title: String, _ action: Selector, key: String = "", target: AnyObject? = nil) -> NSMenuItem {
