@@ -156,6 +156,7 @@ struct CaptionInsight: Equatable {
     var isList = false
     var correction = false
     var fillers = 0
+    var language: String?
 
     static let empty = CaptionInsight(structure: "")
     static let fillerWords: Set<String> = ["um", "umm", "uh", "uhh", "er", "erm", "ah", "hmm", "mm"]
@@ -183,7 +184,14 @@ struct CaptionInsight: Equatable {
                 structure = sentences > 1 ? "\(sentences) sentences" : "Sentence"
             }
         }
-        return CaptionInsight(structure: structure, isList: list.kind != nil, correction: correction, fillers: fillers)
+        var result = CaptionInsight(structure: structure, isList: list.kind != nil, correction: correction, fillers: fillers)
+        // The language you're speaking (and what it'll be written in), once there's enough to tell.
+        if words.count >= 4, let spoken = LanguageID.detect(text: text, whisperGuess: nil, hints: AppSettings.shared.spokenLanguages) {
+            let target = AppSettings.shared.outputLanguage.components(separatedBy: " (").first ?? ""
+            if !target.isEmpty, target != spoken.name { result.language = "\(spoken.name) → \(target)" }
+            else if spoken.code != "en" || spoken.hinglish { result.language = spoken.name }
+        }
+        return result
     }
 }
 
@@ -484,6 +492,7 @@ private struct CaptionsCard: View {
             if model.finalText == nil {
                 if insight.fillers > 0 { chip(insight.fillers == 1 ? "1 filler" : "\(insight.fillers) fillers", strong: false) }
                 if insight.correction { chip("Correction", strong: false) }
+                if let language = insight.language { chip(language, strong: false) }
             }
             if !insight.structure.isEmpty { chip(insight.structure, strong: insight.isList) }
         }

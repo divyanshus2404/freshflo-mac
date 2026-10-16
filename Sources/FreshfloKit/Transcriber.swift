@@ -205,8 +205,14 @@ enum Transcriber {
         }
     }
 
+    /// The language Whisper reported for the most recent upload ("hi", "en"…), when the server says.
+    nonisolated(unsafe) static var lastLanguage: String?
+
     private static func upload(_ audio: Data, filename: String, mime: String, endpoint: ProviderEndpoint, prompt: String?) async throws -> String {
-        let json = try await uploadJSON(audio, filename: filename, mime: mime, endpoint: endpoint, prompt: prompt, format: "json")
+        // Groq's verbose_json also reports the detected language, at no extra cost.
+        let verbose = endpoint.baseURL.contains("groq.com")
+        let json = try await uploadJSON(audio, filename: filename, mime: mime, endpoint: endpoint, prompt: prompt, format: verbose ? "verbose_json" : "json")
+        lastLanguage = (json["language"] as? String).flatMap(LanguageID.code(forWhisperName:)) ?? (endpoint.language.isEmpty ? nil : endpoint.language)
         guard let text = json["text"] as? String else { throw APIError.badResponse }
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }

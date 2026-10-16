@@ -238,6 +238,24 @@ enum Cleanup {
         SnippetExpander.normalize(s).split(separator: " ").map(String.init)
     }
 
+    /// A second, stricter translation when the first one didn't come out in the requested language.
+    static func translateStrict(_ text: String, original: String, to language: String, settings: AppSettings) async -> String? {
+        let instructions = """
+        Translate the message into \(language). The output MUST be entirely in \(language)\(language.lowercased().hasPrefix("hinglish") ? " written in Latin (Roman) letters, never Devanagari" : ""), with natural grammar and punctuation, as a native speaker would write it.
+        Keep names, brands, numbers, email addresses, URLs and code exactly as they are. Keep the meaning and tone; don't add or drop anything.
+        Output only the translated message.
+        """
+        let prompt = "Original (as spoken):\n\(original)\n\nDraft:\n\(text)"
+        let reply: String?
+        if settings.canUseCloud {
+            reply = try? await chat(instructions: instructions, prompt: prompt, endpoint: settings.endpoint.smart, temperature: 0)
+        } else if AppleModel.isAvailable {
+            reply = try? await AppleModel.respond(instructions: instructions, prompt: prompt)
+        } else { reply = nil }
+        guard let out = reply.map(stripThinking), !out.isEmpty, LanguageID.matches(out, target: language) else { return nil }
+        return out
+    }
+
     /// Groq's free tier limits tokens per minute *per model*, so a burst of dictations can exhaust one model while others are free.
     private static let rateLimitFallbacks = ["openai/gpt-oss-20b", "openai/gpt-oss-120b"]
     private static let limitLock = NSLock()

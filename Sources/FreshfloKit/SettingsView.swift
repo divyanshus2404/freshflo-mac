@@ -141,6 +141,7 @@ private struct GeneralTab: View {
                     ForEach(Languages.spoken, id: \.code) { Text($0.name).tag($0.code) }
                     if !Languages.spoken.contains(where: { $0.code == settings.language }) { Text(settings.language).tag(settings.language) }
                 }
+                if settings.language.isEmpty { SpokenLanguagesRow() }
             }
             .onChange(of: settings.language) { _, language in
                 LivePreview.prepare(language: language)
@@ -1098,5 +1099,39 @@ private struct WhisperRow: View {
             } catch { self.error = error.localizedDescription }
             progress = nil
         }
+    }
+}
+
+
+/// "Languages I speak": detection only considers these, and a clip heard as another language is transcribed again in yours.
+private struct SpokenLanguagesRow: View {
+    @ObservedObject private var settings = AppSettings.shared
+
+    var body: some View {
+        LabeledContent {
+            Menu(summary) {
+                ForEach(Languages.spoken.filter { !$0.code.isEmpty }, id: \.code) { lang in
+                    Button { toggle(lang.code) } label: {
+                        if settings.spokenLanguages.contains(lang.code) { Label(lang.name, systemImage: "checkmark") } else { Text(lang.name) }
+                    }
+                }
+            }
+            .fixedSize()
+        } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Languages I speak")
+                Text("Freshflo detects which one you're using each time. Pick only yours, so a short clip is never mistaken for another language.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var summary: String {
+        let names = settings.spokenLanguages.compactMap { code in Languages.spoken.first { $0.code == code }?.name }
+        return names.isEmpty ? "Any language" : names.joined(separator: ", ")
+    }
+
+    private func toggle(_ code: String) {
+        if let i = settings.spokenLanguages.firstIndex(of: code) { settings.spokenLanguages.remove(at: i) } else { settings.spokenLanguages.append(code) }
     }
 }

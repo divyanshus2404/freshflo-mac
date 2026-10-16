@@ -354,7 +354,7 @@ public enum CLI {
         let transcript = try await Pipeline.transcribe(trimmed, settings: settings, forceLocal: CommandLine.arguments.contains("--local"), extraVocabulary: vocab) {
             print("status: \($0)")
         }
-        print("raw [\(transcript.engine), \(ms(since: start))]: \(transcript.text)")
+        print("raw [\(transcript.engine), \(ms(since: start))] (detected: \(transcript.language?.name ?? "?")): \(transcript.text)")
 
         start = Date()
         let result = await Pipeline.polish(raw: transcript.text, context: context, settings: settings, mode: mode, extraVocabulary: vocab)

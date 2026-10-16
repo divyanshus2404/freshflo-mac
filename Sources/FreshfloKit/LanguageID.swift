@@ -1,0 +1,153 @@
+import Foundation
+import NaturalLanguage
+
+/// Which language was spoken, and whether a translation really came out in the language you asked for.
+/// Combines Whisper's own guess, Apple's text-based recognizer and the languages you said you speak; recognises
+/// Hinglish (Hindi written in Latin letters), which recognizers usually mistake for English.
+enum LanguageID {
+    struct Detection: Equatable {
+        var code: String        // Whisper/ISO code: "en", "hi", "ta"… ("hi" with hinglish = true for Hinglish)
+        var hinglish = false
+        var name: String {
+            if hinglish { return "Hinglish" }
+            return Languages.spoken.first { $0.code == code }?.name ?? code
+        }
+    }
+
+    // MARK: Spoken language
+
+    /// Common Hindi words written in Latin letters. Two or more (and some share of the words) means Hinglish, not English.
+    private static let hinglishWords: Set<String> = [
+        "hai", "hain", "nahi", "nahin", "kya", "kyun", "kyunki", "mein", "main", "mai", "yaar", "kal", "aaj", "aap", "tum", "hum",
+        "kar", "karo", "karna", "karke", "tha", "thi", "the", "hoga", "hogi", "bhai", "accha", "acha", "theek", "thik", "matlab",
+        "lekin", "aur", "toh", "bhi", "abhi", "jaldi", "bahut", "bohot", "kuch", "sab", "mujhe", "tujhe", "humein", "unko", "usko",
+        "wala", "wali", "raha", "rahi", "rahe", "gaya", "gayi", "chalo", "haan", "na", "ji", "ho", "hua", "kaise", "kab", "kahan",
+    ]
+
+    static func isHinglish(_ text: String) -> Bool {
+        let words = text.lowercased().split(whereSeparator: { !$0.isLetter }).map(String.init)
+        guard words.count >= 3, text.unicodeScalars.contains(where: { $0.properties.isAlphabetic && $0.value < 0x250 }) else { return false }
+        let hits = words.filter { hinglishWords.contains($0) && $0 != "the" && $0 != "main" && $0 != "na" && $0 != "ho" }.count
+        return hits >= 2 && Double(hits) / Double(words.count) >= 0.12
+    }
+
+    /// Apple's recognizer on the text, optionally limited to the languages you speak. Returns (code, confidence).
+    static func recognize(_ text: String, among hints: [String] = []) -> (String, Double)? {
+        let r = NLLanguageRecognizer()
+        let constraints = hints.compactMap(nlLanguage)
+        if constraints.count >= 2 { r.languageConstraints = constraints }
+        r.processString(text)
+        guard let (lang, p) = r.languageHypotheses(withMaximum: 1).first else { return nil }
+        return (whisperCode(lang), p)
+    }
+
+    /// The spoken language, from Whisper's guess (if any), the text and your languages.
+    static func detect(text: String, whisperGuess: String?, hints: [String]) -> Detection? {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty else { return nil }
+        if isHinglish(t) { return Detection(code: "hi", hinglish: true) }
+        // Whisper heard the audio, so trust it unless the text clearly says otherwise (checked against every language).
+        if let w = whisperGuess, !w.isEmpty {
+            if let (code, p) = recognize(t), code != w, p > 0.9, t.split(separator: " ").count >= 6 { return Detection(code: code) }
+            return Detection(code: w)
+        }
+        // No audio guess: a clearly identified language wins; otherwise pick among the languages you speak.
+        if let (code, p) = recognize(t), p > 0.8 { return Detection(code: code) }
+        return recognize(t, among: hints).map { Detection(code: $0.0) }
+    }
+
+    /// Whisper sometimes picks a language you don't speak on short or accented clips (and then transcribes in it).
+    /// True when the detected language isn't one of yours, so the audio should be transcribed again in yours.
+    static func isOutsideYours(_ detected: String?, hints: [String]) -> Bool {
+        guard let detected, !hints.isEmpty else { return false }
+        return !hints.contains(detected)
+    }
+
+    /// How sure Apple's recognizer is that `text` is in `code` (0…1), with no constraints.
+    static func confidence(_ text: String, is code: String) -> Double {
+        guard let lang = nlLanguage(code) else { return 0 }
+        let r = NLLanguageRecognizer()
+        r.processString(text)
+        return r.languageHypotheses(withMaximum: 5)[lang] ?? 0
+    }
+
+    /// Should the clip be transcribed again in one of your languages?
+    /// - Heard as a language you don't speak, and the text doesn't clearly read as that language (a shaky guess).
+    /// - Or a short clip heard as English that doesn't read as real English ("Hot TK." for "हाँ ठीक है"), when you speak others too.
+    static func shouldRetry(text: String, detected: String?, hints: [String]) -> Bool {
+        guard let detected, !hints.isEmpty else { return false }
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !hints.contains(detected) { return confidence(t, is: detected) < 0.8 }
+        let words = t.split(separator: " ").count
+        if detected == "en", hints.count > 1, words <= 5, !isHinglish(t) { return confidence(t, is: "en") < 0.5 }
+        return false
+    }
+
+    /// The language to try instead: the best of yours other than the one Whisper picked.
+    static func alternative(text: String, detected: String?, hints: [String]) -> String? {
+        let others = hints.filter { $0 != detected }
+        guard !others.isEmpty else { return nil }
+        if others.count == 1 { return others[0] }
+        return recognize(text, among: others)?.0 ?? others.first
+    }
+
+    /// The most likely of your languages for this text (used for the second, forced transcription).
+    static func bestOfYours(text: String, hints: [String]) -> String? {
+        if hints.count == 1 { return hints[0] }
+        if hints.contains("hi"), isHinglish(text) { return "hi" }
+        return recognize(text, among: hints)?.0 ?? hints.first
+    }
+
+    // MARK: Written language
+
+    /// "Write in" names → the code Apple's recognizer reports.
+    private static let writtenCodes: [String: String] = [
+        "English": "en", "Hindi": "hi", "Bengali": "bn", "Marathi": "mr", "Tamil": "ta", "Telugu": "te", "Gujarati": "gu", "Kannada": "kn",
+        "Malayalam": "ml", "Punjabi": "pa", "Urdu": "ur", "Nepali": "ne", "Spanish": "es", "French": "fr", "German": "de", "Portuguese": "pt",
+        "Italian": "it", "Dutch": "nl", "Swedish": "sv", "Norwegian": "no", "Danish": "da", "Finnish": "fi", "Polish": "pl", "Czech": "cs",
+        "Romanian": "ro", "Hungarian": "hu", "Greek": "el", "Ukrainian": "uk", "Russian": "ru", "Turkish": "tr", "Arabic": "ar", "Persian": "fa",
+        "Hebrew": "he", "Chinese (Simplified)": "zh", "Chinese (Traditional)": "zh", "Japanese": "ja", "Korean": "ko", "Vietnamese": "vi",
+        "Thai": "th", "Indonesian": "id", "Malay": "ms",
+    ]
+
+    /// True when `text` is (mostly) in the requested "Write in" language. Unknown targets pass.
+    static func matches(_ text: String, target: String) -> Bool {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard t.split(separator: " ").count >= 3 || t.count >= 12 else { return true }   // too short to judge
+        if target.lowercased().hasPrefix("hinglish") {
+            // Hindi in Latin letters: no Devanagari, and recognisably Hindi words.
+            return !t.unicodeScalars.contains { (0x0900...0x097F).contains($0.value) } && (isHinglish(t) || t.split(separator: " ").count < 6)
+        }
+        guard let code = writtenCodes[target] else { return true }
+        guard let (got, p) = recognize(t) else { return true }
+        if got == code { return true }
+        // Short or name-heavy text can be uncertain; only fail when the recognizer is fairly sure it's something else.
+        return p < 0.6
+    }
+
+    // MARK: Codes
+
+    private static func nlLanguage(_ code: String) -> NLLanguage? {
+        switch code {
+        case "zh": return .simplifiedChinese
+        case "no", "nn": return .norwegian
+        case "jw", "su", "yue", "haw", "la", "ln", "sn": return nil
+        default: return NLLanguage(rawValue: code)
+        }
+    }
+
+    private static func whisperCode(_ lang: NLLanguage) -> String {
+        switch lang {
+        case .simplifiedChinese, .traditionalChinese: return "zh"
+        case .norwegian: return "no"
+        default: return String(lang.rawValue.prefix(2))
+        }
+    }
+
+    /// Whisper's verbose_json reports the language by name ("hindi"); map it to its code.
+    static func code(forWhisperName name: String) -> String? {
+        let n = name.lowercased()
+        if n.count == 2 { return n }
+        return Languages.spoken.first { $0.name.lowercased() == n }?.code
+    }
+}

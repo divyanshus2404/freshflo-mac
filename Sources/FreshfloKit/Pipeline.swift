@@ -3,6 +3,8 @@ import Foundation
 struct Transcript {
     var text: String
     var engine: String
+    /// The spoken language, as best Freshflo can tell.
+    var language: LanguageID.Detection? = nil
 }
 
 /// The audio → text steps shared by live dictation and the CLI test hook.
@@ -19,12 +21,34 @@ enum Pipeline {
         // Your own words first, then the people you meet with most (transcription prompts are short).
         let vocabulary = settings.dictionary + extraVocabulary + settings.knownNames.prefix(30)
         if forceLocal || settings.provider == .local {
+            OnDeviceWhisper.lastLanguage = nil
             let text = try await LocalSpeech.transcribe(samples, language: settings.language, vocabulary: vocabulary, onStatus: onStatus)
-            return Transcript(text: text, engine: LocalSpeech.engineName(language: settings.language))
+            let detected = LanguageID.detect(text: text, whisperGuess: OnDeviceWhisper.isActive ? OnDeviceWhisper.lastLanguage : (settings.language.isEmpty ? nil : settings.language),
+                                             hints: settings.spokenLanguages)
+            return Transcript(text: text, engine: LocalSpeech.engineName(language: settings.language), language: detected)
         }
         do {
-            let text = try await Transcriber.transcribe(samples: samples, endpoint: settings.endpoint, vocabulary: vocabulary)
-            return Transcript(text: Transcriber.stripHallucinations(text), engine: settings.endpoint.transcriptionModel)
+            Transcriber.lastLanguage = nil
+            var text = Transcriber.stripHallucinations(try await Transcriber.transcribe(samples: samples, endpoint: settings.endpoint, vocabulary: vocabulary))
+            let hints = settings.spokenLanguages
+            var detected = LanguageID.detect(text: text, whisperGuess: Transcriber.lastLanguage, hints: hints)
+            // Whisper's language guess looks wrong (common on short or accented clips): try your other language and keep
+            // whichever reads more like its language.
+            if settings.language.isEmpty, LanguageID.shouldRetry(text: text, detected: detected?.code, hints: hints),
+               let yours = LanguageID.alternative(text: text, detected: detected?.code, hints: hints) {
+                var forced = settings.endpoint
+                forced.language = yours
+                if let again = try? await Transcriber.transcribe(samples: samples, endpoint: forced, vocabulary: vocabulary), !again.isEmpty {
+                    let candidate = Transcriber.stripHallucinations(again)
+                    let before = LanguageID.confidence(text, is: detected?.code ?? "en")
+                    let after = max(LanguageID.confidence(candidate, is: yours), yours == "hi" && LanguageID.isHinglish(candidate) ? 1 : 0)
+                    if after >= before {
+                        text = candidate
+                        detected = LanguageID.Detection(code: yours, hinglish: yours == "hi" && LanguageID.isHinglish(text))
+                    }
+                }
+            }
+            return Transcript(text: text, engine: settings.endpoint.transcriptionModel, language: detected)
         } catch {
             guard settings.offlineFallback, Transcriber.isNetworkError(error) else { throw error }
             // The live preview already heard everything on-device; use it instead of re-transcribing.
@@ -58,6 +82,11 @@ enum Pipeline {
             emailMode: settings.emailFormatting && EmailFormat.isMailTarget(bundleID: context.bundleID, windowTitle: context.windowTitle)
         )
         var result = await Cleanup.run(input, mode: mode ?? settings.cleanupMode, endpoint: settings.endpoint, canUseAPI: settings.canUseCloud)
+        // "Write in": make sure it really came out in that language (and script); if not, translate once more, strictly.
+        if input.translating, !LanguageID.matches(result.text, target: input.outputLanguage),
+           let strict = await Cleanup.translateStrict(result.text.isEmpty ? raw : result.text, original: raw, to: input.outputLanguage, settings: settings) {
+            result = CleanupResult(text: TextPolish.apply(strict, input.polish), engine: result.engine + "+verified")
+        }
         result.text = SnippetExpander.applyInline(result.text, snippets: snippets)
         return result
     }

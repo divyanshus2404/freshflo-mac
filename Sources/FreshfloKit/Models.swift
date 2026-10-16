@@ -218,6 +218,8 @@ struct HistoryItem: Codable, Identifiable, Hashable {
     var transcriber: String?
     /// Release-to-inserted time, for the History list.
     var latencyMs: Int?
+    /// What was spoken and what it was written in, e.g. "Hindi → English".
+    var languageNote: String?
 
     /// True when neither the audio nor the text left this Mac.
     var stayedOnDevice: Bool {

@@ -431,6 +431,19 @@ expectTrue(NameBook.isName("Priya Raghunathan"), "a real name")
 expect(NameBook.isName("Conference Room 4B"), false, "rooms aren't names")
 expect(NameBook.isName("noreply@zoom.us"), false, "emails aren't names")
 
+section("Languages")
+expectTrue(LanguageID.isHinglish("yaar kal meeting hai toh please report ready rakhna"), "Hinglish in Latin letters")
+expect(LanguageID.isHinglish("Can you send me the deck before the call tomorrow"), false, "English isn't Hinglish")
+expect(LanguageID.detect(text: "Können wir das Meeting auf Donnerstag verschieben? Ich bin morgen leider krank.", whisperGuess: "en", hints: ["en", "hi"])?.code, "de", "clear German beats a wrong guess")
+expect(LanguageID.detect(text: "मुझे कल सुबह मीटिंग में जाना है", whisperGuess: nil, hints: ["en", "hi"])?.code, "hi", "Hindi text")
+expectTrue(LanguageID.shouldRetry(text: "Hot TK.", detected: "en", hints: ["en", "hi"]), "short nonsense English is retried in Hindi")
+expect(LanguageID.shouldRetry(text: "Sounds good to me", detected: "en", hints: ["en", "hi"]), false, "real short English is kept")
+expect(LanguageID.shouldRetry(text: "Hola equipo, mañana la reunión empieza a las diez", detected: "es", hints: ["en", "hi"]), false, "clear Spanish is kept even if not in your list")
+expectTrue(LanguageID.matches("क्या आप मुझे कल कॉल से पहले अपडेटेड डेक भेज सकते हैं?", target: "Hindi"), "Hindi output matches Hindi")
+expect(LanguageID.matches("Can you send me the updated deck before the call tomorrow?", target: "Hindi"), false, "English output doesn't match Hindi")
+expectTrue(LanguageID.matches("Kya aap mujhe updated deck kal ke call se pehle bhej sakte ho?", target: "Hinglish (Hindi in Latin letters)"), "Hinglish output")
+expect(LanguageID.matches("क्या आप मुझे डेक भेज सकते हैं कल कॉल से पहले", target: "Hinglish (Hindi in Latin letters)"), false, "Devanagari isn't Hinglish")
+
 // MARK: - Result
 
 if failures.isEmpty {

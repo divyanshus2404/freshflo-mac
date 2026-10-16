@@ -69,13 +69,28 @@ enum OnDeviceWhisper {
         return o
     }
 
-    /// 16 kHz mono samples → text.
+    /// The language the last transcription was in ("hi", "en"…).
+    nonisolated(unsafe) static var lastLanguage: String?
+
+    /// 16 kHz mono samples → text. With auto-detect on, a clip heard as a language you don't speak is transcribed again in yours.
     static func transcribe(_ samples: [Float], language: String, vocabulary: [String]) async throws -> String {
         let kit = try await holder.get()
-        let results = try await kit.transcribe(audioArray: samples, decodeOptions: options(language: language, vocabulary: vocabulary, timestamps: false))
-        return Transcriber.stripHallucinations(results.map(\.text).joined(separator: " ")
-            .replacingOccurrences(of: #"<\|[^|]*\|>"#, with: "", options: .regularExpression)
-            .trimmingCharacters(in: .whitespacesAndNewlines))
+        func run(_ lang: String) async throws -> (String, String?) {
+            let results = try await kit.transcribe(audioArray: samples, decodeOptions: options(language: lang, vocabulary: vocabulary, timestamps: false))
+            let text = Transcriber.stripHallucinations(results.map(\.text).joined(separator: " ")
+                .replacingOccurrences(of: #"<\|[^|]*\|>"#, with: "", options: .regularExpression)
+                .trimmingCharacters(in: .whitespacesAndNewlines))
+            return (text, results.first?.language ?? (lang.isEmpty ? nil : lang))
+        }
+        var (text, detected) = try await run(language)
+        let hints = AppSettings.shared.spokenLanguages
+        if language.isEmpty, LanguageID.shouldRetry(text: text, detected: detected, hints: hints),
+           let yours = LanguageID.alternative(text: text, detected: detected, hints: hints) {
+            let (again, lang) = try await run(yours)
+            if LanguageID.confidence(again, is: yours) >= LanguageID.confidence(text, is: detected ?? "en") { (text, detected) = (again, lang ?? yours) }
+        }
+        lastLanguage = detected
+        return text
     }
 
     /// For meetings and files: timestamped segments.

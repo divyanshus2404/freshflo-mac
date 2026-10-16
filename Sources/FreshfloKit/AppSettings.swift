@@ -80,6 +80,9 @@ final class AppSettings: ObservableObject {
     /// The built-in engine uses Whisper on the Neural Engine (once downloaded) instead of Apple's recognizer.
     /// Names from Contacts and Calendar, most relevant first: spelling hints, kept apart from the user's own dictionary.
     /// A Monday notification with last week's words and time saved.
+    /// The languages you speak (Whisper codes). Detection is limited to these, and a clip heard as another language is
+    /// transcribed again in yours. Empty = any language.
+    @Published var spokenLanguages: [String] { didSet { save(spokenLanguages, "spokenLanguages") } }
     @Published var weeklyRecap: Bool { didSet { defaults.set(weeklyRecap, forKey: "weeklyRecap") } }
     @Published var knownNames: [String] { didSet { save(knownNames, "knownNames") } }
     @Published var useOnDeviceWhisper: Bool { didSet { defaults.set(useOnDeviceWhisper, forKey: "useOnDeviceWhisper") } }
@@ -155,6 +158,7 @@ final class AppSettings: ObservableObject {
         useOnDeviceWhisper = d.object(forKey: "useOnDeviceWhisper") as? Bool ?? true
         knownNames = Self.load("knownNames") ?? []
         weeklyRecap = d.object(forKey: "weeklyRecap") as? Bool ?? true
+        spokenLanguages = Self.load("spokenLanguages") ?? Self.defaultSpokenLanguages()
         offerMeetingNotes = d.object(forKey: "offerMeetingNotes") as? Bool ?? true
         blockedApps = Self.load("blockedApps") ?? []
         syncFolder = d.string(forKey: "syncFolder") ?? ""
@@ -225,6 +229,17 @@ final class AppSettings: ObservableObject {
 
     private func save<T: Encodable>(_ value: T, _ key: String) {
         if let data = try? JSONEncoder().encode(value) { defaults.set(data, forKey: key) }
+    }
+
+    /// English plus the Mac's own languages ("hi" for an Indian Mac in Hindi or English-India).
+    static func defaultSpokenLanguages() -> [String] {
+        var codes = ["en"]
+        for id in Locale.preferredLanguages.prefix(3) {
+            let code = String(id.prefix(2))
+            if Languages.spoken.contains(where: { $0.code == code }), !codes.contains(code) { codes.append(code) }
+        }
+        if Locale.current.region?.identifier == "IN", !codes.contains("hi") { codes.append("hi") }
+        return codes
     }
 
     private static func load<T: Decodable>(_ key: String) -> T? {

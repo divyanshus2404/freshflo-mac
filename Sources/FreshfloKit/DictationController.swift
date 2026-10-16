@@ -390,6 +390,14 @@ final class DictationController {
                 return
             }
 
+            // Shown when it matters: a language other than English, or speaking one and writing another.
+            let spoken = transcript.language ?? LanguageID.detect(text: transcript.text, whisperGuess: nil, hints: settings.spokenLanguages)
+            let target = settings.outputLanguage.components(separatedBy: " (").first ?? ""
+            var languageNote: String?
+            if let spoken {
+                if !target.isEmpty, spoken.name != target { languageNote = "\(spoken.name) → \(target)" }
+                else if spoken.code != "en" || spoken.hinglish { languageNote = spoken.name }
+            }
             var output: String
             let engine: String
             var replacedRecent = false
@@ -464,12 +472,14 @@ final class DictationController {
             history.add(HistoryItem(
                 date: Date(), appName: context.appName, bundleID: context.bundleID, raw: transcript.text,
                 text: output.trimmingCharacters(in: .whitespaces), tone: settings.tone(for: context.bundleID),
-                duration: duration, cleanup: engine, mode: mode, transcriber: transcript.engine, latencyMs: trace.totalMs
+                duration: duration, cleanup: engine, mode: mode, transcriber: transcript.engine, latencyMs: trace.totalMs,
+                languageNote: languageNote
             ))
             if pasted {
                 let words = output.split(whereSeparator: \.isWhitespace).count
                 let list = ListFormat.detect(output)
-                let label = mode == .command ? "Done" : list.kind != nil ? "\(list.items)-item list" : "\(words) word\(words == 1 ? "" : "s")"
+                var label = mode == .command ? "Done" : list.kind != nil ? "\(list.items)-item list" : "\(words) word\(words == 1 ? "" : "s")"
+                if mode == .dictation, let note = languageNote { label = note + " · " + label }
                 pill.success(label, typed: mode == .dictation ? output : nil)
                 play(.done)
             } else {

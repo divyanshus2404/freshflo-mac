@@ -222,6 +222,11 @@ final class Updater {
 /// Shown once after an update, so people see what got better.
 enum WhatsNew {
     static let notes: [String: [String]] = [
+        "0.15.0": [
+            "Freshflo now detects which language you spoke, including Hinglish, and shows it in the bar and in History.",
+            "Short or unclear clips heard in the wrong language are transcribed again in a language you speak.",
+            "Translations are checked: if the text didn't come out in the language you chose, Freshflo converts it again.",
+        ],
         "0.14.0": [
             "Whisper on this Mac: the same model as the cloud engines, running on your Neural Engine. No key, works offline, nothing leaves your Mac (Settings → General → Engine: Built-in).",
             "Names from Contacts and Calendar: the people you write to and meet with are spelled right (Settings → Dictionary → Import names).",
