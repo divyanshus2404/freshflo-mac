@@ -96,6 +96,13 @@ final class AppSettings: ObservableObject {
     @Published var regionalFormat: RegionalFormat { didSet { defaults.set(regionalFormat.rawValue, forKey: "regionalFormat") } }
     @Published var indicatorStyle: IndicatorStyle { didSet { defaults.set(indicatorStyle.rawValue, forKey: "indicatorStyle") } }
     @Published var indicatorTheme: IndicatorTheme { didSet { defaults.set(indicatorTheme.rawValue, forKey: "indicatorTheme") } }
+    /// Colours of the Custom theme, and themes you've saved or imported.
+    @Published var customTheme: UserTheme { didSet { defaults.set(try? JSONEncoder().encode(customTheme), forKey: "customTheme") } }
+    @Published var savedThemes: [UserTheme] { didSet { defaults.set(try? JSONEncoder().encode(savedThemes), forKey: "savedThemes") } }
+    /// Light, dark or match the Mac, for Freshflo's own windows.
+    @Published var appAppearance: AppAppearance { didSet { defaults.set(appAppearance.rawValue, forKey: "appAppearance"); let a = appAppearance; Task { @MainActor in a.apply() } } }
+    /// Size of the dictation indicator (0.8…1.4).
+    @Published var indicatorScale: Double { didSet { defaults.set(indicatorScale, forKey: "indicatorScale") } }
     /// Swear words: clean up (default), mask, or keep.
     @Published var profanity: ProfanityMode { didSet { defaults.set(profanity.rawValue, forKey: "profanity") } }
     /// Opt-in: anonymous daily usage counts and crash reports (never words or app names).
@@ -166,6 +173,10 @@ final class AppSettings: ObservableObject {
         askModeEnabled = d.object(forKey: "askModeEnabled") as? Bool ?? true
         indicatorStyle = IndicatorStyle(rawValue: d.string(forKey: "indicatorStyle") ?? "") ?? .halo
         indicatorTheme = IndicatorTheme(rawValue: d.string(forKey: "indicatorTheme") ?? "") ?? .fresh
+        customTheme = d.data(forKey: "customTheme").flatMap { try? JSONDecoder().decode(UserTheme.self, from: $0) } ?? .starter
+        savedThemes = d.data(forKey: "savedThemes").flatMap { try? JSONDecoder().decode([UserTheme].self, from: $0) } ?? []
+        appAppearance = AppAppearance(rawValue: d.string(forKey: "appAppearance") ?? "") ?? .system
+        indicatorScale = min(1.4, max(0.8, d.object(forKey: "indicatorScale") as? Double ?? 1))
         profanity = ProfanityMode(rawValue: d.string(forKey: "profanity") ?? "") ?? .cleanUp
         fixGrammar = d.object(forKey: "fixGrammar") as? Bool ?? true
         autoPromptMode = d.object(forKey: "autoPromptMode") as? Bool ?? true

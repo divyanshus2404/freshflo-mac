@@ -323,13 +323,8 @@ struct OnboardingView: View {
         DictationController.paused = true
         stopKeyMonitor()
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { event in
-            let down: Bool
-            switch settings.hotkey {
-            case .fn: down = event.modifierFlags.contains(.function) && (event.keyCode == 63 || event.keyCode == 179)
-            case .rightOption: down = event.keyCode == 61 && event.modifierFlags.contains(.option)
-            case .rightCommand: down = event.keyCode == 54 && event.modifierFlags.contains(.command)
-            case .rightControl: down = event.keyCode == 62 && event.modifierFlags.contains(.control)
-            }
+            let key = settings.hotkey
+            let down = key.keyCodes.contains(Int64(event.keyCode)) && (UInt64(event.modifierFlags.rawValue) & key.flagMask) != 0
             if settings.hotkey.keyCodes.contains(Int64(event.keyCode)) {
                 withAnimation(.easeOut(duration: 0.12)) { keyDown = down }
                 if down { keyWorks = true }

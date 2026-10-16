@@ -223,6 +223,9 @@ final class Updater {
 enum WhatsNew {
     static let notes: [String: [String]] = [
         "0.15.0": [
+            "New Appearance settings: pick a theme, make your own (colours for dictation, Command and Ask), save it, and share it as a file.",
+            "Light or dark Freshflo windows, and a bigger or smaller dictation indicator.",
+            "More talk keys: Left Option, Left Control and Right Shift.",
             "Freshflo now detects which language you spoke, including Hinglish, and shows it in the bar and in History.",
             "Short or unclear clips heard in the wrong language are transcribed again in a language you speak.",
             "Translations are checked: if the text didn't come out in the language you chose, Freshflo converts it again.",

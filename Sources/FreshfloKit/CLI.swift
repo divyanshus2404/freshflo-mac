@@ -7,7 +7,7 @@ import Foundation
 ///   Freshflo --command "make this formal" [--selection "hey whats up"]
 public enum CLI {
     public static var isRequested: Bool {
-        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update", "--grammar-eval", "--ask-meetings", "--render-stats", "--render-styles", "--diarize", "--mic-info", "--whisper-local"].contains(where: CommandLine.arguments.contains)
+        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update", "--grammar-eval", "--ask-meetings", "--render-stats", "--render-appearance", "--render-styles", "--diarize", "--mic-info", "--whisper-local"].contains(where: CommandLine.arguments.contains)
     }
 
     /// Shows the real floating indicator inside a proper app run loop with synthetic speech (performance checks).
@@ -294,6 +294,21 @@ public enum CLI {
         if let out = value("--render-styles") {
             StyleGallery.render(to: URL(fileURLWithPath: out))
             print("rendered \(out)")
+            return
+        }
+        if let out = value("--render-appearance") {
+            // A real window (Forms don't draw in ImageRenderer), captured offscreen.
+            _ = NSApplication.shared
+            let host = NSHostingView(rootView: AppearanceTab().frame(width: 640, height: 900))
+            let win = NSWindow(contentRect: NSRect(x: -3000, y: 0, width: 640, height: 900), styleMask: [.titled], backing: .buffered, defer: false)
+            win.contentView = host
+            win.orderFrontRegardless()
+            RunLoop.main.run(until: Date().addingTimeInterval(1.0))
+            if let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+                host.cacheDisplay(in: host.bounds, to: rep)
+                try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: out))
+                print("wrote \(out)")
+            }
             return
         }
         if let out = value("--render-stats") {

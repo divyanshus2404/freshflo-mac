@@ -3,7 +3,7 @@ import ServiceManagement
 import SwiftUI
 
 enum SettingsTab: Hashable {
-    case general, tone, dictionary, snippets, history, meetings, advanced
+    case general, appearance, tone, dictionary, snippets, history, meetings, advanced
 }
 
 final class SettingsRouter: ObservableObject {
@@ -16,6 +16,7 @@ struct SettingsView: View {
     var body: some View {
         TabView(selection: $router.tab) {
             GeneralTab().tabItem { Label("General", systemImage: "gearshape") }.tag(SettingsTab.general)
+            AppearanceTab().tabItem { Label("Appearance", systemImage: "paintpalette") }.tag(SettingsTab.appearance)
             ToneTab().tabItem { Label("Style", systemImage: "textformat") }.tag(SettingsTab.tone)
             DictionaryTab().tabItem { Label("Dictionary", systemImage: "character.book.closed") }.tag(SettingsTab.dictionary)
             SnippetsTab().tabItem { Label("Snippets", systemImage: "text.badge.plus") }.tag(SettingsTab.snippets)

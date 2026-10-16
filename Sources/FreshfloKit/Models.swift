@@ -40,7 +40,7 @@ enum Tone: String, Codable, CaseIterable, Identifiable {
 }
 
 enum HotkeyKey: String, CaseIterable, Identifiable {
-    case fn, rightOption, rightCommand, rightControl
+    case fn, rightOption, rightCommand, rightControl, leftOption, leftControl, rightShift
 
     var id: String { rawValue }
 
@@ -50,6 +50,9 @@ enum HotkeyKey: String, CaseIterable, Identifiable {
         case .rightOption: return "Right Option ⌥"
         case .rightCommand: return "Right Command ⌘"
         case .rightControl: return "Right Control ⌃"
+        case .leftOption: return "Left Option ⌥"
+        case .leftControl: return "Left Control ⌃"
+        case .rightShift: return "Right Shift ⇧"
         }
     }
 
@@ -59,6 +62,9 @@ enum HotkeyKey: String, CaseIterable, Identifiable {
         case .rightOption: return "Right ⌥"
         case .rightCommand: return "Right ⌘"
         case .rightControl: return "Right ⌃"
+        case .leftOption: return "Left ⌥"
+        case .leftControl: return "Left ⌃"
+        case .rightShift: return "Right ⇧"
         }
     }
 
@@ -69,6 +75,9 @@ enum HotkeyKey: String, CaseIterable, Identifiable {
         case .rightOption: return [61]
         case .rightCommand: return [54]
         case .rightControl: return [62]
+        case .leftOption: return [58]
+        case .leftControl: return [59]
+        case .rightShift: return [60]
         }
     }
 
@@ -79,6 +88,9 @@ enum HotkeyKey: String, CaseIterable, Identifiable {
         case .rightOption: return 0x40 // NX_DEVICERALTKEYMASK
         case .rightCommand: return 0x10 // NX_DEVICERCMDKEYMASK
         case .rightControl: return 0x2000 // NX_DEVICERCTLKEYMASK
+        case .leftOption: return 0x20 // NX_DEVICELALTKEYMASK
+        case .leftControl: return 0x01 // NX_DEVICELCTLKEYMASK
+        case .rightShift: return 0x04 // NX_DEVICERSHIFTKEYMASK
         }
     }
 }

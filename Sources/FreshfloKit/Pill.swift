@@ -20,7 +20,7 @@ enum IndicatorStyle: String, CaseIterable, Identifiable {
 }
 
 enum IndicatorTheme: String, CaseIterable, Identifiable {
-    case fresh, aurora, sunset, mono, matrix
+    case fresh, aurora, sunset, mono, matrix, custom
 
     var id: String { rawValue }
     var label: String { rawValue.capitalized }
@@ -86,6 +86,7 @@ final class PillModel: ObservableObject {
     @Published var startedAt = Date()
     @Published var style: IndicatorStyle = .halo
     @Published var theme: IndicatorTheme = .fresh
+    @Published var scale: Double = 1
     /// Pinned next to the caret: grow to the right only, so the orb never moves.
     @Published var anchoredLeading = false
     /// Island style: gap from the top of the panel (clears the notch / menu bar).
@@ -201,6 +202,14 @@ struct CaptionInsight: Equatable {
 enum IndicatorAccent {
     static func color(mode: DictationMode, theme: IndicatorTheme, error: Bool) -> Color {
         if error { return Color(red: 1.0, green: 0.72, blue: 0.32) }
+        if theme == .custom {
+            let t = AppSettings.shared.customTheme
+            switch mode {
+            case .command: return Color(hex: t.command)
+            case .ask: return Color(hex: t.ask)
+            case .dictation: return Color(hex: t.accent)
+            }
+        }
         switch mode {
         case .command: return Color(red: 0.72, green: 0.58, blue: 1.0)
         case .ask: return Color(red: 0.42, green: 0.67, blue: 1.0)
@@ -211,6 +220,7 @@ enum IndicatorAccent {
             case .sunset: return Color(red: 1.0, green: 0.58, blue: 0.45)
             case .mono: return Color(white: 0.94)
             case .matrix: return Color(red: 0.38, green: 0.95, blue: 0.58)
+            case .custom: return Color(hex: AppSettings.shared.customTheme.accent)
             }
         }
     }
@@ -770,11 +780,11 @@ struct PillView: View {
             HStack {
                 if model.anchoredLeading {
                     // Pinned at the caret: the orb stays put and the capsule grows to the right.
-                    indicator.padding(.leading, PillController.leadingInset)
+                    indicator.scaleEffect(model.scale, anchor: .bottomLeading).padding(.leading, PillController.leadingInset)
                     Spacer(minLength: 0)
                 } else {
                     Spacer(minLength: 0)
-                    indicator
+                    indicator.scaleEffect(model.scale, anchor: model.style.atTop ? .top : .bottom)
                     Spacer(minLength: 0)
                 }
             }
@@ -856,6 +866,7 @@ final class PillController {
         model.anchoredLeading = self.anchor != nil
         model.style = settings.indicatorStyle
         model.theme = settings.indicatorTheme
+        model.scale = settings.indicatorScale
         model.resetForRecording()
         model.mode = mode
         model.locked = locked

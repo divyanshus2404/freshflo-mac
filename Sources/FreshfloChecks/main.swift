@@ -1,3 +1,4 @@
+import SwiftUI
 // Logic checks for Freshflo. Run with:  swift run FreshfloChecks
 // (Plain executable so it works with only the Command Line Tools installed.)
 import Foundation
@@ -443,6 +444,14 @@ expectTrue(LanguageID.matches("क्या आप मुझे कल कॉल
 expect(LanguageID.matches("Can you send me the updated deck before the call tomorrow?", target: "Hindi"), false, "English output doesn't match Hindi")
 expectTrue(LanguageID.matches("Kya aap mujhe updated deck kal ke call se pehle bhej sakte ho?", target: "Hinglish (Hindi in Latin letters)"), "Hinglish output")
 expect(LanguageID.matches("क्या आप मुझे डेक भेज सकते हैं कल कॉल से पहले", target: "Hinglish (Hindi in Latin letters)"), false, "Devanagari isn't Hinglish")
+
+section("Themes and keys")
+expect(Color(hex: "#FF6FB5").hexString, "#FF6FB5", "theme colour round-trips through hex")
+expectTrue(Color.parseHex("12345") == nil && Color.parseHex("#GGGGGG") == nil, "bad hex rejected")
+expect(UserTheme.decode(Data(##"{"id":"6F9619FF-8B86-D011-B42D-00C04FC964FF","name":"  Neon ","accent":"#00FF88","command":"#AA00FF","ask":"#00AAFF"}"##.utf8))?.name, "Neon", "shared theme file imports")
+expectTrue(UserTheme.decode(Data(##"{"id":"6F9619FF-8B86-D011-B42D-00C04FC964FF","name":"x","accent":"red","command":"#AA00FF","ask":"#00AAFF"}"##.utf8)) == nil, "theme with a bad colour is refused")
+expect(Set(HotkeyKey.allCases.flatMap(\.keyCodes)).count, HotkeyKey.allCases.reduce(0) { $0 + $1.keyCodes.count }, "every talk key has its own key code")
+expect(Set(HotkeyKey.allCases.map(\.flagMask)).count, HotkeyKey.allCases.count, "every talk key has its own modifier bit")
 
 // MARK: - Result
 
