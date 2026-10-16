@@ -8,6 +8,30 @@ final class AppSettings: ObservableObject {
     private var reloading = false
 
     @Published var hotkey: HotkeyKey { didSet { defaults.set(hotkey.rawValue, forKey: "hotkey") } }
+    /// A key combination used as the talk key instead of a single modifier (nil = use `hotkey`).
+    @Published var talkCombo: KeyCombo? { didSet { defaults.set(talkCombo.flatMap { try? JSONEncoder().encode($0) }, forKey: "talkCombo") } }
+    @Published var talkMode: TalkMode { didSet { defaults.set(talkMode.rawValue, forKey: "talkMode") } }
+    /// Extra global shortcuts (action rawValue → combo). Missing = the action's default.
+    @Published var shortcuts: [String: KeyCombo] { didSet { defaults.set(try? JSONEncoder().encode(shortcuts), forKey: "shortcuts") } }
+    /// Actions you cleared on purpose (so Cancel can be turned off).
+    @Published var clearedShortcuts: Set<String> { didSet { defaults.set(Array(clearedShortcuts), forKey: "clearedShortcuts") } }
+
+    var talkKeyLabel: String { talkCombo?.label ?? hotkey.shortLabel }
+
+    func shortcut(_ a: ShortcutAction) -> KeyCombo? {
+        if let c = shortcuts[a.rawValue] { return c }
+        return clearedShortcuts.contains(a.rawValue) ? nil : a.defaultCombo
+    }
+    func setShortcut(_ a: ShortcutAction, _ c: KeyCombo?) {
+        if let c { shortcuts[a.rawValue] = c; clearedShortcuts.remove(a.rawValue) }
+        else { shortcuts[a.rawValue] = nil; clearedShortcuts.insert(a.rawValue) }
+    }
+    /// What already uses this combo, if anything (for conflict warnings).
+    func owner(of c: KeyCombo, except: ShortcutAction? = nil, exceptTalk: Bool = false) -> String? {
+        if !exceptTalk, talkCombo == c { return "Already your talk key" }
+        for a in ShortcutAction.allCases where a != except && shortcut(a) == c { return "Already used for “\(a.label)”" }
+        return nil
+    }
 
     @Published var provider: Provider {
         didSet {
@@ -124,6 +148,10 @@ final class AppSettings: ObservableObject {
         let provider = Provider(rawValue: d.string(forKey: "provider") ?? "") ?? (Keychain.get(Provider.groq.rawValue).isEmpty ? .local : .groq)
         self.provider = provider
         hotkey = HotkeyKey(rawValue: d.string(forKey: "hotkey") ?? "") ?? .fn
+        talkCombo = d.data(forKey: "talkCombo").flatMap { try? JSONDecoder().decode(KeyCombo.self, from: $0) }
+        talkMode = TalkMode(rawValue: d.string(forKey: "talkMode") ?? "") ?? .holdOrTap
+        shortcuts = d.data(forKey: "shortcuts").flatMap { try? JSONDecoder().decode([String: KeyCombo].self, from: $0) } ?? [:]
+        clearedShortcuts = Set(d.stringArray(forKey: "clearedShortcuts") ?? [])
         apiKey = Keychain.get(provider.rawValue)
         baseURL = d.string(forKey: "baseURL.\(provider.rawValue)") ?? provider.defaultBaseURL
         transcriptionModel = d.string(forKey: "transcriptionModel.\(provider.rawValue)") ?? provider.defaultTranscriptionModel

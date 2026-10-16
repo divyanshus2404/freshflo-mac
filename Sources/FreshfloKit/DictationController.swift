@@ -48,7 +48,7 @@ final class DictationController {
     private(set) var lastFailed: (samples: [Float], context: FocusContext, mode: DictationMode)?
 
     /// Holding shorter than this counts as a tap, which switches to hands-free mode.
-    private let tapThreshold: TimeInterval = 0.3
+    private var lastTapAt: Date?
     private let maxDuration: TimeInterval = 20 * 60
 
     private static let scratchPhrases: Set<String> = [
@@ -85,11 +85,14 @@ final class DictationController {
         guard !Self.paused else { return }
         switch state {
         case .idle:
+            let lock = TalkKeyLogic.startsLocked(mode: settings.talkMode, lastTap: lastTapAt)
+            lastTapAt = nil
             if settings.askModeEnabled, flags.contains(.maskShift) {
                 begin(mode: .ask)
             } else {
                 begin(mode: settings.commandModeEnabled && flags.contains(.maskControl) ? .command : .dictation)
             }
+            if lock { lockHandsFree() }
         case .recording where locked:
             finish()
         default:
@@ -110,20 +113,45 @@ final class DictationController {
     }
 
     func hotkeyReleased() {
-        guard state == .recording, !locked, let pressedAt else { return }
-        if Date().timeIntervalSince(pressedAt) < tapThreshold {
-            locked = true
-            pill.model.locked = true
-        } else {
-            finish()
+        guard state == .recording, let pressedAt else { return }
+        switch TalkKeyLogic.onRelease(mode: settings.talkMode, held: Date().timeIntervalSince(pressedAt), locked: locked) {
+        case .finish: finish()
+        case .lock: lockHandsFree()
+        case .cancelQuietly:
+            lastTapAt = Date()
+            cancel(message: nil)
+        case .ignore: break
         }
+    }
+
+    private func lockHandsFree() {
+        guard state == .recording else { return }
+        locked = true
+        pill.model.locked = true
+    }
+
+    /// The hands-free shortcut: start a hands-free dictation, or finish the current one.
+    func toggleHandsFree() {
+        guard !Self.paused else { return }
+        switch state {
+        case .idle:
+            begin(mode: .dictation)
+            lockHandsFree()
+        case .recording: finish()
+        default: break
+        }
+    }
+
+    /// The cancel shortcut. True when there was something to cancel (the key is then not passed on).
+    func cancelShortcut() -> Bool {
+        guard state == .recording else { return false }
+        cancel(message: "Cancelled")
+        return true
     }
 
     func otherKeyDown(_ keyCode: Int64) {
         guard state == .recording else { return }
-        if keyCode == 53 { // Escape
-            cancel(message: "Cancelled")
-        } else if !locked, let pressedAt, Date().timeIntervalSince(pressedAt) < 0.6 {
+        if !locked, let pressedAt, Date().timeIntervalSince(pressedAt) < 0.6 {
             // The hotkey was being used as a modifier in a shortcut, not to dictate.
             cancel(message: nil)
         }

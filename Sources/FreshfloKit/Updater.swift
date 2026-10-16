@@ -222,6 +222,11 @@ final class Updater {
 /// Shown once after an update, so people see what got better.
 enum WhatsNew {
     static let notes: [String: [String]] = [
+        "0.16.0": [
+            "Any key combination can be your talk key (like ⌃⌥Space or F13), not just one modifier key.",
+            "Choose how the talk key works: hold or tap, hold only, press to start and stop, or double-tap for hands-free.",
+            "New shortcuts you can set: hands-free, paste last dictation, meeting notes, Scratchpad, and a different cancel key.",
+        ],
         "0.15.1": [
             "Meet Fluid, the new default theme: soft mint, sky, lavender, rose and peach flowing through the bar as you speak.",
         ],

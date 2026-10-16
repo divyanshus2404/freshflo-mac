@@ -31,7 +31,7 @@ struct SettingsView: View {
 
 // MARK: - General
 
-private struct GeneralTab: View {
+struct GeneralTab: View {
     @ObservedObject private var settings = AppSettings.shared
     @StateObject private var permissions = PermissionsModel()
     @State private var keyStatus: KeyStatus = .idle
@@ -46,6 +46,17 @@ private struct GeneralTab: View {
         case failed(String)
     }
 
+    private var talkHelp: String {
+        let k = settings.talkKeyLabel
+        let cancel = settings.shortcut(.cancel).map { " Press \($0.label) to cancel." } ?? ""
+        switch settings.talkMode {
+        case .holdOrTap: return "Hold \(k) to talk and let go to insert. Tap it once for hands-free, then tap again to finish.\(cancel)"
+        case .hold: return "Hold \(k) while you talk; let go to insert. Quick taps are ignored.\(cancel)"
+        case .toggle: return "Press \(k) once to start and again to insert. No need to hold.\(cancel)"
+        case .doubleTap: return "Hold \(k) to talk. Double-tap it for hands-free, then press once to finish.\(cancel)"
+        }
+    }
+
     var body: some View {
         Form {
             Section {
@@ -55,7 +66,7 @@ private struct GeneralTab: View {
                         .frame(height: 70)
                         .scrollContentBackground(.hidden)
                     if tryText.isEmpty {
-                        Text("Click here, hold \(settings.hotkey.shortLabel) and say something…")
+                        Text("Click here, hold \(settings.talkKeyLabel) and say something…")
                             .foregroundStyle(.tertiary)
                             .padding(.top, 1)
                             .padding(.leading, 5)
@@ -73,13 +84,19 @@ private struct GeneralTab: View {
             }
 
             Section("Shortcut") {
-                Picker("Dictation key", selection: $settings.hotkey) {
+                Picker("Talk key", selection: $settings.hotkey) {
                     ForEach(HotkeyKey.allCases) { Text($0.label).tag($0) }
                 }
-                Text("Hold to talk and release to insert. Tap once for hands-free, then tap again to finish. Press Esc to cancel.")
-                    .font(.callout).foregroundStyle(.secondary)
-                Toggle("Command mode: hold \(settings.hotkey.shortLabel) + Control", isOn: $settings.commandModeEnabled)
-                Toggle("Ask mode: hold \(settings.hotkey.shortLabel) + Shift", isOn: $settings.askModeEnabled)
+                .disabled(settings.talkCombo != nil)
+                LabeledContent("Or a key combination") {
+                    ShortcutRecorder(combo: $settings.talkCombo, taken: { settings.owner(of: $0, exceptTalk: true) })
+                }
+                Picker("How it works", selection: $settings.talkMode) {
+                    ForEach(TalkMode.allCases) { Text($0.label).tag($0) }
+                }
+                Text(talkHelp).font(.callout).foregroundStyle(.secondary)
+                Toggle("Command mode: hold \(settings.talkKeyLabel) + Control", isOn: $settings.commandModeEnabled)
+                Toggle("Ask mode: hold \(settings.talkKeyLabel) + Shift", isOn: $settings.askModeEnabled)
                 if settings.askModeEnabled {
                     Text("Ask about anything (or the selected text) and get an answer card, or say “remind me to call Rahul at 5”, “add lunch with Priya Friday 1pm to my calendar”, “email Sam that I'll be late”, “open Figma”.")
                         .font(.callout).foregroundStyle(.secondary)
@@ -94,6 +111,23 @@ private struct GeneralTab: View {
                             .font(.callout).foregroundStyle(.secondary)
                         Spacer()
                         Button("Keyboard Settings…") { Permissions.openKeyboardSettings() }
+                    }
+                }
+            }
+
+            Section("More shortcuts") {
+                ForEach(ShortcutAction.allCases) { action in
+                    LabeledContent(action.label) {
+                        ShortcutRecorder(combo: Binding(get: { settings.shortcut(action) }, set: { settings.setShortcut(action, $0) }),
+                                         allowBare: action == .cancel,
+                                         taken: { settings.owner(of: $0, except: action) })
+                    }
+                }
+                Text("Work in every app. Cancel only takes the key while you're dictating, so Esc keeps working everywhere else.")
+                    .font(.callout).foregroundStyle(.secondary)
+                if settings.talkCombo != nil || !settings.shortcuts.isEmpty || !settings.clearedShortcuts.isEmpty || settings.talkMode != .holdOrTap {
+                    Button("Reset shortcuts") {
+                        settings.talkCombo = nil; settings.shortcuts = [:]; settings.clearedShortcuts = []; settings.talkMode = .holdOrTap
                     }
                 }
             }

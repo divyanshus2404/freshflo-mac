@@ -299,8 +299,8 @@ public enum CLI {
         if let out = value("--render-appearance") {
             // A real window (Forms don't draw in ImageRenderer), captured offscreen.
             _ = NSApplication.shared
-            let host = NSHostingView(rootView: AppearanceTab().frame(width: 640, height: 900))
-            let win = NSWindow(contentRect: NSRect(x: -3000, y: 0, width: 640, height: 900), styleMask: [.titled], backing: .buffered, defer: false)
+            let host = NSHostingView(rootView: Group { if CommandLine.arguments.contains("--general") { AnyView(GeneralTab()) } else { AnyView(AppearanceTab()) } }.frame(width: 640, height: 1500))
+            let win = NSWindow(contentRect: NSRect(x: -3000, y: 0, width: 640, height: 1500), styleMask: [.titled], backing: .buffered, defer: false)
             win.contentView = host
             win.orderFrontRegardless()
             RunLoop.main.run(until: Date().addingTimeInterval(1.0))

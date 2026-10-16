@@ -33,6 +33,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         hotkey.onModifiersChanged = { [weak self] flags in self?.dictation.modifiersChanged(flags) }
         hotkey.onRelease = { [weak self] in self?.dictation.hotkeyReleased() }
         hotkey.onOtherKeyDown = { [weak self] code in self?.dictation.otherKeyDown(code) }
+        hotkey.onAction = { [weak self] action in self?.perform(action) ?? false }
+        applyShortcuts()
+        settings.$talkCombo.dropFirst().receive(on: RunLoop.main).sink { [weak self] _ in self?.applyShortcuts() }.store(in: &cancellables)
+        settings.$shortcuts.dropFirst().receive(on: RunLoop.main).sink { [weak self] _ in self?.applyShortcuts() }.store(in: &cancellables)
+        settings.$clearedShortcuts.dropFirst().receive(on: RunLoop.main).sink { [weak self] _ in self?.applyShortcuts() }.store(in: &cancellables)
         dictation.onStateChange = { [weak self] _ in self?.updateStatusIcon() }
 
         settings.$hotkey
@@ -141,7 +146,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         let streak = stats.streak
         var line = today.words > 0
             ? "Today: \(today.words.formatted()) words · \(today.minutesSaved) min saved"
-            : "Today: nothing yet. Hold \(settings.hotkey.shortLabel) and talk."
+            : "Today: nothing yet. Hold \(settings.talkKeyLabel) and talk."
         if streak >= 2 { line += " · 🔥 \(streak)-day streak" }
         let progress = NSMenuItem(title: line, action: nil, keyEquivalent: "")
         progress.isEnabled = false
@@ -153,16 +158,16 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
             menu.addItem(weekItem)
         }
         menu.addItem(.separator())
-        let header = NSMenuItem(title: "Hold \(settings.hotkey.shortLabel) to dictate · tap for hands-free", action: nil, keyEquivalent: "")
+        let header = NSMenuItem(title: settings.talkMode.hint(settings.talkKeyLabel), action: nil, keyEquivalent: "")
         header.isEnabled = false
         menu.addItem(header)
         if settings.commandModeEnabled {
-            let command = NSMenuItem(title: "Hold \(settings.hotkey.shortLabel) + Control for commands", action: nil, keyEquivalent: "")
+            let command = NSMenuItem(title: "Hold \(settings.talkKeyLabel) + Control for commands", action: nil, keyEquivalent: "")
             command.isEnabled = false
             menu.addItem(command)
         }
         if settings.askModeEnabled {
-            let ask = NSMenuItem(title: "Hold \(settings.hotkey.shortLabel) + Shift to ask or take actions", action: nil, keyEquivalent: "")
+            let ask = NSMenuItem(title: "Hold \(settings.talkKeyLabel) + Shift to ask or take actions", action: nil, keyEquivalent: "")
             ask.isEnabled = false
             menu.addItem(ask)
         }
@@ -176,7 +181,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         if !settings.isReady {
             menu.addItem(item("⚠︎ Finish Setup…", #selector(openOnboarding)))
         }
-        let tip = NSMenuItem(title: "💡 " + Tips.today(key: settings.hotkey.shortLabel), action: nil, keyEquivalent: "")
+        let tip = NSMenuItem(title: "💡 " + Tips.today(key: settings.talkKeyLabel), action: nil, keyEquivalent: "")
         tip.isEnabled = false
         menu.addItem(tip)
 
@@ -277,6 +282,27 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         } else {
             Permissions.openMicrophoneSettings()
         }
+    }
+
+    private func applyShortcuts() {
+        hotkey.combo = settings.talkCombo
+        var map: [ShortcutAction: KeyCombo] = [:]
+        for a in ShortcutAction.allCases { if let c = settings.shortcut(a) { map[a] = c } }
+        hotkey.actions = map
+    }
+
+    /// Runs a global shortcut. Returns true when it was used (the key press is then not passed to the app).
+    private func perform(_ action: ShortcutAction) -> Bool {
+        switch action {
+        case .cancel: return dictation.cancelShortcut()
+        case .handsFree: dictation.toggleHandsFree()
+        case .pasteLast:
+            guard let text = history.last?.text else { return false }
+            TextInserter.insert(text + (settings.addTrailingSpace ? " " : ""))
+        case .meeting: toggleMeeting()
+        case .scratchpad: openScratchpad()
+        }
+        return true
     }
 
     @objc private func pasteLast() {

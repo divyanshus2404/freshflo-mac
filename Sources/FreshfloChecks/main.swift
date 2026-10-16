@@ -1,3 +1,4 @@
+import CoreGraphics
 import SwiftUI
 // Logic checks for Freshflo. Run with:  swift run FreshfloChecks
 // (Plain executable so it works with only the Command Line Tools installed.)
@@ -456,6 +457,29 @@ expect(Set(HotkeyKey.allCases.map(\.flagMask)).count, HotkeyKey.allCases.count, 
 expect(IndicatorAccent.fluid(0.2).hexString, IndicatorAccent.fluid(1.2).hexString, "Fluid loops seamlessly")
 expect(IndicatorAccent.fluid(-0.8).hexString, IndicatorAccent.fluid(0.2).hexString, "Fluid handles any phase")
 expect(IndicatorTheme.allCases.first, .fluid, "Fluid is the first theme")
+
+section("Shortcuts and tap modes")
+let cmd = CGEventFlags.maskCommand.rawValue, ctl = CGEventFlags.maskControl.rawValue, opt = CGEventFlags.maskAlternate.rawValue, sh = CGEventFlags.maskShift.rawValue
+let space = KeyCombo(keyCode: 49, modifiers: ctl | opt, key: "Space")
+expect(space.label, "⌃⌥Space", "combo label in Mac order")
+expectTrue(space.matches(keyCode: 49, flags: ctl | opt | 0x100), "matches with device bits present")
+expect(space.matches(keyCode: 49, flags: ctl | opt | sh), false, "extra Shift doesn't match")
+expectTrue(KeyCombo(keyCode: 2, modifiers: 0, key: "D").problem(allowBare: false) != nil, "a bare letter is refused")
+expectTrue(KeyCombo(keyCode: 105, modifiers: 0, key: "F13").problem(allowBare: false) == nil, "a bare F-key is fine")
+expectTrue(KeyCombo(keyCode: 9, modifiers: cmd, key: "V").problem(allowBare: false) != nil, "⌘V is protected")
+expectTrue(KeyCombo(keyCode: 2, modifiers: sh, key: "D").problem(allowBare: false) != nil, "Shift+letter is refused")
+expectTrue(KeyCombo(keyCode: 2, modifiers: cmd | opt, key: "D").problem(allowBare: false) == nil, "⌥⌘D is fine")
+expect(TalkKeyLogic.onRelease(mode: .holdOrTap, held: 0.1, locked: false), .lock, "tap locks hands-free")
+expect(TalkKeyLogic.onRelease(mode: .holdOrTap, held: 1.2, locked: false), .finish, "hold then release inserts")
+expect(TalkKeyLogic.onRelease(mode: .hold, held: 0.1, locked: false), .cancelQuietly, "hold-only ignores taps")
+expect(TalkKeyLogic.onRelease(mode: .toggle, held: 2, locked: true), .ignore, "toggle ignores release")
+expect(TalkKeyLogic.onRelease(mode: .doubleTap, held: 0.1, locked: false), .cancelQuietly, "first tap of a double-tap")
+expect(TalkKeyLogic.onRelease(mode: .doubleTap, held: 0.1, locked: true), .ignore, "release while hands-free does nothing")
+let now = Date()
+expectTrue(TalkKeyLogic.startsLocked(mode: .doubleTap, lastTap: now.addingTimeInterval(-0.2), now: now), "second tap starts hands-free")
+expect(TalkKeyLogic.startsLocked(mode: .doubleTap, lastTap: now.addingTimeInterval(-1), now: now), false, "slow taps don't")
+expectTrue(TalkKeyLogic.startsLocked(mode: .toggle, lastTap: nil), "toggle always starts hands-free")
+expect(TalkKeyLogic.startsLocked(mode: .holdOrTap, lastTap: now, now: now), false, "default mode starts held")
 
 // MARK: - Result
 
