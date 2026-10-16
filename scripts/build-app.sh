@@ -20,6 +20,8 @@ cp Resources/Info.plist "$APP/Contents/Info.plist"
 
 # Icon is rendered from the brand master (Freshflo-Website/brand/icon.svg) and checked in.
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+# Interface translations (hi.lproj …), found by Bundle.main.
+for lproj in Resources/*.lproj; do [ -d "$lproj" ] && cp -R "$lproj" "$APP/Contents/Resources/"; done
 
 # A stable signing identity keeps the Accessibility/Microphone grants across rebuilds.
 # Override with SIGN_IDENTITY="..." or SIGN_IDENTITY="-" for ad-hoc.

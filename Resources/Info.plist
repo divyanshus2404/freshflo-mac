@@ -14,14 +14,19 @@
 	<string>com.freshflo.app</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>hi</string>
+	</array>
 	<key>CFBundleName</key>
 	<string>Freshflo</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.13.0</string>
+	<string>0.14.0</string>
 	<key>CFBundleVersion</key>
-	<string>130</string>
+	<string>140</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.productivity</string>
 	<key>LSMinimumSystemVersion</key>
@@ -30,6 +35,8 @@
 	<true/>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>Freshflo adds events to your calendar when you ask it to, after you confirm.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Freshflo reads the names in your Contacts so it spells the people you write to correctly. Names stay on your Mac.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>

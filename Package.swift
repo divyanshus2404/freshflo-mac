@@ -7,10 +7,15 @@ let weakFoundationModels = LinkerSetting.unsafeFlags(["-Xlinker", "-weak_framewo
 let package = Package(
     name: "Freshflo",
     platforms: [.macOS(.v14)],
+    dependencies: [
+        // On-device Whisper on Apple's Neural Engine: Groq-level accuracy, free, offline, private.
+        .package(url: "https://github.com/argmaxinc/WhisperKit.git", from: "0.9.0"),
+    ],
     targets: [
         // Everything testable lives in the library; the app target is just the entry point.
         .target(
             name: "FreshfloKit",
+            dependencies: [.product(name: "WhisperKit", package: "WhisperKit")],
             path: "Sources/FreshfloKit",
             linkerSettings: [weakFoundationModels]
         ),

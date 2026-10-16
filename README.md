@@ -14,14 +14,14 @@
   <a href="https://freshflo.vercel.app/welcome"><b>Download</b></a> ·
   <a href="https://freshflo.vercel.app/changelog">Changelog</a> ·
   <a href="https://freshflo.vercel.app/help">Help</a> ·
-  <a href="https://freshflo.vercel.app/vs-wispr-flow">vs Wispr Flow</a>
+  <a href="https://freshflo.vercel.app/compare">How it compares</a>
 </p>
 
 <p align="center">
   <img alt="macOS 14+" src="https://img.shields.io/badge/macOS-14%2B-0c2421?logo=apple&logoColor=white">
   <img alt="Swift 6" src="https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white">
   <img alt="Universal" src="https://img.shields.io/badge/Apple%20Silicon%20%2B%20Intel-universal-35d6a6">
-  <img alt="Checks" src="https://img.shields.io/badge/checks-252%20passing-35d6a6">
+  <img alt="Checks" src="https://img.shields.io/badge/checks-260%20passing-35d6a6">
   <img alt="Grammar" src="https://img.shields.io/badge/grammar%20eval-76%2F76-35d6a6">
   <img alt="Size" src="https://img.shields.io/badge/app-~10%20MB-0c2421">
 </p>
@@ -62,7 +62,8 @@ It works in every app with a text field: Slack, Gmail, Notion, Cursor, the termi
 - **Meeting notes** with who said what, a clean transcript, follow-up email and Slack summary; offered automatically when a call starts.
 - **Ask your meetings**, and use them inside **Claude and Cursor** (MCP).
 - **Scratchpad**, **Your Week** stats, sync through iCloud Drive or a team folder.
-- Automatic mic choice (AirPods-aware), whisper mode, on-device mode.
+- **On-device Whisper** (no key, offline), names from Contacts and Calendar, Hindi interface.
+- Automatic mic choice (AirPods-aware), whisper mode, weekly recap.
 
 </td>
 </tr>
@@ -123,7 +124,7 @@ Sources/
     Pill, StatsView, Scratchpad, MeetingsView, SettingsView, Onboarding   UI (SwiftUI)
     Meetings, MeetingRecorder, Diarization, CallDetection, Knowledge   meeting notes, MCP
     Updater, Insights, Sync, Permissions, FocusContext   updates, opt-in telemetry, plumbing
-  FreshfloChecks/      252 behaviour checks (no XCTest needed)
+  FreshfloChecks/      260 behaviour checks (no XCTest needed)
 Benchmarks/           real-speech clips, cases, grammar eval set, reports
 scripts/              build-app.sh, make-dmg.sh, benchmark audio
 ```
@@ -134,7 +135,7 @@ Needs macOS 14+ and the Swift 6 toolchain (Xcode Command Line Tools are enough).
 
 ```bash
 swift build                          # debug build
-swift run FreshfloChecks             # 252 checks
+swift run FreshfloChecks             # 260 checks
 ./scripts/build-app.sh               # universal, signed build/Freshflo.app (runs the checks first)
 ./scripts/build-app.sh --install     # …and install to /Applications
 ./scripts/make-dmg.sh                # build/Freshflo-<version>.dmg

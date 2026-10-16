@@ -428,8 +428,8 @@ struct OnboardingView: View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: icon).font(.system(size: 16)).foregroundStyle(Brand.mint).frame(width: 22)
             VStack(alignment: .leading, spacing: 3) {
-                Text(name).font(.callout.weight(.semibold))
-                Text(detail).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(LocalizedStringKey(name)).font(.callout.weight(.semibold))
+                Text(LocalizedStringKey(detail)).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 4)
             if let toggle { Toggle("", isOn: toggle).toggleStyle(.switch).labelsHidden().controlSize(.small) }
@@ -574,9 +574,9 @@ struct OnboardingView: View {
 
     @ViewBuilder private func title(_ heading: String, _ detail: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(heading).font(.system(size: 32, weight: .regular, design: .serif))
+            Text(LocalizedStringKey(heading)).font(.system(size: 32, weight: .regular, design: .serif))
             if !detail.isEmpty {
-                Text(detail).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(LocalizedStringKey(detail)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
         }
     }

@@ -7,7 +7,7 @@ import Foundation
 ///   Freshflo --command "make this formal" [--selection "hey whats up"]
 public enum CLI {
     public static var isRequested: Bool {
-        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update", "--grammar-eval", "--ask-meetings", "--render-stats", "--render-styles", "--diarize", "--mic-info"].contains(where: CommandLine.arguments.contains)
+        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update", "--grammar-eval", "--ask-meetings", "--render-stats", "--render-styles", "--diarize", "--mic-info", "--whisper-local"].contains(where: CommandLine.arguments.contains)
     }
 
     /// Shows the real floating indicator inside a proper app run loop with synthetic speech (performance checks).
@@ -265,6 +265,18 @@ public enum CLI {
             }
             let labels = Diarization.speakers(samples: samples, starts: times, threshold: threshold)
             print("speakers: \(labels.map { $0.map(String.init).joined(separator: " ") } ?? "one voice")")
+            return
+        }
+        if let path = value("--whisper-local") {
+            var start = Date()
+            try await OnDeviceWhisper.download { p in if Int(p * 100) % 10 == 0 { print(String(format: "download %.0f%%", p * 100)) } }
+            print("model ready [\(ms(since: start))]")
+            for file in path.split(separator: ",") {
+                let samples = AudioRecorder.trimSilence(try AudioRecorder.load(url: URL(fileURLWithPath: String(file)))).samples
+                start = Date()
+                let text = try await OnDeviceWhisper.transcribe(samples, language: value("--lang") ?? "", vocabulary: [])
+                print("whisper-local [\(ms(since: start))]: \(text)")
+            }
             return
         }
         if CommandLine.arguments.contains("--mic-info") {

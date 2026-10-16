@@ -46,7 +46,8 @@ enum LocalSpeech {
 
     /// The engine name recorded in History (anything starting "apple-speech" counts as on-device).
     static func engineName(language: String) -> String {
-        runsOnDevice(language: language) ? "apple-speech" : "apple-dictation (Apple servers)"
+        if OnDeviceWhisper.isActive { return "apple-speech · whisper on-device" }
+        return runsOnDevice(language: language) ? "apple-speech" : "apple-dictation (Apple servers)"
     }
 
     static func transcribe(
@@ -56,6 +57,9 @@ enum LocalSpeech {
         onStatus: @escaping (String) -> Void = { _ in }
     ) async throws -> String {
         let samples = AudioRecorder.normalizeQuiet(raw)
+        if OnDeviceWhisper.isActive {
+            return try await OnDeviceWhisper.transcribe(samples, language: language, vocabulary: vocabulary)
+        }
         #if canImport(Speech)
         guard #available(macOS 26.0, *), !forceLegacy else {
             return try await legacyTranscribe(samples, language: language, vocabulary: vocabulary).text
@@ -85,6 +89,9 @@ enum LocalSpeech {
 
     /// Timestamped on-device transcription of an audio file (meeting notes).
     static func transcribeSegments(file url: URL, language: String, vocabulary: [String]) async throws -> [Transcriber.Segment] {
+        if OnDeviceWhisper.isActive {
+            return try await OnDeviceWhisper.segments(AudioRecorder.load(url: url), language: language, vocabulary: vocabulary)
+        }
         #if canImport(Speech)
         guard #available(macOS 26.0, *), !forceLegacy else {
             return try await legacyTranscribe(try AudioRecorder.load(url: url), language: language, vocabulary: vocabulary).segments

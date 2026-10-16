@@ -53,6 +53,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         FolderSync.shared.start()
         AudioDevices.watch { NotificationCenter.default.post(name: .audioDevicesChanged, object: nil) }
         MeetingDetector.shared.start()
+        OnDeviceWhisper.prewarm()
+        WeeklyRecap.shared.onOpen = { [weak self] in self?.openStats() }
+        WeeklyRecap.shared.start()
 
         // People who already set things up before onboarding existed skip it.
         let defaults = UserDefaults.standard
@@ -227,6 +230,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         menu.addItem(item("Settings…", #selector(openSettings), key: ","))
         menu.addItem(item("Setup Guide…", #selector(openOnboarding)))
         menu.addItem(item("Send Feedback…", #selector(openFeedback)))
+        menu.addItem(item("Share Freshflo…", #selector(shareApp)))
         menu.addItem(item("Check for Updates…", #selector(checkForUpdates)))
         menu.addItem(.separator())
         menu.addItem(item("Quit Freshflo", #selector(NSApplication.terminate(_:)), key: "q", target: NSApp))
@@ -247,7 +251,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
     }
 
     private func item(_ title: String, _ action: Selector, key: String = "", target: AnyObject? = nil) -> NSMenuItem {
-        let mi = NSMenuItem(title: title, action: action, keyEquivalent: key)
+        let mi = NSMenuItem(title: NSLocalizedString(title, comment: ""), action: action, keyEquivalent: key)
         mi.target = target ?? self
         return mi
     }
@@ -326,6 +330,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         }
         NSApp.activate(ignoringOtherApps: true)
         scratchpadWindow?.makeKeyAndOrderFront(nil)
+    }
+
+    @objc private func shareApp() {
+        WeeklyRecap.share(from: statusItem.button)
     }
 
     @objc func openStats() {

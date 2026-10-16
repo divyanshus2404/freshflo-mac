@@ -102,7 +102,8 @@ private struct GeneralTab: View {
                     ForEach(Provider.allCases) { Text($0.label).tag($0) }
                 }
                 if settings.provider == .local {
-                    LabeledContent("On-device model") {
+                    WhisperRow()
+                    LabeledContent("Apple speech model") {
                         HStack {
                             Text(localStatus).foregroundStyle(.secondary)
                             if localStatus != "Ready" {
@@ -242,6 +243,7 @@ private struct GeneralTab: View {
                 }
                 Toggle("Use text around the cursor for smarter spacing and capitalization", isOn: $settings.useScreenContext)
                 Toggle("Learn words I correct after dictating", isOn: $settings.autoLearn)
+                Toggle("Monday recap: words and time saved last week", isOn: $settings.weeklyRecap)
                 Toggle("Add a space after text when context isn't available", isOn: $settings.addTrailingSpace)
                 Toggle("Launch at login", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, enabled in
@@ -462,6 +464,7 @@ private struct MeetingsTab: View {
 /// Sync, diagnostics and feedback: things most people set once or never.
 private struct AdvancedTab: View {
     @ObservedObject private var settings = AppSettings.shared
+    @State private var languageChanged = false
 
     var body: some View {
         Form {
@@ -472,6 +475,38 @@ private struct AdvancedTab: View {
             } footer: {
                 Text("Your dictionary, snippets and app styles are kept in one file. iCloud Drive keeps your Macs in step; a shared Dropbox, Google Drive or OneDrive folder shares them with your team. New items from anyone are added everywhere.")
                     .font(.caption).foregroundStyle(.secondary)
+            }
+
+            Section("Language & region") {
+                Picker("App language", selection: Binding(
+                    get: { (UserDefaults.standard.array(forKey: "AppleLanguages") as? [String])?.first.flatMap { ["en", "hi"].contains(String($0.prefix(2))) && UserDefaults.standard.object(forKey: "freshflo.appLanguage") != nil ? String($0.prefix(2)) : nil } ?? "" },
+                    set: { value in
+                        if value.isEmpty {
+                            UserDefaults.standard.removeObject(forKey: "AppleLanguages")
+                            UserDefaults.standard.removeObject(forKey: "freshflo.appLanguage")
+                        } else {
+                            UserDefaults.standard.set([value], forKey: "AppleLanguages")
+                            UserDefaults.standard.set(value, forKey: "freshflo.appLanguage")
+                        }
+                        languageChanged = true
+                    })) {
+                    Text("Same as macOS").tag("")
+                    Text("English").tag("en")
+                    Text("हिन्दी").tag("hi")
+                }
+                if languageChanged {
+                    HStack {
+                        Text("Restart Freshflo to switch the language.").font(.caption).foregroundStyle(.secondary)
+                        Spacer()
+                        Button("Restart now") {
+                            let config = NSWorkspace.OpenConfiguration()
+                            config.createsNewApplicationInstance = true
+                            NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: config) { _, _ in
+                                DispatchQueue.main.async { NSApp.terminate(nil) }
+                            }
+                        }
+                    }
+                }
             }
 
             Section("Diagnostics") {
@@ -637,9 +672,25 @@ private struct AppIconView: View {
 private struct DictionaryTab: View {
     @ObservedObject private var settings = AppSettings.shared
     @State private var newWord = ""
+    @State private var importing = false
+    @State private var importNote: String?
 
     var body: some View {
         Form {
+            Section {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(settings.knownNames.isEmpty ? "Spell the people you know correctly" : "\(settings.knownNames.count) names from Contacts and Calendar")
+                        Text("Freshflo reads names from your Contacts and the people in your recent meetings, and uses them as spelling hints. They stay on this Mac.")
+                            .font(.caption).foregroundStyle(.secondary)
+                        if let importNote { Text(importNote).font(.caption).foregroundStyle(.secondary) }
+                    }
+                    Spacer()
+                    if !settings.knownNames.isEmpty { Button("Clear") { settings.knownNames = [] } }
+                    Button(importing ? "Reading…" : settings.knownNames.isEmpty ? "Import names" : "Refresh") { importNames() }.disabled(importing)
+                }
+            } header: { Text("Names") }
+
             Section {
                 HStack {
                     TextField("", text: $newWord, prompt: Text("Add a name, brand or term (e.g. Divyanshu, Kubernetes)"))
@@ -675,6 +726,16 @@ private struct DictionaryTab: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    private func importNames() {
+        importing = true
+        Task { @MainActor in
+            let result = await NameBook.harvest()
+            if !result.names.isEmpty { settings.knownNames = result.names }
+            importNote = result.problem ?? "Added \(result.names.count) names."
+            importing = false
+        }
     }
 
     private func add() {
@@ -994,6 +1055,48 @@ private struct SyncRow: View {
             panel.message = "Choose a folder you share with your team (Dropbox, Google Drive, OneDrive…)."
             if panel.runModal() == .OK, let url = panel.url { settings.syncFolder = url.path }
         default: settings.syncFolder = ""
+        }
+    }
+}
+
+
+/// The built-in engine's best mode: Whisper on this Mac. One download, then free, offline and private.
+private struct WhisperRow: View {
+    @ObservedObject private var settings = AppSettings.shared
+    @State private var progress: Double?
+    @State private var error: String?
+    @State private var ready = OnDeviceWhisper.isDownloaded
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Toggle(isOn: $settings.useOnDeviceWhisper) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Whisper on this Mac (best free accuracy)")
+                    Text("The same model as the cloud engines, running on your Mac's Neural Engine: no key, works offline, nothing leaves your Mac. One-time download, \(OnDeviceWhisper.sizeLabel).")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            if settings.useOnDeviceWhisper {
+                if ready {
+                    Label("Downloaded and ready", systemImage: "checkmark.circle.fill").font(.caption).foregroundStyle(.green)
+                } else if let progress {
+                    ProgressView(value: progress) { Text("Downloading… \(Int(progress * 100))%").font(.caption) }
+                } else {
+                    Button("Download Whisper (\(OnDeviceWhisper.sizeLabel))") { download() }
+                }
+                if let error { Text(error).font(.caption).foregroundStyle(.red) }
+            }
+        }
+    }
+
+    private func download() {
+        progress = 0; error = nil
+        Task { @MainActor in
+            do {
+                try await OnDeviceWhisper.download { p in Task { @MainActor in progress = p } }
+                ready = OnDeviceWhisper.isDownloaded
+            } catch { self.error = error.localizedDescription }
+            progress = nil
         }
     }
 }

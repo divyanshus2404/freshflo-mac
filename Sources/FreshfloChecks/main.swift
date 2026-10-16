@@ -419,6 +419,18 @@ expectTrue(AudioDevices.Kind.external < .builtIn && .builtIn < .bluetooth && .bl
 expect(AudioDevices.preferredUID(chosen: "no-such-mic-uid", preferBuiltIn: true) == "no-such-mic-uid", false, "a disconnected chosen mic falls back to automatic")
 _ = AudioDevices.someoneIsRecording()
 
+section("Recap and names")
+var monday9 = DateComponents(); monday9.year = 2026; monday9.month = 10; monday9.day = 19; monday9.hour = 9; monday9.minute = 30
+let mon = Calendar.current.date(from: monday9)!
+expectTrue(WeeklyRecap.isDue(now: mon, lastSent: nil, wordsLastWeek: 500), "Monday 9:30 with words: due")
+expect(WeeklyRecap.isDue(now: mon, lastSent: nil, wordsLastWeek: 0), false, "no words, no recap")
+expect(WeeklyRecap.isDue(now: mon, lastSent: mon.addingTimeInterval(-3600), wordsLastWeek: 500), false, "once a week")
+expect(WeeklyRecap.isDue(now: mon.addingTimeInterval(86_400), lastSent: nil, wordsLastWeek: 500), false, "only on Mondays")
+expect(WeeklyRecap.message(words: 8420, minutesSaved: 162, streak: 9), "8,420 words, 2 h 42 min saved · 9-day streak", "recap text")
+expectTrue(NameBook.isName("Priya Raghunathan"), "a real name")
+expect(NameBook.isName("Conference Room 4B"), false, "rooms aren't names")
+expect(NameBook.isName("noreply@zoom.us"), false, "emails aren't names")
+
 // MARK: - Result
 
 if failures.isEmpty {

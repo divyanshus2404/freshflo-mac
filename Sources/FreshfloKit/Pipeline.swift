@@ -16,7 +16,8 @@ enum Pipeline {
         liveFallback: String = "",
         onStatus: @escaping (String) -> Void = { _ in }
     ) async throws -> Transcript {
-        let vocabulary = settings.dictionary + extraVocabulary
+        // Your own words first, then the people you meet with most (transcription prompts are short).
+        let vocabulary = settings.dictionary + extraVocabulary + settings.knownNames.prefix(30)
         if forceLocal || settings.provider == .local {
             let text = try await LocalSpeech.transcribe(samples, language: settings.language, vocabulary: vocabulary, onStatus: onStatus)
             return Transcript(text: text, engine: LocalSpeech.engineName(language: settings.language))
@@ -45,7 +46,7 @@ enum Pipeline {
             raw: raw,
             tone: settings.tone(for: context),
             context: context,
-            vocabulary: settings.dictionary + extraVocabulary,
+            vocabulary: settings.dictionary + extraVocabulary + settings.knownNames,
             keepPhrases: snippets.map(\.trigger).filter { !$0.isEmpty },
             customInstructions: settings.customInstructions,
             outputLanguage: settings.outputLanguage,

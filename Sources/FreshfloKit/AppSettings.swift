@@ -77,6 +77,12 @@ final class AppSettings: ObservableObject {
     @Published var syncFolder: String { didSet { defaults.set(syncFolder, forKey: "syncFolder") } }
     /// After meeting notes, also make a grammatically clean copy of the transcript.
     /// Use the Mac's microphone instead of AirPods and other Bluetooth headsets (unless a mic is picked explicitly).
+    /// The built-in engine uses Whisper on the Neural Engine (once downloaded) instead of Apple's recognizer.
+    /// Names from Contacts and Calendar, most relevant first: spelling hints, kept apart from the user's own dictionary.
+    /// A Monday notification with last week's words and time saved.
+    @Published var weeklyRecap: Bool { didSet { defaults.set(weeklyRecap, forKey: "weeklyRecap") } }
+    @Published var knownNames: [String] { didSet { save(knownNames, "knownNames") } }
+    @Published var useOnDeviceWhisper: Bool { didSet { defaults.set(useOnDeviceWhisper, forKey: "useOnDeviceWhisper") } }
     @Published var preferBuiltInMic: Bool { didSet { defaults.set(preferBuiltInMic, forKey: "preferBuiltInMic") } }
     /// Offer to take meeting notes when a call starts.
     @Published var offerMeetingNotes: Bool { didSet { defaults.set(offerMeetingNotes, forKey: "offerMeetingNotes") } }
@@ -146,6 +152,9 @@ final class AppSettings: ObservableObject {
         mcpShareHistory = d.object(forKey: "mcpShareHistory") as? Bool ?? false
         meetingCleanTranscript = d.object(forKey: "meetingCleanTranscript") as? Bool ?? true
         preferBuiltInMic = d.object(forKey: "preferBuiltInMic") as? Bool ?? true
+        useOnDeviceWhisper = d.object(forKey: "useOnDeviceWhisper") as? Bool ?? true
+        knownNames = Self.load("knownNames") ?? []
+        weeklyRecap = d.object(forKey: "weeklyRecap") as? Bool ?? true
         offerMeetingNotes = d.object(forKey: "offerMeetingNotes") as? Bool ?? true
         blockedApps = Self.load("blockedApps") ?? []
         syncFolder = d.string(forKey: "syncFolder") ?? ""

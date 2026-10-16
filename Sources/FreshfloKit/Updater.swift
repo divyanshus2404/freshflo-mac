@@ -222,6 +222,12 @@ final class Updater {
 /// Shown once after an update, so people see what got better.
 enum WhatsNew {
     static let notes: [String: [String]] = [
+        "0.14.0": [
+            "Whisper on this Mac: the same model as the cloud engines, running on your Neural Engine. No key, works offline, nothing leaves your Mac (Settings → General → Engine: Built-in).",
+            "Names from Contacts and Calendar: the people you write to and meet with are spelled right (Settings → Dictionary → Import names).",
+            "A Monday recap of your words and time saved, and Share Freshflo… in the menu.",
+            "Freshflo in Hindi: Settings → Advanced → App language.",
+        ],
         "0.13.0": [
             "Settings is simpler: meeting notes and Claude/Cursor have their own Meetings tab, and sync and diagnostics live under Advanced.",
             "Setup now shows the extras (live captions, meeting notes, lists and emails, Claude and Cursor, Scratchpad, Your Week) with switches to turn them on.",
