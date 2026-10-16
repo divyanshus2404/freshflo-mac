@@ -453,6 +453,10 @@ expectTrue(UserTheme.decode(Data(##"{"id":"6F9619FF-8B86-D011-B42D-00C04FC964FF"
 expect(Set(HotkeyKey.allCases.flatMap(\.keyCodes)).count, HotkeyKey.allCases.reduce(0) { $0 + $1.keyCodes.count }, "every talk key has its own key code")
 expect(Set(HotkeyKey.allCases.map(\.flagMask)).count, HotkeyKey.allCases.count, "every talk key has its own modifier bit")
 
+expect(IndicatorAccent.fluid(0.2).hexString, IndicatorAccent.fluid(1.2).hexString, "Fluid loops seamlessly")
+expect(IndicatorAccent.fluid(-0.8).hexString, IndicatorAccent.fluid(0.2).hexString, "Fluid handles any phase")
+expect(IndicatorTheme.allCases.first, .fluid, "Fluid is the first theme")
+
 // MARK: - Result
 
 if failures.isEmpty {

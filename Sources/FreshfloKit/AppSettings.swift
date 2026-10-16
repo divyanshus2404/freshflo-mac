@@ -172,7 +172,7 @@ final class AppSettings: ObservableObject {
         keepMeetingAudio = d.object(forKey: "keepMeetingAudio") as? Bool ?? false
         askModeEnabled = d.object(forKey: "askModeEnabled") as? Bool ?? true
         indicatorStyle = IndicatorStyle(rawValue: d.string(forKey: "indicatorStyle") ?? "") ?? .halo
-        indicatorTheme = IndicatorTheme(rawValue: d.string(forKey: "indicatorTheme") ?? "") ?? .fresh
+        indicatorTheme = IndicatorTheme(rawValue: d.string(forKey: "indicatorTheme") ?? "") ?? .fluid
         customTheme = d.data(forKey: "customTheme").flatMap { try? JSONDecoder().decode(UserTheme.self, from: $0) } ?? .starter
         savedThemes = d.data(forKey: "savedThemes").flatMap { try? JSONDecoder().decode([UserTheme].self, from: $0) } ?? []
         appAppearance = AppAppearance(rawValue: d.string(forKey: "appAppearance") ?? "") ?? .system

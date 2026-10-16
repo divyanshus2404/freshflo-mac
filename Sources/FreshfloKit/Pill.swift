@@ -20,7 +20,7 @@ enum IndicatorStyle: String, CaseIterable, Identifiable {
 }
 
 enum IndicatorTheme: String, CaseIterable, Identifiable {
-    case fresh, aurora, sunset, mono, matrix, custom
+    case fluid, fresh, aurora, sunset, mono, matrix, custom
 
     var id: String { rawValue }
     var label: String { rawValue.capitalized }
@@ -221,8 +221,28 @@ enum IndicatorAccent {
             case .mono: return Color(white: 0.94)
             case .matrix: return Color(red: 0.38, green: 0.95, blue: 0.58)
             case .custom: return Color(hex: AppSettings.shared.customTheme.accent)
+            case .fluid: return fluid(Date().timeIntervalSinceReferenceDate * fluidSpeed)
             }
         }
+    }
+}
+
+extension IndicatorAccent {
+    /// Fluid: soft pastels (mint, sky, lavender, rose, peach) that melt into each other.
+    static let fluidStops: [(Double, Double, Double)] = [
+        (0.37, 0.90, 0.76), (0.44, 0.72, 1.0), (0.72, 0.61, 1.0), (1.0, 0.62, 0.78), (1.0, 0.77, 0.54),
+    ]
+    /// Cycles per second of the slow drift (one full loop every ~12 s: calm, never flashy).
+    static let fluidSpeed = 0.085
+
+    /// The colour at a point on the loop (any number; wraps around), eased so blends stay smooth.
+    static func fluid(_ phase: Double) -> Color {
+        let n = Double(fluidStops.count)
+        var p = phase.truncatingRemainder(dividingBy: 1); if p < 0 { p += 1 }
+        let x = p * n, i = Int(x) % fluidStops.count, j = (i + 1) % fluidStops.count
+        let f = x - floor(x), t = f * f * (3 - 2 * f)
+        let a = fluidStops[i], b = fluidStops[j]
+        return Color(red: a.0 + (b.0 - a.0) * t, green: a.1 + (b.1 - a.1) * t, blue: a.2 + (b.2 - a.2) * t)
     }
 }
 
@@ -237,6 +257,7 @@ private struct DotWave: View {
     let level: Double
     let bands: SIMD3<Float>
     let accent: Color
+    var fluid = false
 
     static let count = 15
     static let barWidth: CGFloat = 3
@@ -273,7 +294,9 @@ private struct DotWave: View {
                 let barH = max(Self.barWidth, CGFloat(h) * maxH)
                 let rect = CGRect(x: x, y: mid - barH / 2, width: Self.barWidth, height: barH)
                 // White at the edges, the accent colour toward the middle.
-                let color = center > 0.7 ? accent : Color.white
+                // Fluid: a gradient flowing across every dot instead.
+                let color = fluid ? IndicatorAccent.fluid(time * IndicatorAccent.fluidSpeed + Double(i) / Double(n) * 0.45)
+                                  : center > 0.7 ? accent : Color.white
                 ctx.fill(Path(roundedRect: rect, cornerRadius: Self.barWidth / 2), with: .color(color.opacity(alpha)))
             }
         }
@@ -380,14 +403,14 @@ private struct HaloView: View {
                 Text(hint).font(.system(size: 11.5)).foregroundStyle(.white.opacity(0.62)).lineLimit(1).fixedSize()
             } else {
                 clock { t in
-                    DotWave(mode: .listening, time: t, level: Double(model.meter.level), bands: model.meter.bands, accent: accent)
+                    DotWave(mode: .listening, time: t, level: Double(model.meter.level), bands: model.meter.bands, accent: accent, fluid: model.theme == .fluid && model.mode == .dictation && !isError)
                 }
                 .frame(height: 16)
             }
             trailing
         case .processing(let label):
             clock { t in
-                DotWave(mode: .thinking, time: t, level: 0, bands: .zero, accent: accent)
+                DotWave(mode: .thinking, time: t, level: 0, bands: .zero, accent: accent, fluid: model.theme == .fluid && model.mode == .dictation)
             }
             .frame(height: 16)
             // Transcribing and polishing need no words; anything slower says what's happening.

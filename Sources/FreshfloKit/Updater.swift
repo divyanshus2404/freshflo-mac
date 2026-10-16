@@ -222,6 +222,9 @@ final class Updater {
 /// Shown once after an update, so people see what got better.
 enum WhatsNew {
     static let notes: [String: [String]] = [
+        "0.15.1": [
+            "Meet Fluid, the new default theme: soft mint, sky, lavender, rose and peach flowing through the bar as you speak.",
+        ],
         "0.15.0": [
             "New Appearance settings: pick a theme, make your own (colours for dictation, Command and Ask), save it, and share it as a file.",
             "Light or dark Freshflo windows, and a bigger or smaller dictation indicator.",
