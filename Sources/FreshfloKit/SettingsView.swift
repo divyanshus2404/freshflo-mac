@@ -8,12 +8,42 @@ enum SettingsTab: Hashable {
 
 final class SettingsRouter: ObservableObject {
     @Published var tab: SettingsTab = .general
+    @Published var query = ""
 }
 
 struct SettingsView: View {
     @ObservedObject var router: SettingsRouter
 
+    @ObservedObject private var settings = AppSettings.shared
+    @FocusState private var searchFocused: Bool
+
     var body: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                TextField("Search settings", text: $router.query).textFieldStyle(.plain).focused($searchFocused)
+                if !router.query.isEmpty {
+                    Button { router.query = "" } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.borderless).foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, 10).padding(.vertical, 7)
+            .background(RoundedRectangle(cornerRadius: 8).fill(Color.secondary.opacity(0.1)))
+            .padding(.horizontal, 12).padding(.top, 10)
+            .background(Button("") { searchFocused = true }.keyboardShortcut("f", modifiers: .command).hidden())
+            if router.query.isEmpty {
+                tabs
+            } else {
+                SettingsSearchResults(query: router.query) { hit in
+                    if hit.advanced { settings.showAdvanced = true }
+                    router.tab = hit.tab
+                    router.query = ""
+                }
+            }
+        }
+        .frame(minWidth: 600, minHeight: 520)
+    }
+
+    private var tabs: some View {
         TabView(selection: $router.tab) {
             GeneralTab().tabItem { Label("General", systemImage: "gearshape") }.tag(SettingsTab.general)
             AppearanceTab().tabItem { Label("Appearance", systemImage: "paintpalette") }.tag(SettingsTab.appearance)
@@ -22,10 +52,11 @@ struct SettingsView: View {
             SnippetsTab().tabItem { Label("Snippets", systemImage: "text.badge.plus") }.tag(SettingsTab.snippets)
             HistoryTab().tabItem { Label("History", systemImage: "clock") }.tag(SettingsTab.history)
             MeetingsTab().tabItem { Label("Meetings", systemImage: "person.2.wave.2") }.tag(SettingsTab.meetings)
-            AdvancedTab().tabItem { Label("Advanced", systemImage: "slider.horizontal.3") }.tag(SettingsTab.advanced)
+            if settings.showAdvanced {
+                AdvancedTab().tabItem { Label("Advanced", systemImage: "slider.horizontal.3") }.tag(SettingsTab.advanced)
+            }
         }
         .padding(12)
-        .frame(minWidth: 600, minHeight: 520)
     }
 }
 
@@ -145,6 +176,19 @@ struct GeneralTab: View {
                 }
             }
 
+            ProSection()
+
+            Section("Getting started") {
+                HStack {
+                    Text("Practice dictating in three short steps")
+                    Spacer()
+                    Button("Practice…") { NotificationCenter.default.post(name: .openPractice, object: nil) }
+                }
+                Toggle("Show advanced settings", isOn: $settings.showAdvanced)
+                Text("Models, languages, sync, diagnostics and the Advanced tab. Everything works without them.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+
             Section("Transcription") {
                 Picker("Engine", selection: $settings.provider) {
                     ForEach(Provider.allCases) { Text($0.label).tag($0) }
@@ -182,7 +226,7 @@ struct GeneralTab: View {
                             Link("Get a \(settings.provider.label) key →", destination: url)
                         }
                     }
-                    fieldRow("Speech model", text: $settings.transcriptionModel, prompt: settings.provider.defaultTranscriptionModel)
+                    if settings.showAdvanced { fieldRow("Speech model", text: $settings.transcriptionModel, prompt: settings.provider.defaultTranscriptionModel) }
                     Toggle("Fall back to on-device transcription when offline", isOn: $settings.offlineFallback)
                 }
                 Picker("Spoken language", selection: $settings.language) {
@@ -211,7 +255,7 @@ struct GeneralTab: View {
                          : "Falls back to the cloud LLM, then basic rules, if the on-device model is unavailable or its output looks wrong.")
                         .font(.callout).foregroundStyle(.secondary)
                 }
-                if settings.cleanupMode != .rules, settings.cleanupMode != .off, settings.provider.isCloud {
+                if settings.showAdvanced, settings.cleanupMode != .rules, settings.cleanupMode != .off, settings.provider.isCloud {
                     fieldRow("Cleanup model (fast)", text: $settings.cleanupModel, prompt: settings.provider.defaultCleanupModel)
                     fieldRow("Smart model (translate, Command, Ask)", text: $settings.smartModel, prompt: settings.provider.defaultSmartModel)
                 }
@@ -1019,8 +1063,12 @@ private struct HistoryRow: View {
             }
             Text(item.text).textSelection(.enabled)
             if item.raw != item.text {
-                DisclosureGroup(item.mode == .command ? "Spoken instruction" : "Original transcript", isExpanded: $showRaw) {
-                    Text(item.raw).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
+                DisclosureGroup(item.mode == .command ? "Spoken instruction" : "What changed", isExpanded: $showRaw) {
+                    if item.mode == .command {
+                        Text(item.raw).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
+                    } else {
+                        ChangeView(raw: item.raw, text: item.text).padding(.top, 4)
+                    }
                 }
                 .font(.caption)
             }

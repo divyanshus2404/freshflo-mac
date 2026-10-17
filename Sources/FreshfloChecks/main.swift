@@ -511,6 +511,19 @@ expect(VoiceSense.endPause(after: "Send it to Priya and", base: 2.5), 4.5, "trai
 expect(VoiceSense.endPause(after: "Send it to Priya.", base: 2.5), 2.125, "a finished sentence ends sooner")
 expect(VoiceSense.endPause(after: "kal meeting hai toh", base: 2.5), 4.5, "Hinglish 'toh' waits too")
 
+section("Licences")
+// Signed with a throwaway test key (not the real one).
+let testPub = "lOKbjPPS9p/KQFUqVov5q3qct8WlLK8EftUI0SnPsYo="
+if case .success(let l) = License.verify("FF1-eyJpZCI6InQxIiwidG8iOiJUZXN0IEJ1eWVyIiwicGxhbiI6ImxpZmV0aW1lIiwic2VhdHMiOjEsImlzc3VlZCI6MTc5MDAwMDAwMCwiZXhwaXJlcyI6MH0.UAnK8fPOJXN1JHK9kIPyOw6bOMBEfkzrrNowc3MztDqx3I_FLBEP3IF4BZheD2nrqDDYYtRgREwz8XuqyD59AQ", publicKey: testPub) {
+    expect(l.plan, .lifetime, "a lifetime key verifies")
+    expect(l.to, "Test Buyer", "it shows who it belongs to")
+} else { expectTrue(false, "a lifetime key verifies") }
+expect(License.verify("FF1-eyJpZCI6InQxIiwidG8iOiJUZXN0IEJ1eWVyIiwicGxhbiI6ImxpZmV0aW1lIiwic2VhdHMiOjEsImlzc3VlZCI6MTc5MDAwMDAwMCwiZXhwaXJlcyI6MH0.UAnK8fPOJXN1JHK9kIPyOw6bOMBEfkzrrNowc3MztDqx3I_FLBEP3IF4BZheD2nrqDDYYtRgREwz8XuqAD59AQ", publicKey: testPub), .failure(.signature), "a tampered key is refused")
+expect(License.verify("FF1-eyJpZCI6InQyIiwidG8iOiJPbGQiLCJwbGFuIjoicHJvIiwic2VhdHMiOjEsImlzc3VlZCI6MTYwMDAwMDAwMCwiZXhwaXJlcyI6MTYwMDAwMDEwMH0.nXYOK0QoQrchi2SAicNHODWUiSCO0x5CzOVO3b9IIsieNlx7ga41gpSrvp_139RQndDl1rBqCSX8nEKoQuQ9AQ", publicKey: testPub), .failure(.expired), "an expired key is refused")
+expect(License.verify("hello", publicKey: testPub), .failure(.format), "junk is refused")
+expect(License.verify("FF1-eyJpZCI6InQxIiwidG8iOiJUZXN0IEJ1eWVyIiwicGxhbiI6ImxpZmV0aW1lIiwic2VhdHMiOjEsImlzc3VlZCI6MTc5MDAwMDAwMCwiZXhwaXJlcyI6MH0.UAnK8fPOJXN1JHK9kIPyOw6bOMBEfkzrrNowc3MztDqx3I_FLBEP3IF4BZheD2nrqDDYYtRgREwz8XuqyD59AQ"), .failure(.signature), "a key from another signer is refused")
+expectTrue(!Pro.enforced, "beta: every Pro feature stays free")
+
 // MARK: - Result
 
 if failures.isEmpty {

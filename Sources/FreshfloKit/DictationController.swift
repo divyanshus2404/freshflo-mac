@@ -51,6 +51,8 @@ final class DictationController {
 
     /// Holding shorter than this counts as a tap, which switches to hands-free mode.
     private var lastTapAt: Date?
+    /// The last dictation got only digital silence from the mic (shown as a problem with a fix in the menu).
+    private(set) var micWasSilent = false
     private let maxDuration: TimeInterval = 20 * 60
 
     private static let scratchPhrases: Set<String> = [
@@ -198,6 +200,7 @@ final class DictationController {
             return
         }
         carried = []
+        micWasSilent = false
         learner.check()
         let previewReady = LivePreview.isReady
         previewEnabled = (settings.livePreview || settings.showCaptions) && previewReady
@@ -271,7 +274,8 @@ final class DictationController {
                 return
             }
         }
-        pill.model.liveText = "⚠︎ Your microphone is silent. Check that it isn't muted."
+        micWasSilent = true
+        pill.model.liveText = "⚠︎ Your microphone is silent. Fix it from the menu bar."
     }
 
     @discardableResult
@@ -599,6 +603,7 @@ final class DictationController {
 
 extension Notification.Name {
     static let openSettings = Notification.Name("Freshflo.openSettings")
+    static let openPractice = Notification.Name("Freshflo.openPractice")
     static let toggleMeeting = Notification.Name("Freshflo.toggleMeeting")
     static let audioDevicesChanged = Notification.Name("Freshflo.audioDevicesChanged")
 }

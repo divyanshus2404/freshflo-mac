@@ -35,6 +35,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         hotkey.onOtherKeyDown = { [weak self] code in self?.dictation.otherKeyDown(code) }
         hotkey.onAction = { [weak self] action in self?.perform(action) ?? false }
         applyShortcuts()
+        CommandPalette.shared.commands = { [weak self] in self?.paletteCommands() ?? [] }
+        NotificationCenter.default.addObserver(forName: .openPractice, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.openPractice() }
+        }
         settings.$talkCombo.dropFirst().receive(on: RunLoop.main).sink { [weak self] _ in self?.applyShortcuts() }.store(in: &cancellables)
         settings.$shortcuts.dropFirst().receive(on: RunLoop.main).sink { [weak self] _ in self?.applyShortcuts() }.store(in: &cancellables)
         settings.$clearedShortcuts.dropFirst().receive(on: RunLoop.main).sink { [weak self] _ in self?.applyShortcuts() }.store(in: &cancellables)
@@ -126,6 +130,15 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         case .processing: symbol = "ellipsis.circle"
         case .idle: symbol = hotkey.isRunning ? "waveform" : "exclamationmark.triangle"
         }
+        let trouble = dictation.state == .idle && !problems().isEmpty
+        statusItem.button?.toolTip = trouble ? "Freshflo needs attention: click for the fix"
+            : (settings.provider == .local || OnDeviceWhisper.isActive ? "Freshflo · on this Mac" : "Freshflo · \(settings.provider.label)")
+        if trouble {
+            let warn = NSImage(systemSymbolName: "exclamationmark.triangle", accessibilityDescription: "Freshflo needs attention")
+            warn?.isTemplate = true
+            statusItem.button?.image = warn
+            return
+        }
         let image = dictation.state == .idle && hotkey.isRunning
             ? BrandMark.menuBarImage
             : NSImage(systemSymbolName: symbol, accessibilityDescription: "Freshflo")
@@ -133,69 +146,86 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         statusItem.button?.image = image
     }
 
+    /// Things that stop Freshflo working right now, each with the one click that fixes it.
+    private func problems() -> [Problem] {
+        var list: [Problem] = []
+        if !hotkey.isRunning || !Permissions.accessibility {
+            list.append(Problem(id: "ax", title: "Freshflo can't see your talk key", fix: "Allow Accessibility…") { [weak self] in self?.grantAccessibility() })
+        }
+        if Permissions.microphone != .authorized {
+            list.append(Problem(id: "mic", title: "No microphone access", fix: "Allow Microphone…") { [weak self] in self?.grantMicrophone() })
+        }
+        if !settings.isReady {
+            if OnDeviceWhisper.isDownloaded {
+                list.append(Problem(id: "engine", title: "No speech engine set up", fix: "Use On-Device Whisper") { [weak self] in
+                    self?.settings.provider = .local; self?.settings.useOnDeviceWhisper = true })
+            } else {
+                list.append(Problem(id: "engine", title: "No speech engine set up", fix: "Finish Setup…") { [weak self] in self?.openOnboarding() })
+            }
+        }
+        if dictation.micWasSilent {
+            if let mic = AudioDevices.builtInMic(), mic.uid != recorderUIDHint {
+                list.append(Problem(id: "silent", title: "Your mic was silent", fix: "Use \(mic.name)") { [weak self] in
+                    self?.settings.inputDeviceUID = mic.uid })
+            } else {
+                list.append(Problem(id: "silent", title: "Your mic was silent", fix: "Open Sound Settings…") {
+                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Sound-Settings.extension?input")!) })
+            }
+        }
+        if dictation.lastFailed != nil {
+            list.append(Problem(id: "failed", title: "Your last dictation didn't go through", fix: "Retry It") { [weak self] in self?.retryLast() })
+        }
+        return list
+    }
+    private var recorderUIDHint: String { AudioDevices.preferredUID(chosen: settings.inputDeviceUID, preferBuiltIn: settings.preferBuiltInMic) }
+
+    @objc private func runProblemFix(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? String, let p = problems().first(where: { $0.id == id }) else { return }
+        p.action()
+        updateStatusIcon()
+    }
+
     public func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
 
+        // 1. Anything wrong, with its fix, first.
+        for p in problems() {
+            let title = NSMenuItem(title: "⚠︎ " + p.title, action: nil, keyEquivalent: "")
+            title.isEnabled = false
+            menu.addItem(title)
+            let fix = item("    " + p.fix, #selector(runProblemFix(_:)))
+            fix.representedObject = p.id
+            menu.addItem(fix)
+        }
         if let update = Updater.shared.available {
             menu.addItem(item(Updater.shared.installing ? "Installing Freshflo \(update.version)…" : "⬆︎ Update to Freshflo \(update.version)…", #selector(installUpdate)))
-            menu.addItem(.separator())
         }
-        // Today's progress: the small reward that makes people come back.
-        let stats = UsageStats.shared
-        let today = stats.today
-        let streak = stats.streak
-        var line = today.words > 0
-            ? "Today: \(today.words.formatted()) words · \(today.minutesSaved) min saved"
-            : "Today: nothing yet. Hold \(settings.talkKeyLabel) and talk."
-        if streak >= 2 { line += " · 🔥 \(streak)-day streak" }
-        let progress = NSMenuItem(title: line, action: nil, keyEquivalent: "")
-        progress.isEnabled = false
-        menu.addItem(progress)
-        let week = stats.thisWeek
-        if week.words > 0 {
-            let weekItem = NSMenuItem(title: "This week: \(week.words.formatted()) words · \(week.minutesSaved) min saved", action: nil, keyEquivalent: "")
-            weekItem.isEnabled = false
-            menu.addItem(weekItem)
-        }
-        menu.addItem(.separator())
+        if menu.numberOfItems > 0 { menu.addItem(.separator()) }
+
+        // 2. Status: how to talk, where it runs, and today's progress.
         let header = NSMenuItem(title: settings.talkMode.hint(settings.talkKeyLabel), action: nil, keyEquivalent: "")
         header.isEnabled = false
         menu.addItem(header)
-        if settings.commandModeEnabled {
-            let command = NSMenuItem(title: "Hold \(settings.talkKeyLabel) + Control for commands", action: nil, keyEquivalent: "")
-            command.isEnabled = false
-            menu.addItem(command)
-        }
-        if settings.askModeEnabled {
-            let ask = NSMenuItem(title: "Hold \(settings.talkKeyLabel) + Shift to ask or take actions", action: nil, keyEquivalent: "")
-            ask.isEnabled = false
-            menu.addItem(ask)
-        }
+        let stats = UsageStats.shared
+        let today = stats.today, streak = stats.streak, week = stats.thisWeek
+        var line = settings.provider == .local || OnDeviceWhisper.isActive ? "🔒 On this Mac" : "☁︎ \(settings.provider.label)"
+        if today.words > 0 { line += " · today \(today.words.formatted()) words" }
+        if streak >= 2 { line += " · 🔥 \(streak)" }
+        let status = NSMenuItem(title: line, action: nil, keyEquivalent: "")
+        status.isEnabled = false
+        status.toolTip = week.words > 0 ? "This week: \(week.words.formatted()) words · \(week.minutesSaved) min saved" : nil
+        menu.addItem(status)
 
-        if !hotkey.isRunning || !Permissions.accessibility {
-            menu.addItem(item("⚠︎ Grant Accessibility Access…", #selector(grantAccessibility)))
-        }
-        if Permissions.microphone != .authorized {
-            menu.addItem(item("⚠︎ Grant Microphone Access…", #selector(grantMicrophone)))
-        }
-        if !settings.isReady {
-            menu.addItem(item("⚠︎ Finish Setup…", #selector(openOnboarding)))
-        }
-        let tip = NSMenuItem(title: "💡 " + Tips.today(key: settings.talkKeyLabel), action: nil, keyEquivalent: "")
-        tip.isEnabled = false
-        menu.addItem(tip)
-
+        // 3. The things you do every day.
         menu.addItem(.separator())
-        if dictation.lastFailed != nil {
-            menu.addItem(item("Retry Last Dictation", #selector(retryLast)))
-        }
         let paste = item("Paste Last Dictation", #selector(pasteLast))
-        let copy = item("Copy Last Dictation", #selector(copyLast))
         paste.isEnabled = history.last != nil
-        copy.isEnabled = history.last != nil
         menu.addItem(paste)
+        let copy = item("Copy Last Dictation", #selector(copyLast))
+        copy.isEnabled = history.last != nil
+        copy.isAlternate = true
+        copy.keyEquivalentModifierMask = .option
         menu.addItem(copy)
-
         if !history.items.isEmpty {
             let recent = NSMenuItem(title: "Recent", action: nil, keyEquivalent: "")
             let sub = NSMenu()
@@ -206,40 +236,133 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
                 mi.toolTip = "Click to copy"
                 sub.addItem(mi)
             }
+            sub.addItem(.separator())
+            sub.addItem(item("All History…", #selector(openHistory)))
             recent.submenu = sub
             menu.addItem(recent)
         }
-
-        if let app = NSWorkspace.shared.frontmostApplication, let id = app.bundleIdentifier, id != Bundle.main.bundleIdentifier {
-            let off = settings.blockedApps.contains(id)
-            let toggle = item(off ? "Turn On in \(app.localizedName ?? id)" : "Turn Off in \(app.localizedName ?? id)", #selector(toggleBlocked(_:)))
-            toggle.representedObject = id
-            menu.addItem(toggle)
-        }
-        let captions = item("Live Captions", #selector(toggleCaptions))
-        captions.state = settings.showCaptions ? .on : .off
-        captions.toolTip = "Show your words and what Freshflo detects while you speak"
-        menu.addItem(captions)
-
-        menu.addItem(.separator())
         if MeetingController.shared.isRecording {
             let s = Int(MeetingController.shared.elapsed)
             menu.addItem(item(String(format: "■ Stop Meeting Notes (%d:%02d)", s / 60, s % 60), #selector(toggleMeeting)))
         } else {
             menu.addItem(item("● Start Meeting Notes", #selector(toggleMeeting)))
         }
-        menu.addItem(item("Meeting Notes…", #selector(openMeetings)))
-        menu.addItem(item("Transcribe Audio File…", #selector(transcribeFile)))
         menu.addItem(item("Scratchpad…", #selector(openScratchpad)))
-        menu.addItem(item("Your Week…", #selector(openStats)))
-        menu.addItem(item("History…", #selector(openHistory)))
+        let find = item("Find Anything…", #selector(openPalette))
+        if let k = settings.shortcut(.palette) { find.title += "  " + k.label }
+        menu.addItem(find)
+
+        // 4. Everything else, one level down.
+        menu.addItem(.separator())
+        let tools = NSMenuItem(title: "Tools", action: nil, keyEquivalent: "")
+        let t = NSMenu()
+        t.addItem(item("Meeting Notes…", #selector(openMeetings)))
+        t.addItem(item("Transcribe Audio File…", #selector(transcribeFile)))
+        t.addItem(item("Your Week…", #selector(openStats)))
+        t.addItem(item("History…", #selector(openHistory)))
+        t.addItem(.separator())
+        let captions = item("Live Captions", #selector(toggleCaptions))
+        captions.state = settings.showCaptions ? .on : .off
+        t.addItem(captions)
+        if let app = NSWorkspace.shared.frontmostApplication, let id = app.bundleIdentifier, id != Bundle.main.bundleIdentifier {
+            let off = settings.blockedApps.contains(id)
+            let toggle = item(off ? "Turn On in \(app.localizedName ?? id)" : "Turn Off in \(app.localizedName ?? id)", #selector(toggleBlocked(_:)))
+            toggle.representedObject = id
+            t.addItem(toggle)
+        }
+        tools.submenu = t
+        menu.addItem(tools)
+        let help = NSMenuItem(title: "Help", action: nil, keyEquivalent: "")
+        let h = NSMenu()
+        let tip = NSMenuItem(title: "💡 " + Tips.today(key: settings.talkKeyLabel), action: nil, keyEquivalent: "")
+        tip.isEnabled = false
+        h.addItem(tip)
+        if settings.commandModeEnabled {
+            let c = NSMenuItem(title: "Hold \(settings.talkKeyLabel) + Control for commands", action: nil, keyEquivalent: ""); c.isEnabled = false; h.addItem(c)
+        }
+        if settings.askModeEnabled {
+            let a = NSMenuItem(title: "Hold \(settings.talkKeyLabel) + Shift to ask or take actions", action: nil, keyEquivalent: ""); a.isEnabled = false; h.addItem(a)
+        }
+        h.addItem(.separator())
+        h.addItem(item("Practice Dictating…", #selector(openPractice)))
+        h.addItem(item("Setup Guide…", #selector(openOnboarding)))
+        h.addItem(item("Send Feedback…", #selector(openFeedback)))
+        h.addItem(item("Share Freshflo…", #selector(shareApp)))
+        h.addItem(item("Check for Updates…", #selector(checkForUpdates)))
+        help.submenu = h
+        menu.addItem(help)
         menu.addItem(item("Settings…", #selector(openSettings), key: ","))
-        menu.addItem(item("Setup Guide…", #selector(openOnboarding)))
-        menu.addItem(item("Send Feedback…", #selector(openFeedback)))
-        menu.addItem(item("Share Freshflo…", #selector(shareApp)))
-        menu.addItem(item("Check for Updates…", #selector(checkForUpdates)))
         menu.addItem(.separator())
         menu.addItem(item("Quit Freshflo", #selector(NSApplication.terminate(_:)), key: "q", target: NSApp))
+    }
+
+    // MARK: - Find anything (⌘K) and practice
+
+    @objc private func openPalette() { CommandPalette.shared.toggle() }
+
+    private var practiceWindow: NSWindow?
+    @objc private func openPractice() {
+        if practiceWindow == nil {
+            let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 480, height: 360), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+            w.title = "Practice"
+            w.isReleasedWhenClosed = false
+            w.contentView = NSHostingView(rootView: PracticeView())
+            w.center()
+            practiceWindow = w
+        } else {
+            practiceWindow?.contentView = NSHostingView(rootView: PracticeView())
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        practiceWindow?.makeKeyAndOrderFront(nil)
+    }
+
+    private func paletteCommands() -> [PaletteCommand] {
+        var list: [PaletteCommand] = []
+        list.append(
+            PaletteCommand(id: "paste", title: "Paste last dictation", keywords: "insert again", symbol: "doc.on.clipboard") { [weak self] in self?.pasteLastNow() })
+        list.append(
+            PaletteCommand(id: "copy", title: "Copy last dictation", keywords: "clipboard", symbol: "doc.on.doc") { [weak self] in self?.copyLast() })
+        list.append(
+            PaletteCommand(id: "meeting", title: MeetingController.shared.isRecording ? "Stop meeting notes" : "Start meeting notes", keywords: "record call zoom meet", symbol: "record.circle") { [weak self] in self?.toggleMeeting() })
+        list.append(
+            PaletteCommand(id: "meetings", title: "Meeting notes", subtitle: "Past meetings", keywords: "summary action items", symbol: "person.2.wave.2") { [weak self] in self?.openMeetings() })
+        list.append(
+            PaletteCommand(id: "scratch", title: "Scratchpad", keywords: "notes write", symbol: "square.and.pencil") { [weak self] in self?.openScratchpad() })
+        list.append(
+            PaletteCommand(id: "file", title: "Transcribe an audio file", keywords: "mp3 wav m4a import", symbol: "waveform") { [weak self] in self?.transcribeFile() })
+        list.append(
+            PaletteCommand(id: "week", title: "Your week", subtitle: "Words and time saved", keywords: "stats streak", symbol: "chart.bar") { [weak self] in self?.openStats() })
+        list.append(
+            PaletteCommand(id: "captions", title: settings.showCaptions ? "Turn off live captions" : "Turn on live captions", keywords: "subtitles", symbol: "captions.bubble") { [weak self] in self?.toggleCaptions() })
+        list.append(
+            PaletteCommand(id: "practice", title: "Practice dictating", keywords: "tutorial learn help", symbol: "graduationcap") { [weak self] in self?.openPractice() })
+        list.append(
+            PaletteCommand(id: "themes", title: "Get more themes", subtitle: "freshflo.vercel.app/themes", keywords: "colour color download", symbol: "paintpalette") {
+                NSWorkspace.shared.open(URL(string: "https://freshflo.vercel.app/themes")!) })
+        list.append(
+            PaletteCommand(id: "feedback", title: "Send feedback", keywords: "bug report idea", symbol: "envelope") { [weak self] in self?.openFeedback() })
+        list.append(
+            PaletteCommand(id: "update", title: "Check for updates", keywords: "version", symbol: "arrow.down.circle") { [weak self] in self?.checkForUpdates() })
+        list.append(
+            PaletteCommand(id: "setup", title: "Setup guide", keywords: "onboarding permissions", symbol: "list.bullet.clipboard") { [weak self] in self?.openOnboarding() })
+        for t in IndicatorTheme.allCases where t != .custom {
+            list.append(PaletteCommand(id: "theme-\(t.rawValue)", title: "Theme: \(t.label)", keywords: "colour color appearance", symbol: "circle.lefthalf.filled") { [weak self] in
+                self?.settings.indicatorTheme = t })
+        }
+        for e in SettingsIndex.entries {
+            list.append(PaletteCommand(id: "set-" + e.title, title: e.title, subtitle: "Settings → " + SettingsSearchResults.tabName(e.tab), keywords: e.keywords, symbol: "gearshape") { [weak self] in
+                if e.advanced { self?.settings.showAdvanced = true }
+                self?.showSettings(tab: e.tab) })
+        }
+        for p in problems() {
+            list.insert(PaletteCommand(id: "fix-" + p.id, title: p.fix, subtitle: p.title, keywords: "fix problem", symbol: "exclamationmark.triangle") { p.action() }, at: 0)
+        }
+        return list
+    }
+
+    private func pasteLastNow() {
+        guard let text = history.last?.text else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { TextInserter.insert(text + (self.settings.addTrailingSpace ? " " : "")) }
     }
 
     @objc private func toggleBlocked(_ sender: NSMenuItem) {
@@ -326,6 +449,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
             TextInserter.insert(text + (settings.addTrailingSpace ? " " : ""))
         case .meeting: toggleMeeting()
         case .scratchpad: openScratchpad()
+        case .palette: CommandPalette.shared.toggle()
         }
         return true
     }

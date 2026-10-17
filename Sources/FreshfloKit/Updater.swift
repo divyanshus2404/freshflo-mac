@@ -222,6 +222,14 @@ final class Updater {
 /// Shown once after an update, so people see what got better.
 enum WhatsNew {
     static let notes: [String: [String]] = [
+        "0.18.0": [
+            "Find anything: press ⌃⌥K (or Find Anything… in the menu) to jump to any action, setting or theme.",
+            "Search Settings with ⌘F, and a simpler Settings until you turn on advanced options.",
+            "History shows what changed in each dictation: fillers removed, corrections, lists, with the words struck through.",
+            "A tidier menu bar, with problems shown at the top and a one-click fix.",
+            "Practice Dictating: three quick exercises to learn the tricks.",
+            "Freshflo Pro licences (every Pro feature stays free during the beta).",
+        ],
         "0.17.0": [
             "Freshflo now listens for a human voice, not just sound: typing, a fan, music or a TV are never turned into made-up words.",
             "The dictation bar moves with your voice and stays calm for keyboard clicks and background noise.",

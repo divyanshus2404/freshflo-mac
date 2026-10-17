@@ -112,6 +112,8 @@ final class AppSettings: ObservableObject {
     @Published var useOnDeviceWhisper: Bool { didSet { defaults.set(useOnDeviceWhisper, forKey: "useOnDeviceWhisper") } }
     @Published var preferBuiltInMic: Bool { didSet { defaults.set(preferBuiltInMic, forKey: "preferBuiltInMic") } }
     /// Hands-free ends by itself when you stop talking, like a person waiting for you to finish.
+    /// Show models, languages, sync and the Advanced tab.
+    @Published var showAdvanced: Bool { didSet { defaults.set(showAdvanced, forKey: "showAdvanced") } }
     @Published var autoStopHandsFree: Bool { didSet { defaults.set(autoStopHandsFree, forKey: "autoStopHandsFree") } }
     /// Seconds of quiet after a finished sentence (longer after "and…", "so…").
     @Published var handsFreePause: Double { didSet { defaults.set(handsFreePause, forKey: "handsFreePause") } }
@@ -195,6 +197,7 @@ final class AppSettings: ObservableObject {
         meetingCleanTranscript = d.object(forKey: "meetingCleanTranscript") as? Bool ?? true
         preferBuiltInMic = d.object(forKey: "preferBuiltInMic") as? Bool ?? true
         autoStopHandsFree = d.object(forKey: "autoStopHandsFree") as? Bool ?? true
+        showAdvanced = d.object(forKey: "showAdvanced") as? Bool ?? (d.object(forKey: "provider") != nil)
         handsFreePause = min(5, max(1.5, d.object(forKey: "handsFreePause") as? Double ?? 2.5))
         useOnDeviceWhisper = d.object(forKey: "useOnDeviceWhisper") as? Bool ?? true
         knownNames = Self.load("knownNames") ?? []
