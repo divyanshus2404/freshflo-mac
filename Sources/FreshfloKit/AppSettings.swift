@@ -111,6 +111,10 @@ final class AppSettings: ObservableObject {
     @Published var knownNames: [String] { didSet { save(knownNames, "knownNames") } }
     @Published var useOnDeviceWhisper: Bool { didSet { defaults.set(useOnDeviceWhisper, forKey: "useOnDeviceWhisper") } }
     @Published var preferBuiltInMic: Bool { didSet { defaults.set(preferBuiltInMic, forKey: "preferBuiltInMic") } }
+    /// Hands-free ends by itself when you stop talking, like a person waiting for you to finish.
+    @Published var autoStopHandsFree: Bool { didSet { defaults.set(autoStopHandsFree, forKey: "autoStopHandsFree") } }
+    /// Seconds of quiet after a finished sentence (longer after "and…", "so…").
+    @Published var handsFreePause: Double { didSet { defaults.set(handsFreePause, forKey: "handsFreePause") } }
     /// Offer to take meeting notes when a call starts.
     @Published var offerMeetingNotes: Bool { didSet { defaults.set(offerMeetingNotes, forKey: "offerMeetingNotes") } }
     @Published var meetingCleanTranscript: Bool { didSet { defaults.set(meetingCleanTranscript, forKey: "meetingCleanTranscript") } }
@@ -190,6 +194,8 @@ final class AppSettings: ObservableObject {
         mcpShareHistory = d.object(forKey: "mcpShareHistory") as? Bool ?? false
         meetingCleanTranscript = d.object(forKey: "meetingCleanTranscript") as? Bool ?? true
         preferBuiltInMic = d.object(forKey: "preferBuiltInMic") as? Bool ?? true
+        autoStopHandsFree = d.object(forKey: "autoStopHandsFree") as? Bool ?? true
+        handsFreePause = min(5, max(1.5, d.object(forKey: "handsFreePause") as? Double ?? 2.5))
         useOnDeviceWhisper = d.object(forKey: "useOnDeviceWhisper") as? Bool ?? true
         knownNames = Self.load("knownNames") ?? []
         weeklyRecap = d.object(forKey: "weeklyRecap") as? Bool ?? true

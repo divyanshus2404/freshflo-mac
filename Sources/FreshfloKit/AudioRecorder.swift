@@ -32,6 +32,14 @@ final class AudioRecorder {
     private var samples: [Float] = []
     private let lock = NSLock()
     private var peak: Float = 0
+    /// Listens for a human voice in what's being recorded (pitch + room noise), live.
+    private var voice = VoiceSense.Tracker()
+
+    /// Seconds of voice so far, and seconds since the voice last spoke.
+    var voiceSoFar: (voiced: Double, since: Double) {
+        lock.lock(); defer { lock.unlock() }
+        return (voice.voicedSeconds, voice.sinceVoice)
+    }
 
     /// Loudest sample so far; ~0 means the mic is delivering silence (muted or dead device).
     var peakSoFar: Float {
@@ -84,7 +92,7 @@ final class AudioRecorder {
     }
 
     func start() throws {
-        lock.lock(); samples.removeAll(keepingCapacity: true); peak = 0; lock.unlock()
+        lock.lock(); samples.removeAll(keepingCapacity: true); peak = 0; voice = VoiceSense.Tracker(); lock.unlock()
         let engine = makeEngine()
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
@@ -135,9 +143,16 @@ final class AudioRecorder {
         for s in chunk { sum += s * s }
         let rms = sqrt(sum / Float(chunk.count))
         let db = 20 * log10(max(rms, 1e-6))
-        let level = min(1, max(0, (db + 55) / 45))
+        let loudness = min(1, max(0, (db + 55) / 45))
 
-        lock.lock(); if retainSamples { samples.append(contentsOf: chunk) }; peak = max(peak, chunk.map(abs).max() ?? 0); lock.unlock()
+        lock.lock()
+        if retainSamples { samples.append(contentsOf: chunk) }
+        peak = max(peak, chunk.map(abs).max() ?? 0)
+        voice.feed(chunk)
+        let voiceLevel = voice.voiceLevel
+        lock.unlock()
+        // The indicator follows your voice: a typed key or a fan barely moves it; talking makes it dance.
+        let level = loudness * (0.35 + 0.65 * min(1, voiceLevel * 1.4))
         onChunk?(chunk)
         if onBands != nil {
             let bands = splitBands(chunk)

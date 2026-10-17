@@ -27,6 +27,8 @@ final class DictationController {
     private var context = FocusContext()
     private var maxTimer: Timer?
     private var micCheck: Timer?
+    /// Watches for the natural end of a hands-free dictation.
+    private var endTimer: Timer?
     /// Long dictations are transcribed in pieces at natural pauses while you're still talking,
     /// so releasing the key only waits for the last few seconds.
     private var chunkTimer: Timer?
@@ -128,6 +130,19 @@ final class DictationController {
         guard state == .recording else { return }
         locked = true
         pill.model.locked = true
+        endTimer?.invalidate()
+        guard settings.autoStopHandsFree else { return }
+        endTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in self?.checkNaturalEnd() }
+    }
+
+    /// Hands-free finishes when you've clearly stopped: after real speech, a pause as long as a person would wait,
+    /// longer if the last words were "and…" or "so…". Whispered speech (no pitch) never triggers it.
+    private func checkNaturalEnd() {
+        guard state == .recording, locked else { endTimer?.invalidate(); endTimer = nil; return }
+        let (voiced, since) = recorder.voiceSoFar
+        guard voiced >= 0.8 else { return }
+        let wait = VoiceSense.endPause(after: pill.model.liveText, base: settings.handsFreePause)
+        if since >= wait { finish() }
     }
 
     /// The hands-free shortcut: start a hands-free dictation, or finish the current one.
@@ -317,6 +332,7 @@ final class DictationController {
     }
 
     private func cancel(message: String?) {
+        endTimer?.invalidate(); endTimer = nil
         chunkTasks.forEach { $0.cancel() }
         _ = stopChunking()
         maxTimer?.invalidate()
@@ -330,6 +346,7 @@ final class DictationController {
     }
 
     private func finish() {
+        endTimer?.invalidate(); endTimer = nil
         maxTimer?.invalidate()
         micCheck?.invalidate()
         let captured = carried + recorder.stop()
@@ -337,13 +354,18 @@ final class DictationController {
         let chunks = stopChunking()
         let heard = stopPreview()
         play(.stop)
-        let (samples, voiced) = AudioRecorder.trimSilence(captured)
-        guard voiced >= 0.2 else {
+        let (trimmed, voiced) = AudioRecorder.trimSilence(captured)
+        // Is a person actually talking? Clear speech skips the slower classifier; short or unclear clips get it,
+        // so typing, a fan, music or a TV never get sent off to be "transcribed" into made-up words.
+        let live = recorder.voiceSoFar.voiced
+        let human = voiced >= 0.2 && (live >= 2.5 || VoiceSense.summarize(trimmed).hasHumanSpeech)
+        guard human else {
             chunks.tasks.forEach { $0.cancel() }
             state = .idle
-            pill.flash("Didn't catch that", seconds: 1.4)
+            pill.flash(voiced < 0.2 ? "Didn't catch that" : "Didn't hear anyone speaking", seconds: 1.6)
             return
         }
+        let samples = VoiceSense.tightenPauses(trimmed)
         let tail = chunks.tasks.isEmpty ? [] : Array(captured[min(chunks.cut, captured.count)...])
         process(samples: samples, context: context, mode: mode, liveText: heard, chunks: chunks.tasks, tail: tail)
     }

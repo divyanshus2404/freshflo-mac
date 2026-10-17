@@ -95,6 +95,19 @@ struct GeneralTab: View {
                     ForEach(TalkMode.allCases) { Text($0.label).tag($0) }
                 }
                 Text(talkHelp).font(.callout).foregroundStyle(.secondary)
+                if settings.talkMode != .hold {
+                    Toggle("Hands-free: finish when I stop talking", isOn: $settings.autoStopHandsFree)
+                    if settings.autoStopHandsFree {
+                        LabeledContent("Wait after I stop") {
+                            HStack {
+                                Slider(value: $settings.handsFreePause, in: 1.5...5, step: 0.5).frame(width: 160)
+                                Text(String(format: "%.1f s", settings.handsFreePause)).monospacedDigit().foregroundStyle(.secondary)
+                            }
+                        }
+                        Text("Freshflo listens for your voice, not just sound: typing or a fan won't keep it going, and it waits longer if you trail off with “and…” or “so…”.")
+                            .font(.callout).foregroundStyle(.secondary)
+                    }
+                }
                 Toggle("Command mode: hold \(settings.talkKeyLabel) + Control", isOn: $settings.commandModeEnabled)
                 Toggle("Ask mode: hold \(settings.talkKeyLabel) + Shift", isOn: $settings.askModeEnabled)
                 if settings.askModeEnabled {

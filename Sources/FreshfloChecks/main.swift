@@ -486,6 +486,31 @@ expectTrue(UserTheme.from(url: URL(string: "freshflo://theme?n=x&a=zzzzzz&c=FFD2
 expectTrue(UserTheme.from(url: URL(string: "freshflo://other?a=ff5fa2&c=FFD23F&k=3BCEAC")!) == nil, "other freshflo links aren't themes")
 expect(UserTheme.from(url: URL(string: "freshflo://theme?a=ff5fa2&c=FFD23F&k=3BCEAC")!)?.name, "Shared theme", "unnamed theme gets a name")
 
+section("Voice detection")
+// A voice-like signal: a 140 Hz harmonic tone with pitch drift, shaped into 4 syllables a second.
+let vox: [Float] = (0..<32_000).map { i in
+    let t = Double(i) / 16_000, f0 = 140 + 15 * sin(2 * .pi * 0.7 * t)
+    let syl = max(0, sin(2 * .pi * 4 * t))
+    return Float(0.12 * syl * (sin(2 * .pi * f0 * t) + 0.6 * sin(4 * .pi * f0 * t) + 0.3 * sin(6 * .pi * f0 * t)))
+}
+var lcg: UInt64 = 42
+let hiss: [Float] = (0..<32_000).map { _ in lcg = lcg &* 6364136223846793005 &+ 1; return Float(Int64(bitPattern: lcg >> 11) % 2000) / 2000 * 0.08 }
+var tv = VoiceSense.Tracker(); tv.feed(vox)
+var tn = VoiceSense.Tracker(); tn.feed(hiss)
+expectTrue(tv.voicedSeconds > 0.5, "a pitched, syllabic voice is heard as voice")
+expectTrue(tn.voicedSeconds < 0.1, "hiss is not a voice")
+expectTrue(VoiceSense.decide(voiced: 0, speech: 0.9, music: 0), "classifier speech alone is enough (whispers)")
+expect(VoiceSense.decide(voiced: 0.6, speech: 0.05, music: 0.9), false, "music with no speech isn't a person")
+expectTrue(VoiceSense.decide(voiced: 0.6, speech: -1, music: 0), "pitch alone works without the classifier")
+expect(VoiceSense.decide(voiced: 0.1, speech: 0.1, music: 0), false, "a cough isn't a dictation")
+let gap = vox + [Float](repeating: 0, count: 16_000 * 3) + vox
+let tight = VoiceSense.tightenPauses(gap)
+expectTrue(tight.count < gap.count - 16_000 * 2 && tight.count > vox.count * 2, "a 3 s pause shrinks, speech stays")
+expect(VoiceSense.tightenPauses(vox).count, vox.count, "speech without long pauses is untouched")
+expect(VoiceSense.endPause(after: "Send it to Priya and", base: 2.5), 4.5, "trailing 'and' waits longer")
+expect(VoiceSense.endPause(after: "Send it to Priya.", base: 2.5), 2.125, "a finished sentence ends sooner")
+expect(VoiceSense.endPause(after: "kal meeting hai toh", base: 2.5), 4.5, "Hinglish 'toh' waits too")
+
 // MARK: - Result
 
 if failures.isEmpty {

@@ -222,6 +222,12 @@ final class Updater {
 /// Shown once after an update, so people see what got better.
 enum WhatsNew {
     static let notes: [String: [String]] = [
+        "0.17.0": [
+            "Freshflo now listens for a human voice, not just sound: typing, a fan, music or a TV are never turned into made-up words.",
+            "The dictation bar moves with your voice and stays calm for keyboard clicks and background noise.",
+            "Hands-free finishes by itself when you stop talking, and waits longer if you trail off with “and…” or “so…” (Settings → General).",
+            "Long pauses to think are shortened before transcription, so results are faster and steadier.",
+        ],
         "0.16.1": [
             "Install themes in one click from freshflo.vercel.app/themes. Freshflo asks before adding one.",
         ],

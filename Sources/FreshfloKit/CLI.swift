@@ -7,7 +7,7 @@ import Foundation
 ///   Freshflo --command "make this formal" [--selection "hey whats up"]
 public enum CLI {
     public static var isRequested: Bool {
-        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update", "--grammar-eval", "--ask-meetings", "--render-stats", "--render-appearance", "--render-styles", "--diarize", "--mic-info", "--whisper-local"].contains(where: CommandLine.arguments.contains)
+        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update", "--grammar-eval", "--ask-meetings", "--render-stats", "--voice-sense", "--render-appearance", "--render-styles", "--diarize", "--mic-info", "--whisper-local"].contains(where: CommandLine.arguments.contains)
     }
 
     /// Shows the real floating indicator inside a proper app run loop with synthetic speech (performance checks).
@@ -294,6 +294,20 @@ public enum CLI {
         if let out = value("--render-styles") {
             StyleGallery.render(to: URL(fileURLWithPath: out))
             print("rendered \(out)")
+            return
+        }
+        if let list = value("--voice-sense") {
+            // Is there a person talking in each file? (pitch-based voice time, classifier scores, verdict)
+            for path in list.split(separator: ",").map(String.init) {
+                guard let s = try? AudioRecorder.load(url: URL(fileURLWithPath: path)) else { print("\(path): can't read"); continue }
+                let t0 = Date()
+                let v = VoiceSense.summarize(s)
+                let tight = VoiceSense.tightenPauses(s)
+                print(String(format: "%@  voiced %.1fs of %.1fs · speech %.2f · music %.2f · %@ · pauses %.1fs→%.1fs · %.0f ms",
+                             URL(fileURLWithPath: path).lastPathComponent, v.voicedSeconds, Double(s.count) / 16_000, v.speechConfidence,
+                             v.musicConfidence, v.hasHumanSpeech ? "HUMAN" : "no voice", Double(s.count) / 16_000, Double(tight.count) / 16_000,
+                             Date().timeIntervalSince(t0) * 1000))
+            }
             return
         }
         if let out = value("--render-appearance") {
