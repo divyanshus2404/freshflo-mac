@@ -10,6 +10,18 @@ struct UserTheme: Codable, Identifiable, Equatable {
     var command: String     // Command mode
     var ask: String         // Ask mode
 
+    /// freshflo://theme?n=Name&a=FF6FB5&c=B894FF&k=6BAAFF (from the themes page). Nil unless every colour is valid.
+    static func from(url: URL) -> UserTheme? {
+        guard url.scheme?.lowercased() == "freshflo", url.host?.lowercased() == "theme",
+              let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems else { return nil }
+        func v(_ k: String) -> String? { items.first { $0.name == k }?.value }
+        let colours = ["a", "c", "k"].compactMap { v($0).map { "#" + $0.uppercased() } }
+        guard colours.count == 3, colours.allSatisfy({ Color.parseHex($0) != nil }) else { return nil }
+        var name = String((v("n") ?? "").trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
+        if name.isEmpty { name = "Shared theme" }
+        return UserTheme(name: name, accent: colours[0], command: colours[1], ask: colours[2])
+    }
+
     static let starter = UserTheme(name: "My theme", accent: "#FF6FB5", command: "#B894FF", ask: "#6BAAFF")
 
     /// Ready-made starting points for the editor.

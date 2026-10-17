@@ -284,6 +284,31 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         }
     }
 
+    /// freshflo:// links. Only theme installs for now; always asks first, since any website can open a link.
+    public func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls {
+            guard let theme = UserTheme.from(url: url) else { continue }
+            NSApp.activate(ignoringOtherApps: true)
+            let alert = NSAlert()
+            alert.messageText = "Add the “\(theme.name)” theme?"
+            alert.informativeText = "It changes the colours of your dictation bar. You can switch back any time in Settings → Appearance."
+            alert.addButton(withTitle: "Add and Use")
+            alert.addButton(withTitle: "Cancel")
+            guard alert.runModal() == .alertFirstButtonReturn else { continue }
+            var t = theme
+            if let i = settings.savedThemes.firstIndex(where: { $0.name == t.name }) {
+                t.id = settings.savedThemes[i].id
+                settings.savedThemes[i] = t
+            } else {
+                settings.savedThemes.append(t)
+            }
+            t.id = settings.customTheme.id
+            settings.customTheme = t
+            settings.indicatorTheme = .custom
+            showSettings(tab: .appearance)
+        }
+    }
+
     private func applyShortcuts() {
         hotkey.combo = settings.talkCombo
         var map: [ShortcutAction: KeyCombo] = [:]

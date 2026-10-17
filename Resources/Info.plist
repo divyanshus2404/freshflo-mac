@@ -19,14 +19,25 @@
 		<string>en</string>
 		<string>hi</string>
 	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.freshflo.app.theme</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>freshflo</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleName</key>
 	<string>Freshflo</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.16.0</string>
+	<string>0.16.1</string>
 	<key>CFBundleVersion</key>
-	<string>160</string>
+	<string>161</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.productivity</string>
 	<key>LSMinimumSystemVersion</key>

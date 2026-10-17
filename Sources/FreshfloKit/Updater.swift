@@ -222,6 +222,9 @@ final class Updater {
 /// Shown once after an update, so people see what got better.
 enum WhatsNew {
     static let notes: [String: [String]] = [
+        "0.16.1": [
+            "Install themes in one click from freshflo.vercel.app/themes. Freshflo asks before adding one.",
+        ],
         "0.16.0": [
             "Any key combination can be your talk key (like ⌃⌥Space or F13), not just one modifier key.",
             "Choose how the talk key works: hold or tap, hold only, press to start and stop, or double-tap for hands-free.",

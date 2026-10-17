@@ -481,6 +481,11 @@ expect(TalkKeyLogic.startsLocked(mode: .doubleTap, lastTap: now.addingTimeInterv
 expectTrue(TalkKeyLogic.startsLocked(mode: .toggle, lastTap: nil), "toggle always starts hands-free")
 expect(TalkKeyLogic.startsLocked(mode: .holdOrTap, lastTap: now, now: now), false, "default mode starts held")
 
+expect(UserTheme.from(url: URL(string: "freshflo://theme?n=Holi&a=ff5fa2&c=FFD23F&k=3BCEAC")!)?.accent, "#FF5FA2", "install link reads the theme")
+expectTrue(UserTheme.from(url: URL(string: "freshflo://theme?n=x&a=zzzzzz&c=FFD23F&k=3BCEAC")!) == nil, "install link with a bad colour is refused")
+expectTrue(UserTheme.from(url: URL(string: "freshflo://other?a=ff5fa2&c=FFD23F&k=3BCEAC")!) == nil, "other freshflo links aren't themes")
+expect(UserTheme.from(url: URL(string: "freshflo://theme?a=ff5fa2&c=FFD23F&k=3BCEAC")!)?.name, "Shared theme", "unnamed theme gets a name")
+
 // MARK: - Result
 
 if failures.isEmpty {
