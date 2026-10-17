@@ -222,6 +222,9 @@ final class Updater {
 /// Shown once after an update, so people see what got better.
 enum WhatsNew {
     static let notes: [String: [String]] = [
+        "0.18.2": [
+            "Music or a video playing on your Mac is no longer typed: the speakers are muted while you dictate and come back the moment you stop. Headphones are never muted (Settings → General → Microphone).",
+        ],
         "0.18.1": [
             "Fixed: talking non-stop from the moment you press the key could be trimmed away as background noise, cutting words or saying “Didn't catch that”.",
             "Fixed: the mic no longer “changes” mid-dictation when macOS adjusts audio; Freshflo keeps recording from the same mic and only switches if it's really gone.",

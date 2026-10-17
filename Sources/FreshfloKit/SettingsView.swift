@@ -288,6 +288,13 @@ struct GeneralTab: View {
                     }
                 }
                 .help("Automatic picks the best mic that's connected right now and follows you as devices come and go.")
+                Toggle(isOn: $settings.muteWhileDictating) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Mute speakers while dictating")
+                        Text("So music or a video playing on this Mac isn't typed. Sound comes back the moment you stop. Headphones are never muted.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
                 if settings.inputDeviceUID.isEmpty {
                     Toggle(isOn: $settings.preferBuiltInMic) {
                         VStack(alignment: .leading, spacing: 2) {

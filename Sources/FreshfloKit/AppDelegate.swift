@@ -25,6 +25,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
 
     public func applicationDidFinishLaunching(_ notification: Notification) {
         AppMover.moveIfNeeded()
+        DictationController.restoreSpeakersAfterCrash()
         AppSettings.shared.appAppearance.apply()
         installMainMenu()
         setUpStatusItem()

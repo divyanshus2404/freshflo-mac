@@ -301,11 +301,14 @@ public enum CLI {
             let seconds = Double(value("--mic-test") ?? "") ?? 4
             let rec = AudioRecorder()
             rec.deviceUID = AudioDevices.preferredUID(chosen: AppSettings.shared.inputDeviceUID, preferBuiltIn: AppSettings.shared.preferBuiltInMic)
+            let mute = CommandLine.arguments.contains("--mute") && !AudioDevices.outputIsHeadphones && AudioDevices.outputMuted == false
+            if mute { AudioDevices.outputMuted = true }
+            defer { if mute { AudioDevices.outputMuted = false } }
             var resets = 0, lost = 0
             rec.onEngineReset = { resets += 1 }
             rec.onDeviceLost = { lost += 1 }
             let name = AudioDevices.inputs().first { $0.uid == rec.deviceUID }?.name ?? "system default"
-            print("recording \(seconds)s from: \(name) (talk now)")
+            print("recording \(seconds)s from: \(name) (talk now)" + (mute ? " · speakers muted" : ""))
             do { try rec.start() } catch { print("couldn't start: \(error)"); return }
             RunLoop.main.run(until: Date().addingTimeInterval(seconds))
             let (voiced, _) = rec.voiceSoFar
@@ -313,8 +316,8 @@ public enum CLI {
             let s = rec.stop()
             let (trimmed, active) = AudioRecorder.trimSilence(s)
             let rms = sqrt(s.reduce(Float(0)) { $0 + $1 * $1 } / Float(max(1, s.count)))
-            print(String(format: "samples %.1fs · peak %.3f · rms %.4f · active sound %.1fs · voice %.1fs · kept %.1fs · engine resets %d · mic lost %d",
-                         Double(s.count) / 16_000, peak, rms, active, voiced, Double(trimmed.count) / 16_000, resets, lost))
+            print(String(format: "samples %.1fs · peak %.3f · rms %.4f · active sound %.1fs · voice %.1fs · kept %.1fs · engine resets %d · mic lost %d · speakers %@",
+                         Double(s.count) / 16_000, peak, rms, active, voiced, Double(trimmed.count) / 16_000, resets, lost, mute ? "muted" : "playing"))
             print(peak < 0.0001 ? "⚠︎ mic delivered silence (muted, or no permission)" : voiced >= 0.3 ? "✓ heard a voice" : "· no voice heard (that's fine if you stayed quiet)")
             return
         }

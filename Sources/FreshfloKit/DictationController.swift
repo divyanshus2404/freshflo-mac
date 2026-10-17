@@ -51,6 +51,33 @@ final class DictationController {
 
     /// Holding shorter than this counts as a tap, which switches to hands-free mode.
     private var lastTapAt: Date?
+    /// Speakers we muted for this dictation (so we only unmute what we muted).
+    private var mutedSpeakers = false
+
+    /// Music or a video playing through the speakers would be heard and typed: mute them while you talk.
+    /// Headphones can't leak into the mic, so they're left alone. Restored as soon as you stop.
+    private func muteSpeakers() {
+        guard settings.muteWhileDictating, !mutedSpeakers, !AudioDevices.outputIsHeadphones,
+              AudioDevices.outputMuted == false else { return }
+        AudioDevices.outputMuted = true
+        mutedSpeakers = true
+        UserDefaults.standard.set(true, forKey: "speakersMutedByFreshflo")
+    }
+
+    private func restoreSpeakers() {
+        guard mutedSpeakers else { return }
+        AudioDevices.outputMuted = false
+        mutedSpeakers = false
+        UserDefaults.standard.removeObject(forKey: "speakersMutedByFreshflo")
+    }
+
+    /// After a crash mid-dictation the speakers could stay muted: undo that at launch.
+    static func restoreSpeakersAfterCrash() {
+        guard UserDefaults.standard.bool(forKey: "speakersMutedByFreshflo") else { return }
+        AudioDevices.outputMuted = false
+        UserDefaults.standard.removeObject(forKey: "speakersMutedByFreshflo")
+    }
+
     /// The last dictation got only digital silence from the mic (shown as a problem with a fix in the menu).
     private(set) var micWasSilent = false
     private let maxDuration: TimeInterval = 20 * 60
@@ -211,6 +238,7 @@ final class DictationController {
         do {
             try recorder.start()
         } catch {
+            restoreSpeakers()
             stopPreview()
             pill.flash(error.localizedDescription)
             return
@@ -218,6 +246,7 @@ final class DictationController {
         // Capture after the mic is live so the first word isn't clipped.
         context = FocusContext.capture(app: NSWorkspace.shared.frontmostApplication, readText: settings.useScreenContext || command)
         if context.isSecureField {
+            restoreSpeakers()
             _ = recorder.stop()
             stopPreview()
             pill.flash("Can't dictate into password fields")
@@ -232,6 +261,11 @@ final class DictationController {
         pill.model.appLabel = context.appName.isEmpty ? style.shortLabel : "\(context.appName) · \(style.shortLabel)"
         pill.showRecording(mode: mode, locked: false, anchor: context.caretRect)
         play(.start)
+        // After the start chime has played, so you still hear it.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
+            guard let self, self.state == .recording else { return }
+            self.muteSpeakers()
+        }
         if settings.canUseCloud { OpenAICompatible.prewarm(settings.endpoint) }
         if settings.cleanupMode == .apple || (settings.cleanupMode == .auto && !settings.canUseCloud) || command { AppleModel.prewarm() }
         maxTimer = Timer.scheduledTimer(withTimeInterval: maxDuration, repeats: false) { [weak self] _ in
@@ -351,6 +385,7 @@ final class DictationController {
     }
 
     private func cancel(message: String?) {
+        restoreSpeakers()
         endTimer?.invalidate(); endTimer = nil
         chunkTasks.forEach { $0.cancel() }
         _ = stopChunking()
@@ -365,6 +400,7 @@ final class DictationController {
     }
 
     private func finish() {
+        restoreSpeakers()
         endTimer?.invalidate(); endTimer = nil
         maxTimer?.invalidate()
         micCheck?.invalidate()

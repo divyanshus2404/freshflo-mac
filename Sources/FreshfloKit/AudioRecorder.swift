@@ -345,6 +345,47 @@ enum AudioDevices {
         inputs().first { $0.uid == uid }?.id
     }
 
+    // MARK: Muting this Mac's sound while dictating
+
+    private static func defaultOutputID() -> AudioDeviceID? {
+        var id = AudioDeviceID(0)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        var addr = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDefaultOutputDevice, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+        guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &addr, 0, nil, &size, &id) == noErr, id != 0 else { return nil }
+        return id
+    }
+
+    /// Whether the speakers/headphones are muted (nil if they can't say).
+    static var outputMuted: Bool? {
+        get {
+            guard let id = defaultOutputID() else { return nil }
+            var addr = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyMute, mScope: kAudioDevicePropertyScopeOutput, mElement: kAudioObjectPropertyElementMain)
+            guard AudioObjectHasProperty(id, &addr) else { return nil }
+            var value = UInt32(0)
+            var size = UInt32(MemoryLayout<UInt32>.size)
+            guard AudioObjectGetPropertyData(id, &addr, 0, nil, &size, &value) == noErr else { return nil }
+            return value != 0
+        }
+        set {
+            guard let newValue, let id = defaultOutputID() else { return }
+            var addr = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyMute, mScope: kAudioDevicePropertyScopeOutput, mElement: kAudioObjectPropertyElementMain)
+            guard AudioObjectHasProperty(id, &addr) else { return }
+            var value: UInt32 = newValue ? 1 : 0
+            AudioObjectSetPropertyData(id, &addr, 0, nil, UInt32(MemoryLayout<UInt32>.size), &value)
+        }
+    }
+
+    /// True when sound goes to headphones (the mic can't hear it, so there's no need to mute).
+    static var outputIsHeadphones: Bool {
+        guard let id = defaultOutputID() else { return false }
+        if isBluetooth(id) { return true }
+        var addr = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyDataSource, mScope: kAudioDevicePropertyScopeOutput, mElement: kAudioObjectPropertyElementMain)
+        var source = UInt32(0)
+        var size = UInt32(MemoryLayout<UInt32>.size)
+        guard AudioObjectHasProperty(id, &addr), AudioObjectGetPropertyData(id, &addr, 0, nil, &size, &source) == noErr else { return false }
+        return source == 0x6864706E // 'hdpn'
+    }
+
     static func defaultInputID() -> AudioDeviceID? {
         var address = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyDefaultInputDevice,
