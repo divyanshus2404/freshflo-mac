@@ -375,6 +375,16 @@ enum AudioDevices {
         }
     }
 
+    /// Something is playing through the speakers right now (music, a video, a call).
+    static var outputIsPlaying: Bool {
+        guard let id = defaultOutputID() else { return false }
+        var addr = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyDeviceIsRunningSomewhere, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+        var running = UInt32(0)
+        var size = UInt32(MemoryLayout<UInt32>.size)
+        guard AudioObjectGetPropertyData(id, &addr, 0, nil, &size, &running) == noErr else { return false }
+        return running != 0
+    }
+
     /// True when sound goes to headphones (the mic can't hear it, so there's no need to mute).
     static var outputIsHeadphones: Bool {
         guard let id = defaultOutputID() else { return false }

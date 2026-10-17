@@ -56,12 +56,37 @@ final class DictationController {
 
     /// Music or a video playing through the speakers would be heard and typed: mute them while you talk.
     /// Headphones can't leak into the mic, so they're left alone. Restored as soon as you stop.
+    /// Set when sound was playing and we should ask (once) what to do after this dictation.
+    private var askAboutPlayback = false
+
     private func muteSpeakers() {
-        guard settings.muteWhileDictating, !mutedSpeakers, !AudioDevices.outputIsHeadphones,
-              AudioDevices.outputMuted == false else { return }
+        guard !mutedSpeakers, !AudioDevices.outputIsHeadphones, AudioDevices.outputMuted == false else { return }
+        switch settings.playbackMode {
+        case .hear: return
+        case .ask:
+            if AudioDevices.outputIsPlaying { askAboutPlayback = true }
+            return
+        case .mute: break
+        }
         AudioDevices.outputMuted = true
         mutedSpeakers = true
         UserDefaults.standard.set(true, forKey: "speakersMutedByFreshflo")
+    }
+
+    /// The first time something was playing during a dictation: ask whether to mute it from now on.
+    private func askAboutPlaybackIfNeeded() {
+        guard askAboutPlayback else { return }
+        askAboutPlayback = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+            guard let self, self.settings.playbackMode == .ask, self.state == .idle else { return }
+            NSApp.activate(ignoringOtherApps: true)
+            let alert = NSAlert()
+            alert.messageText = "Sound was playing on your Mac"
+            alert.informativeText = "Your mic can hear music or videos from the speakers, and Freshflo may type them. Mute the speakers while you dictate? They come back as soon as you stop, and headphones are never muted. You can change this in Settings → General → Microphone."
+            alert.addButton(withTitle: "Mute While I Talk")
+            alert.addButton(withTitle: "Let Freshflo Hear It")
+            self.settings.playbackMode = alert.runModal() == .alertFirstButtonReturn ? .mute : .hear
+        }
     }
 
     private func restoreSpeakers() {
@@ -386,6 +411,7 @@ final class DictationController {
 
     private func cancel(message: String?) {
         restoreSpeakers()
+        askAboutPlayback = false
         endTimer?.invalidate(); endTimer = nil
         chunkTasks.forEach { $0.cancel() }
         _ = stopChunking()
@@ -401,6 +427,7 @@ final class DictationController {
 
     private func finish() {
         restoreSpeakers()
+        askAboutPlaybackIfNeeded()
         endTimer?.invalidate(); endTimer = nil
         maxTimer?.invalidate()
         micCheck?.invalidate()

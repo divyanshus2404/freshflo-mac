@@ -288,10 +288,14 @@ struct GeneralTab: View {
                     }
                 }
                 .help("Automatic picks the best mic that's connected right now and follows you as devices come and go.")
-                Toggle(isOn: $settings.muteWhileDictating) {
+                Picker(selection: $settings.playbackMode) {
+                    ForEach(PlaybackMode.allCases) { Text($0.label).tag($0) }
+                } label: {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Mute speakers while dictating")
-                        Text("So music or a video playing on this Mac isn't typed. Sound comes back the moment you stop. Headphones are never muted.")
+                        Text("When sound is playing on this Mac")
+                        Text(settings.playbackMode == .hear
+                             ? "Freshflo hears your Mac too, so a video or voice note playing aloud gets typed."
+                             : "Mutes the speakers while you dictate so only your voice is typed; sound comes back when you stop. Headphones are never muted.")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }

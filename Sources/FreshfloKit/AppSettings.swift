@@ -114,8 +114,8 @@ final class AppSettings: ObservableObject {
     /// Hands-free ends by itself when you stop talking, like a person waiting for you to finish.
     /// Show models, languages, sync and the Advanced tab.
     @Published var showAdvanced: Bool { didSet { defaults.set(showAdvanced, forKey: "showAdvanced") } }
-    /// Mute this Mac's speakers while dictating, so music or a video isn't typed (restored when you stop).
-    @Published var muteWhileDictating: Bool { didSet { defaults.set(muteWhileDictating, forKey: "muteWhileDictating") } }
+    /// What to do when sound is playing through this Mac's speakers while you dictate: ask (once), mute, or hear it.
+    @Published var playbackMode: PlaybackMode { didSet { defaults.set(playbackMode.rawValue, forKey: "playbackMode") } }
     @Published var autoStopHandsFree: Bool { didSet { defaults.set(autoStopHandsFree, forKey: "autoStopHandsFree") } }
     /// Seconds of quiet after a finished sentence (longer after "and…", "so…").
     @Published var handsFreePause: Double { didSet { defaults.set(handsFreePause, forKey: "handsFreePause") } }
@@ -198,7 +198,7 @@ final class AppSettings: ObservableObject {
         mcpShareHistory = d.object(forKey: "mcpShareHistory") as? Bool ?? false
         meetingCleanTranscript = d.object(forKey: "meetingCleanTranscript") as? Bool ?? true
         preferBuiltInMic = d.object(forKey: "preferBuiltInMic") as? Bool ?? true
-        muteWhileDictating = d.object(forKey: "muteWhileDictating") as? Bool ?? true
+        playbackMode = PlaybackMode(rawValue: d.string(forKey: "playbackMode") ?? "") ?? ((d.object(forKey: "muteWhileDictating") as? Bool) == false ? .hear : .ask)
         autoStopHandsFree = d.object(forKey: "autoStopHandsFree") as? Bool ?? true
         showAdvanced = d.object(forKey: "showAdvanced") as? Bool ?? (d.object(forKey: "provider") != nil)
         handsFreePause = min(5, max(1.5, d.object(forKey: "handsFreePause") as? Double ?? 2.5))
@@ -326,5 +326,18 @@ struct ProviderEndpoint {
         var copy = self
         if !smartModel.isEmpty { copy.cleanupModel = smartModel }
         return copy
+    }
+}
+
+/// Sound playing on this Mac while you dictate.
+enum PlaybackMode: String, CaseIterable, Identifiable {
+    case ask, mute, hear
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .ask: return "Ask me"
+        case .mute: return "Mute it while I talk"
+        case .hear: return "Let Freshflo hear it"
+        }
     }
 }

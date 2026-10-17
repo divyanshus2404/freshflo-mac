@@ -287,6 +287,7 @@ public enum CLI {
             for d in AudioDevices.inputs() { print("  • \(d.name): \(AudioDevices.kind(d))") }
             print("automatic: \(AudioDevices.automatic(preferBuiltIn: settings.preferBuiltInMic)?.name ?? "none"); ranked: \(AudioDevices.ranked(preferBuiltIn: settings.preferBuiltInMic).map(\.name))")
             print("mic in use by an app: \(AudioDevices.someoneIsRecording()); call app: \(MeetingDetector.callApp() ?? "none")")
+            print("speakers: playing \(AudioDevices.outputIsPlaying) · headphones \(AudioDevices.outputIsHeadphones) · muted \(AudioDevices.outputMuted.map(String.init) ?? "?") · when playing: \(AppSettings.shared.playbackMode.label)")
             let uid = AudioDevices.preferredUID(chosen: settings.inputDeviceUID, preferBuiltIn: settings.preferBuiltInMic)
             print("Freshflo will record from: \(uid.isEmpty ? name : AudioDevices.inputs().first { $0.uid == uid }?.name ?? uid)")
             return

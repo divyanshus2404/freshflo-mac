@@ -222,6 +222,9 @@ final class Updater {
 /// Shown once after an update, so people see what got better.
 enum WhatsNew {
     static let notes: [String: [String]] = [
+        "0.18.3": [
+            "You choose what happens when sound is playing on your Mac while you dictate: mute it so only your voice is typed, or let Freshflo hear it (to type a video or voice note). Freshflo asks the first time.",
+        ],
         "0.18.2": [
             "Music or a video playing on your Mac is no longer typed: the speakers are muted while you dictate and come back the moment you stop. Headphones are never muted (Settings → General → Microphone).",
         ],
