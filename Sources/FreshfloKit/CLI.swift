@@ -7,7 +7,7 @@ import Foundation
 ///   Freshflo --command "make this formal" [--selection "hey whats up"]
 public enum CLI {
     public static var isRequested: Bool {
-        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update", "--grammar-eval", "--ask-meetings", "--render-stats", "--voice-sense", "--render-appearance", "--render-styles", "--diarize", "--mic-info", "--whisper-local"].contains(where: CommandLine.arguments.contains)
+        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update", "--grammar-eval", "--ask-meetings", "--render-stats", "--polish-batch", "--voice-sense", "--render-appearance", "--render-styles", "--diarize", "--mic-info", "--whisper-local"].contains(where: CommandLine.arguments.contains)
     }
 
     /// Shows the real floating indicator inside a proper app run loop with synthetic speech (performance checks).
@@ -294,6 +294,32 @@ public enum CLI {
         if let out = value("--render-styles") {
             StyleGallery.render(to: URL(fileURLWithPath: out))
             print("rendered \(out)")
+            return
+        }
+        if let path = value("--polish-batch") {
+            // Parity harness for other ports: one JSON object per line in, one per line out.
+            // {"text", "tone", "lists", "email", "profanity", "grammar", "dictionary", "regional", "bullet"}
+            guard let data = FileManager.default.contents(atPath: path), let body = String(data: data, encoding: .utf8) else { print("can't read"); return }
+            for line in body.split(separator: "\n") where !line.trimmingCharacters(in: .whitespaces).isEmpty {
+                guard let o = try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any], let text = o["text"] as? String else { continue }
+                let tone = Tone(rawValue: o["tone"] as? String ?? "casual") ?? .casual
+                var opt = TextPolish.Options()
+                opt.tone = tone
+                opt.lists = o["lists"] as? Bool ?? true
+                opt.email = o["email"] as? Bool ?? false
+                opt.grammar = o["grammar"] as? Bool ?? true
+                opt.profanity = ProfanityMode(rawValue: o["profanity"] as? String ?? "cleanUp") ?? .cleanUp
+                opt.dictionary = o["dictionary"] as? [String] ?? []
+                opt.bullet = o["bullet"] as? String ?? "• "
+                let regional = RegionalFormat(rawValue: o["regional"] as? String ?? "") ?? .none
+                let polished = TextPolish.apply(Regional.apply(text, regional), opt)
+                let ruled = TextPolish.apply(Regional.apply(Cleanup.rules(CodeTerms.apply(SpokenEnglish.fix(text)), tone: tone), regional), opt)
+                let detect = ListFormat.detect(text)
+                let out: [String: Any] = ["polish": polished, "rules": ruled, "spoken": SpokenEnglish.fix(text),
+                                          "listKind": detect.kind.map { $0 == .numbered ? "numbered" : "bulleted" } ?? "none", "listItems": detect.items,
+                                          "fast": Cleanup.fastPath(CleanupInput(raw: text, tone: tone, context: FocusContext(), vocabulary: [], keepPhrases: [])) ?? NSNull()]
+                if let d = try? JSONSerialization.data(withJSONObject: out, options: [.sortedKeys]), let s = String(data: d, encoding: .utf8) { print(s) }
+            }
             return
         }
         if let list = value("--voice-sense") {
