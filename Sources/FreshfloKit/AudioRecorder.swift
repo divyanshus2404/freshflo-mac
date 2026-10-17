@@ -23,6 +23,8 @@ final class AudioRecorder {
     var deviceUID = ""
     /// Recording stopped because the input device changed or disappeared; the owner restarts on the next best mic.
     var onDeviceLost: (() -> Void)?
+    /// The same mic needs restarting after macOS reconfigured audio (nothing for the user to see).
+    var onEngineReset: (() -> Void)?
     /// When false, audio is only streamed through `onChunk` (long meetings would otherwise fill memory).
     var retainSamples = true
     private(set) var isRecording = false
@@ -69,10 +71,16 @@ final class AudioRecorder {
         if let configObserver { NotificationCenter.default.removeObserver(configObserver) }
         configObserver = NotificationCenter.default.addObserver(
             forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main
-        ) { [weak self] _ in
-            self?.reusableEngine = nil
-            // The engine stops itself when its device changes (AirPods connected, USB mic unplugged).
-            if self?.isRecording == true { self?.onDeviceLost?() }
+        ) { [weak self] note in
+            guard let self else { return }
+            self.reusableEngine = nil
+            guard self.isRecording else { return }
+            // macOS reconfigures audio for many harmless reasons (Voice Isolation turning on, another app changing
+            // the sample rate, a virtual device like Camo or BlackHole waking up). Only a mic that's really gone
+            // means switching; otherwise keep recording from the same mic.
+            if let engine = note.object as? AVAudioEngine, engine.isRunning { return }
+            let stillThere = self.deviceUID.isEmpty || AudioDevices.deviceID(forUID: self.deviceUID) != nil
+            if stillThere { self.onEngineReset?() } else { self.onDeviceLost?() }
         }
         reusableEngine = engine
         reusableDeviceUID = deviceUID
@@ -216,7 +224,9 @@ final class AudioRecorder {
         }
         let noiseFloor = rms.sorted()[frames / 10]
         // Low absolute floor so whispered speech (RMS ≈ 0.003) still counts as voice in a quiet room.
-        let threshold = max(0.0025, noiseFloor * 3)
+        // Capped, because when someone talks the whole time the "quietest tenth" is their own voice: without the
+        // cap, continuous speech was mistaken for background and cut away.
+        let threshold = max(0.0025, min(noiseFloor * 3, 0.01))
         let voiced = rms.indices.filter { rms[$0] > threshold }
         guard let first = voiced.first, let last = voiced.last else { return ([], 0) }
         let pad = 15 // 300 ms

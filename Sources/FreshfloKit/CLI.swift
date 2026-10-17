@@ -7,7 +7,7 @@ import Foundation
 ///   Freshflo --command "make this formal" [--selection "hey whats up"]
 public enum CLI {
     public static var isRequested: Bool {
-        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update", "--grammar-eval", "--ask-meetings", "--render-stats", "--polish-batch", "--voice-sense", "--render-appearance", "--render-styles", "--diarize", "--mic-info", "--whisper-local"].contains(where: CommandLine.arguments.contains)
+        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update", "--grammar-eval", "--ask-meetings", "--render-stats", "--mic-test", "--polish-batch", "--voice-sense", "--render-appearance", "--render-styles", "--diarize", "--mic-info", "--whisper-local"].contains(where: CommandLine.arguments.contains)
     }
 
     /// Shows the real floating indicator inside a proper app run loop with synthetic speech (performance checks).
@@ -294,6 +294,28 @@ public enum CLI {
         if let out = value("--render-styles") {
             StyleGallery.render(to: URL(fileURLWithPath: out))
             print("rendered \(out)")
+            return
+        }
+        if CommandLine.arguments.contains("--mic-test") {
+            // Records a few seconds the way a dictation does and reports what the mic delivered.
+            let seconds = Double(value("--mic-test") ?? "") ?? 4
+            let rec = AudioRecorder()
+            rec.deviceUID = AudioDevices.preferredUID(chosen: AppSettings.shared.inputDeviceUID, preferBuiltIn: AppSettings.shared.preferBuiltInMic)
+            var resets = 0, lost = 0
+            rec.onEngineReset = { resets += 1 }
+            rec.onDeviceLost = { lost += 1 }
+            let name = AudioDevices.inputs().first { $0.uid == rec.deviceUID }?.name ?? "system default"
+            print("recording \(seconds)s from: \(name) (talk now)")
+            do { try rec.start() } catch { print("couldn't start: \(error)"); return }
+            RunLoop.main.run(until: Date().addingTimeInterval(seconds))
+            let (voiced, _) = rec.voiceSoFar
+            let peak = rec.peakSoFar
+            let s = rec.stop()
+            let (trimmed, active) = AudioRecorder.trimSilence(s)
+            let rms = sqrt(s.reduce(Float(0)) { $0 + $1 * $1 } / Float(max(1, s.count)))
+            print(String(format: "samples %.1fs · peak %.3f · rms %.4f · active sound %.1fs · voice %.1fs · kept %.1fs · engine resets %d · mic lost %d",
+                         Double(s.count) / 16_000, peak, rms, active, voiced, Double(trimmed.count) / 16_000, resets, lost))
+            print(peak < 0.0001 ? "⚠︎ mic delivered silence (muted, or no permission)" : voiced >= 0.3 ? "✓ heard a voice" : "· no voice heard (that's fine if you stayed quiet)")
             return
         }
         if let path = value("--polish-batch") {

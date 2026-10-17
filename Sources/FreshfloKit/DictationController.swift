@@ -64,6 +64,7 @@ final class DictationController {
         recorder.onLevel = { [weak self] level in self?.pill.model.push(level) }
         recorder.onBands = { [weak self] bands in self?.pill.model.pushBands(bands) }
         recorder.onDeviceLost = { [weak self] in self?.continueOnNextMic() }
+        recorder.onEngineReset = { [weak self] in self?.restartSameMic() }
         recorder.onChunk = { [weak self] chunk in
             guard let self, self.previewEnabled else { return }
             self.preview.feed(chunk)
@@ -306,15 +307,29 @@ final class DictationController {
 
     /// The mic disappeared or changed mid-dictation (AirPods connected, USB mic unplugged): keep what was said,
     /// and carry on with the next best mic. Streaming in pieces stops; the whole thing is transcribed at the end.
-    private func continueOnNextMic() {
+    /// macOS reset the audio engine but the mic is the same: carry on silently, keeping everything said so far.
+    private func restartSameMic() {
+        guard state == .recording else { return }
+        carried += recorder.stop()
+        stopChunking().tasks.forEach { $0.cancel() }
+        do {
+            try recorder.start()
+        } catch {
+            continueOnNextMic(force: true)
+        }
+    }
+
+    private func continueOnNextMic(force: Bool = false) {
         guard state == .recording else { return }
         let lost = recorder.deviceUID
-        carried += recorder.stop()
+        if !force { carried += recorder.stop() }
         stopChunking().tasks.forEach { $0.cancel() }
         let uid = AudioDevices.preferredUID(chosen: settings.inputDeviceUID == lost ? "" : settings.inputDeviceUID, preferBuiltIn: settings.preferBuiltInMic)
         recorder.deviceUID = uid
         do {
             try recorder.start()
+            // Only say so when it's genuinely a different mic.
+            guard uid != lost else { return }
             let name = AudioDevices.inputs().first { $0.uid == uid }?.name ?? "the default mic"
             pill.flash("Mic changed, now using \(name)", seconds: 1.6, isError: false)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) { [weak self] in

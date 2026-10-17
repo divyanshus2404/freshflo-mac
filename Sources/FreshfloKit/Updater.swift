@@ -222,6 +222,10 @@ final class Updater {
 /// Shown once after an update, so people see what got better.
 enum WhatsNew {
     static let notes: [String: [String]] = [
+        "0.18.1": [
+            "Fixed: talking non-stop from the moment you press the key could be trimmed away as background noise, cutting words or saying “Didn't catch that”.",
+            "Fixed: the mic no longer “changes” mid-dictation when macOS adjusts audio; Freshflo keeps recording from the same mic and only switches if it's really gone.",
+        ],
         "0.18.0": [
             "Find anything: press ⌃⌥K (or Find Anything… in the menu) to jump to any action, setting or theme.",
             "Search Settings with ⌘F, and a simpler Settings until you turn on advanced options.",

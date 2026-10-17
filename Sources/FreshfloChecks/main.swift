@@ -524,6 +524,16 @@ expect(License.verify("hello", publicKey: testPub), .failure(.format), "junk is 
 expect(License.verify("FF1-eyJpZCI6InQxIiwidG8iOiJUZXN0IEJ1eWVyIiwicGxhbiI6ImxpZmV0aW1lIiwic2VhdHMiOjEsImlzc3VlZCI6MTc5MDAwMDAwMCwiZXhwaXJlcyI6MH0.UAnK8fPOJXN1JHK9kIPyOw6bOMBEfkzrrNowc3MztDqx3I_FLBEP3IF4BZheD2nrqDDYYtRgREwz8XuqyD59AQ"), .failure(.signature), "a key from another signer is refused")
 expectTrue(!Pro.enforced, "beta: every Pro feature stays free")
 
+// Talking from the first moment to the last (no quiet start or end) must not be trimmed away.
+let nonstop: [Float] = (0..<64_000).map { i in
+    let t = Double(i) / 16_000
+    return Float(0.05 * (0.6 + 0.4 * sin(2 * .pi * 3 * t)) * sin(2 * .pi * 160 * t))
+}
+let kept = AudioRecorder.trimSilence(nonstop)
+expectTrue(Double(kept.samples.count) >= Double(nonstop.count) * 0.9 && kept.voicedSeconds >= 3, "non-stop speech is kept, not trimmed as background")
+let padded = [Float](repeating: 0.0005, count: 16_000) + nonstop + [Float](repeating: 0.0005, count: 16_000)
+expectTrue(AudioRecorder.trimSilence(padded).samples.count < padded.count - 16_000, "silence around speech is still trimmed")
+
 // MARK: - Result
 
 if failures.isEmpty {
