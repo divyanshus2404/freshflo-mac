@@ -25,10 +25,12 @@ struct OnboardingView: View {
     @State private var openAtLogin = true
     @State private var showUpgrade = false
     @State private var celebrate = false
+    /// Fetch the better offline model in the background after setup (only if it isn't there yet).
+    @State private var downloadWhisper = !OnDeviceWhisper.isDownloaded
 
     private let steps: [(title: String, icon: String)] = [
         ("Welcome", "hand.wave"), ("Permissions", "lock.shield"), ("Talk key", "keyboard"),
-        ("First dictation", "waveform"), ("Extras", "sparkles"), ("Finish", "flag.checkered"),
+        ("First dictation", "waveform"), ("Finish", "flag.checkered"),
     ]
 
     init(initialStep: Int = 0, onFinish: @escaping () -> Void) {
@@ -46,7 +48,6 @@ struct OnboardingView: View {
                     case 1: permissionsStep
                     case 2: keyStep
                     case 3: tryItStep
-                    case 4: extrasStep
                     default: finishStep
                     }
                 }
@@ -467,6 +468,18 @@ struct OnboardingView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(12)
             .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.85)))
+            if !OnDeviceWhisper.isDownloaded && !(settings.provider == .groq && settings.canUseCloud) {
+                Toggle(isOn: $downloadWhisper) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Get sharper offline accuracy").font(.headline)
+                        Text("Downloads Whisper (\(OnDeviceWhisper.sizeLabel)) in the background. You can dictate right away meanwhile.").font(.callout).foregroundStyle(.secondary)
+                    }
+                }
+                .toggleStyle(.switch)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+                .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.85)))
+            }
             Toggle(isOn: $settings.shareUsage) {
                 VStack(alignment: .leading, spacing: 1) {
                     Text("Help improve Freshflo").font(.headline)
@@ -550,7 +563,7 @@ struct OnboardingView: View {
                 Button("Continue") { step += 1 }.keyboardShortcut(.defaultAction).controlSize(.large).buttonStyle(.borderedProminent).disabled(!permissionsDone)
             case 3:
                 Button(practiced ? "Continue" : "Skip") { step += 1 }.keyboardShortcut(.defaultAction).controlSize(.large).buttonStyle(.borderedProminent)
-            case 5:
+            case 4:
                 Button("Start using Freshflo") { finish() }.keyboardShortcut(.defaultAction).controlSize(.large).buttonStyle(.borderedProminent)
             default:
                 Button("Continue") { step += 1 }.keyboardShortcut(.defaultAction).controlSize(.large).buttonStyle(.borderedProminent)
@@ -562,6 +575,11 @@ struct OnboardingView: View {
         // A Groq choice without a working key would leave dictation broken; fall back to the built-in engine.
         if settings.provider == .groq, !settings.canUseCloud { settings.provider = .local }
         if openAtLogin, SMAppService.mainApp.status != .enabled { try? SMAppService.mainApp.register() }
+        if downloadWhisper, !OnDeviceWhisper.isDownloaded {
+            settings.useOnDeviceWhisper = true
+            Task.detached(priority: .utility) { try? await OnDeviceWhisper.download { _ in } }
+        }
+        Insights.milestone("setup_finished")
         onFinish()
     }
 

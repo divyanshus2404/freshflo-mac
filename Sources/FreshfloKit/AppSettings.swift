@@ -138,7 +138,7 @@ final class AppSettings: ObservableObject {
     /// Swear words: clean up (default), mask, or keep.
     @Published var profanity: ProfanityMode { didSet { defaults.set(profanity.rawValue, forKey: "profanity") } }
     /// Opt-in: anonymous daily usage counts and crash reports (never words or app names).
-    @Published var shareUsage: Bool { didSet { defaults.set(shareUsage, forKey: "shareUsage"); if shareUsage { Insights.sendDailyIfNeeded() } } }
+    @Published var shareUsage: Bool { didSet { defaults.set(shareUsage, forKey: "shareUsage"); if shareUsage { Insights.sendDailyIfNeeded(); Insights.sendMilestones() } } }
     /// Write structured prompts automatically in AI apps, AI chat sites and AI coding agents.
     @Published var autoPromptMode: Bool { didSet { defaults.set(autoPromptMode, forKey: "autoPromptMode") } }
     /// Make dictations grammatically correct, not just punctuated.

@@ -63,6 +63,56 @@ enum Insights {
         }
     }
 
+    // MARK: Setup funnel (opt-in)
+
+    /// Seconds since this copy of Freshflo first ran.
+    static var secondsSinceInstall: Int {
+        let d = UserDefaults.standard
+        if d.object(forKey: "insights.installedAt") == nil { d.set(Date().timeIntervalSince1970, forKey: "insights.installedAt") }
+        return Int(Date().timeIntervalSince1970 - d.double(forKey: "insights.installedAt"))
+    }
+
+    /// Records a step once per install (installed, setup_finished, first_dictation, day_7…). Sent only when
+    /// "Help improve Freshflo" is on; steps reached before that are kept and sent once it's turned on.
+    static func milestone(_ name: String) {
+        let d = UserDefaults.standard
+        var done = d.dictionary(forKey: "insights.milestones") as? [String: Int] ?? [:]
+        guard done[name] == nil else { return }
+        done[name] = secondsSinceInstall
+        d.set(done, forKey: "insights.milestones")
+        sendMilestones()
+    }
+
+    static func sendMilestones() {
+        guard AppSettings.shared.shareUsage else { return }
+        let d = UserDefaults.standard
+        let done = d.dictionary(forKey: "insights.milestones") as? [String: Int] ?? [:]
+        var sent = Set(d.stringArray(forKey: "insights.milestonesSent") ?? [])
+        for (name, seconds) in done where !sent.contains(name) {
+            var body = environment
+            body["kind"] = "milestone"
+            body["id"] = installID
+            body["milestone"] = name
+            body["seconds"] = seconds
+            Task {
+                if (try? await post("insights", body)) != nil {
+                    sent.insert(name)
+                    d.set(Array(sent), forKey: "insights.milestonesSent")
+                }
+            }
+        }
+    }
+
+    /// Daily: has this install come back after 1, 7 and 30 days?
+    static func retentionMilestones() {
+        let days = secondsSinceInstall / 86_400
+        if UsageStats.shared.today.words > 0 {
+            if days >= 1 { milestone("active_day_1") }
+            if days >= 7 { milestone("active_day_7") }
+            if days >= 30 { milestone("active_day_30") }
+        }
+    }
+
     // MARK: Daily usage counts (opt-in)
 
     /// Sends yesterday's totals once a day: dictation count, words, median latency, failures and engines used.
@@ -97,8 +147,10 @@ enum Insights {
     private static let crashSubscriber = CrashSubscriber()
     static func start() {
         MXMetricManager.shared.add(crashSubscriber)
+        milestone("installed")
+        retentionMilestones()
         sendDailyIfNeeded()
-        Timer.scheduledTimer(withTimeInterval: 3 * 3600, repeats: true) { _ in sendDailyIfNeeded() }
+        Timer.scheduledTimer(withTimeInterval: 3 * 3600, repeats: true) { _ in sendDailyIfNeeded(); retentionMilestones() }
     }
 
     final class CrashSubscriber: NSObject, MXMetricManagerSubscriber {

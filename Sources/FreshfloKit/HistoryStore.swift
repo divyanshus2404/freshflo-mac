@@ -24,6 +24,7 @@ final class HistoryStore: ObservableObject {
 
     func add(_ item: HistoryItem) {
         UsageStats.shared.record(words: item.wordCount, seconds: item.duration, on: item.date)
+        if items.isEmpty { Insights.milestone("first_dictation") } else if items.count == 9 { Insights.milestone("dictation_10") }
         items.insert(item, at: 0)
         if items.count > Self.limit { items.removeLast(items.count - Self.limit) }
         persist()

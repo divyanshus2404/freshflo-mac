@@ -222,6 +222,10 @@ final class Updater {
 /// Shown once after an update, so people see what got better.
 enum WhatsNew {
     static let notes: [String: [String]] = [
+        "0.19.0": [
+            "Quicker setup: five steps instead of six, and you can dictate right away while the sharper offline model downloads in the background.",
+            "If you've turned on “Help improve Freshflo”, it also shares how setup went (how long until your first dictation, whether you came back). Never your words.",
+        ],
         "0.18.3": [
             "You choose what happens when sound is playing on your Mac while you dictate: mute it so only your voice is typed, or let Freshflo hear it (to type a video or voice note). Freshflo asks the first time.",
         ],
