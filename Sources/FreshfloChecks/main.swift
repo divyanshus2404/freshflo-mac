@@ -534,6 +534,12 @@ expectTrue(Double(kept.samples.count) >= Double(nonstop.count) * 0.9 && kept.voi
 let padded = [Float](repeating: 0.0005, count: 16_000) + nonstop + [Float](repeating: 0.0005, count: 16_000)
 expectTrue(AudioRecorder.trimSilence(padded).samples.count < padded.count - 16_000, "silence around speech is still trimmed")
 
+section("Growth prompts")
+expectTrue(EnjoyPrompt.shouldAsk(days: 15, dictations: 60, asked: false), "asks after two weeks of real use")
+expect(EnjoyPrompt.shouldAsk(days: 3, dictations: 200, asked: false), false, "not in the first two weeks")
+expect(EnjoyPrompt.shouldAsk(days: 30, dictations: 10, asked: false), false, "not for light users")
+expect(EnjoyPrompt.shouldAsk(days: 30, dictations: 500, asked: true), false, "never twice")
+
 // MARK: - Result
 
 if failures.isEmpty {

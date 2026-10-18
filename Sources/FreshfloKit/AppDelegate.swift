@@ -37,6 +37,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         hotkey.onAction = { [weak self] action in self?.perform(action) ?? false }
         applyShortcuts()
         CommandPalette.shared.commands = { [weak self] in self?.paletteCommands() ?? [] }
+        NotificationCenter.default.addObserver(forName: .openFeedbackWindow, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.openFeedback() }
+        }
+        // Asked at most once, a while after launch so it never interrupts the first dictation of the day.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 600) { EnjoyPrompt.maybeAsk() }
         NotificationCenter.default.addObserver(forName: .openPractice, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.openPractice() }
         }
@@ -287,7 +292,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         h.addItem(.separator())
         h.addItem(item("Practice Dictating…", #selector(openPractice)))
         h.addItem(item("Setup Guide…", #selector(openOnboarding)))
-        h.addItem(item("Send Feedback…", #selector(openFeedback)))
+        h.addItem(item("Contact Support…", #selector(openFeedback)))
         h.addItem(item("Share Freshflo…", #selector(shareApp)))
         h.addItem(item("Check for Updates…", #selector(checkForUpdates)))
         help.submenu = h

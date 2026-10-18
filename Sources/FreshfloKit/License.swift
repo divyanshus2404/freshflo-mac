@@ -12,6 +12,8 @@ struct License: Codable, Equatable {
     var seats: Int
     var issued: Double        // unix seconds
     var expires: Double       // unix seconds; 0 = never (lifetime)
+    /// The Paddle subscription (or transaction) this came from, so a renewed key can be fetched.
+    var ref: String? = nil
 
     enum Plan: String, Codable { case pro, lifetime, team }
 
@@ -67,6 +69,29 @@ final class Pro: ObservableObject {
     private init() {
         let stored = Keychain.get(Self.keychainAccount)
         if !stored.isEmpty, case .success(let l) = License.verify(stored) { license = l }
+        // Subscriptions renew themselves: check soon after launch, then twice a day.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30) { Task { await self.renewIfNeeded() } }
+        Timer.scheduledTimer(withTimeInterval: 12 * 3600, repeats: true) { _ in Task { @MainActor in await Pro.shared.renewIfNeeded() } }
+    }
+
+    /// Remembered separately, because an expired key no longer verifies but its subscription may have renewed.
+    private static let refKey = "license.ref"
+
+    /// Fetches the latest key for a subscription when the current one ends within 10 days (or already has).
+    /// Each renewal payment issues a fresh key; this picks it up so nobody pastes a key twice.
+    func renewIfNeeded(now: Date = Date()) async {
+        guard let ref = license?.ref ?? UserDefaults.standard.string(forKey: Self.refKey), ref.hasPrefix("sub_") else { return }
+        let current = license?.expires ?? 0
+        if let l = license, l.expires == 0 || l.expires - now.timeIntervalSince1970 > 10 * 86_400 { return }
+        var comps = URLComponents(string: "https://freshflo.vercel.app/api/license")!
+        comps.queryItems = [URLQueryItem(name: "ref", value: ref)]
+        guard let url = comps.url, let (data, resp) = try? await URLSession.shared.data(from: url),
+              (resp as? HTTPURLResponse)?.statusCode == 200,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any], let key = json["key"] as? String,
+              case .success(let fresh) = License.verify(key), fresh.expires > current else { return }
+        Keychain.set(key, for: Self.keychainAccount)
+        license = fresh
+        lastError = nil
     }
 
     var isActive: Bool { license.map { !$0.isExpired } ?? false }
@@ -97,6 +122,7 @@ final class Pro: ObservableObject {
         case .success(let l):
             Keychain.set(key.trimmingCharacters(in: .whitespacesAndNewlines), for: Self.keychainAccount)
             license = l
+            if let ref = l.ref { UserDefaults.standard.set(ref, forKey: Self.refKey) }
             lastError = nil
             return true
         case .failure(let p):
@@ -111,6 +137,7 @@ final class Pro: ObservableObject {
 
     func deactivate() {
         Keychain.set("", for: Self.keychainAccount)
+        UserDefaults.standard.removeObject(forKey: Self.refKey)
         license = nil
     }
 }
