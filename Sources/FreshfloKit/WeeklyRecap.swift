@@ -53,12 +53,24 @@ final class WeeklyRecap: NSObject, UNUserNotificationCenterDelegate {
     }
 
     /// The share sheet with a short pitch and the download link.
+    /// A short anonymous code for this install, so the site can count visits and sign-ups from your link.
+    static var referralCode: String { String(Insights.installID.replacingOccurrences(of: "-", with: "").prefix(8)) }
+
+    /// Your personal link: https://freshflo.vercel.app/?r=1a2b3c4d
+    static var referralLink: URL {
+        var c = URLComponents(url: site, resolvingAgainstBaseURL: false)!
+        c.path = "/"
+        c.queryItems = [URLQueryItem(name: "r", value: referralCode)]
+        return c.url!
+    }
+
     static func share(from view: NSView?) {
-        let pitch = "I've been using Freshflo: hold a key, talk, and clean text appears in any Mac app. Free:"
-        let picker = NSSharingServicePicker(items: [pitch, site.appendingPathComponent("welcome")])
+        let pitch = "I've been using Freshflo: hold a key, talk, and clean text appears in any app. Free for Mac and Windows:"
+        let link = referralLink
+        let picker = NSSharingServicePicker(items: [pitch, link])
         if let view { picker.show(relativeTo: view.bounds, of: view, preferredEdge: .minY) } else {
             NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(pitch + " " + site.absoluteString, forType: .string)
+            NSPasteboard.general.setString(pitch + " " + link.absoluteString, forType: .string)
         }
     }
 }

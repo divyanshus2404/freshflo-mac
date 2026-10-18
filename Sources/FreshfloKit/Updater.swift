@@ -222,6 +222,11 @@ final class Updater {
 /// Shown once after an update, so people see what got better.
 enum WhatsNew {
     static let notes: [String: [String]] = [
+        "0.20.0": [
+            "Share Freshflo now gives you a personal link, so we can thank the people who bring friends.",
+            "Freshflo Pro subscriptions renew themselves: no pasting a new key each month.",
+            "Contact Support… in the Help menu.",
+        ],
         "0.19.0": [
             "Quicker setup: five steps instead of six, and you can dictate right away while the sharper offline model downloads in the background.",
             "If you've turned on “Help improve Freshflo”, it also shares how setup went (how long until your first dictation, whether you came back). Never your words.",

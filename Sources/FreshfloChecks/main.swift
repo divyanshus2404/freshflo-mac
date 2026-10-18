@@ -540,6 +540,9 @@ expect(EnjoyPrompt.shouldAsk(days: 3, dictations: 200, asked: false), false, "no
 expect(EnjoyPrompt.shouldAsk(days: 30, dictations: 10, asked: false), false, "not for light users")
 expect(EnjoyPrompt.shouldAsk(days: 30, dictations: 500, asked: true), false, "never twice")
 
+expect(WeeklyRecap.referralCode.count, 8, "referral code is short")
+expectTrue(WeeklyRecap.referralLink.absoluteString.hasPrefix("https://freshflo.vercel.app/?r=") && WeeklyRecap.referralCode.allSatisfy(\.isHexDigit), "referral link carries only the anonymous code")
+
 // MARK: - Result
 
 if failures.isEmpty {

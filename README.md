@@ -21,7 +21,7 @@
   <img alt="macOS 14+" src="https://img.shields.io/badge/macOS-14%2B-0c2421?logo=apple&logoColor=white">
   <img alt="Swift 6" src="https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white">
   <img alt="Universal" src="https://img.shields.io/badge/Apple%20Silicon%20%2B%20Intel-universal-35d6a6">
-  <img alt="Checks" src="https://img.shields.io/badge/checks-326%20passing-35d6a6">
+  <img alt="Checks" src="https://img.shields.io/badge/checks-328%20passing-35d6a6">
   <img alt="Grammar" src="https://img.shields.io/badge/grammar%20eval-76%2F76-35d6a6">
   <img alt="Size" src="https://img.shields.io/badge/app-~10%20MB-0c2421">
 </p>
@@ -124,7 +124,7 @@ Sources/
     Pill, StatsView, Scratchpad, MeetingsView, SettingsView, Onboarding   UI (SwiftUI)
     Meetings, MeetingRecorder, Diarization, CallDetection, Knowledge   meeting notes, MCP
     Updater, Insights, Sync, Permissions, FocusContext   updates, opt-in telemetry, plumbing
-  FreshfloChecks/      326 behaviour checks (no XCTest needed)
+  FreshfloChecks/      328 behaviour checks (no XCTest needed)
 Benchmarks/           real-speech clips, cases, grammar eval set, reports
 scripts/              build-app.sh, make-dmg.sh, benchmark audio
 ```
@@ -135,7 +135,7 @@ Needs macOS 14+ and the Swift 6 toolchain (Xcode Command Line Tools are enough).
 
 ```bash
 swift build                          # debug build
-swift run FreshfloChecks             # 326 checks
+swift run FreshfloChecks             # 328 checks
 ./scripts/build-app.sh               # universal, signed build/Freshflo.app (runs the checks first)
 ./scripts/build-app.sh --install     # …and install to /Applications
 ./scripts/make-dmg.sh                # build/Freshflo-<version>.dmg
