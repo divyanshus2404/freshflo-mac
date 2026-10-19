@@ -311,7 +311,7 @@ public enum CLI {
             let name = AudioDevices.inputs().first { $0.uid == rec.deviceUID }?.name ?? "system default"
             print("recording \(seconds)s from: \(name) (talk now)" + (mute ? " · speakers muted" : ""))
             do { try rec.start() } catch { print("couldn't start: \(error)"); return }
-            RunLoop.main.run(until: Date().addingTimeInterval(seconds))
+            spinRunLoop(seconds)
             let (voiced, _) = rec.voiceSoFar
             let peak = rec.peakSoFar
             let s = rec.stop()
@@ -369,7 +369,7 @@ public enum CLI {
             let win = NSWindow(contentRect: NSRect(x: -3000, y: 0, width: 640, height: 1500), styleMask: [.titled], backing: .buffered, defer: false)
             win.contentView = host
             win.orderFrontRegardless()
-            RunLoop.main.run(until: Date().addingTimeInterval(1.0))
+            spinRunLoop(1.0)
             if let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
                 host.cacheDisplay(in: host.bounds, to: rep)
                 try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: out))
@@ -446,4 +446,10 @@ public enum CLI {
     private static func ms(since date: Date) -> String {
         "\(Int(Date().timeIntervalSince(date) * 1000)) ms"
     }
+}
+
+/// Lets the main run loop deliver audio and window events for a while. The command-line modes wait on the main
+/// thread, so an async sleep would never wake up; this keeps the run loop turning instead.
+private func spinRunLoop(_ seconds: Double) {
+    RunLoop.main.run(until: Date().addingTimeInterval(seconds))
 }

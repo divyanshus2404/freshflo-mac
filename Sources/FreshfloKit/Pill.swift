@@ -1,256 +1,11 @@
 import AppKit
 import SwiftUI
 
-enum IndicatorStyle: String, CaseIterable, Identifiable {
-    case halo, orb, island, bars, line, minimal
-
-    var id: String { rawValue }
-    var label: String {
-        switch self {
-        case .halo: return "Glass"
-        case .orb: return "Orb"
-        case .island: return "Island (top of screen)"
-        case .bars: return "Equalizer"
-        case .line: return "Glow line"
-        case .minimal: return "Compact bar"
-        }
-    }
-    /// Sits at the top of the screen, under the notch, instead of at the bottom or the cursor.
-    var atTop: Bool { self == .island }
-}
-
-enum IndicatorTheme: String, CaseIterable, Identifiable {
-    case fluid, fresh, aurora, sunset, mono, matrix, custom
-
-    var id: String { rawValue }
-    var label: String { rawValue.capitalized }
-}
-
-enum IndicatorPosition: String, CaseIterable, Identifiable {
-    case caret, bottom
-
-    var id: String { rawValue }
-    var label: String { self == .caret ? "At the text cursor" : "Bottom of the screen" }
-}
-
-// MARK: - Audio meter
-
-/// Audio values for the animation. Deliberately *not* @Published: audio arrives ~23×/s in steps, and publishing it
-/// re-rendered the whole indicator in jerks. Views read it every display frame and ease toward the latest target,
-/// so motion is smooth at 60 fps regardless of how chunky the audio callbacks are.
-final class AudioMeter {
-    private(set) var level: Float = 0
-    private(set) var bands = SIMD3<Float>(repeating: 0)
-    private var targetLevel: Float = 0
-    private var targetBands = SIMD3<Float>(repeating: 0)
-    private var lastTick: Date?
-
-    func setTarget(level: Float) { targetLevel = level }
-    func setTarget(bands: SIMD3<Float>) { targetBands = bands }
-
-    /// Frame-rate-independent easing: fast attack, gentler release. Safe to call from several views per frame.
-    func tick(_ now: Date) {
-        let dt = Float(min(0.1, max(0, now.timeIntervalSince(lastTick ?? now))))
-        lastTick = now
-        guard dt > 0 else { return }
-        func ease(_ current: Float, _ target: Float) -> Float {
-            let rate: Float = target > current ? 22 : 7
-            return current + (target - current) * (1 - exp(-rate * dt))
-        }
-        level = ease(level, targetLevel)
-        bands = SIMD3(ease(bands[0], targetBands[0]), ease(bands[1], targetBands[1]), ease(bands[2], targetBands[2]))
-    }
-
-    func reset() {
-        level = 0; bands = .zero; targetLevel = 0; targetBands = .zero; lastTick = nil
-    }
-
-    /// For still previews: jump straight to the given values.
-    func freeze(level: Float, bands: SIMD3<Float>) {
-        self.level = level; self.bands = bands; targetLevel = level; targetBands = bands
-    }
-}
-
-final class PillModel: ObservableObject {
-    enum Phase: Equatable {
-        case hidden
-        case recording
-        case processing(String)
-        case done(String)
-        case message(String, isError: Bool)
-    }
-
-    @Published var phase: Phase = .hidden
-    @Published var locked = false
-    @Published var mode: DictationMode = .dictation
-    @Published var startedAt = Date()
-    @Published var style: IndicatorStyle = .halo
-    @Published var theme: IndicatorTheme = .fresh
-    @Published var scale: Double = 1
-    /// Pinned next to the caret: grow to the right only, so the orb never moves.
-    @Published var anchoredLeading = false
-    /// Island style: gap from the top of the panel (clears the notch / menu bar).
-    @Published var topInset: CGFloat = 6
-    /// Gentle nudge when we've heard almost nothing for a while.
-    @Published var hint: String?
-    /// Words heard so far (live preview).
-    @Published var liveText = "" {
-        didSet {
-            // Only *new* words animate in; the recognizer revising earlier words must not flicker.
-            let count = liveText.split(separator: " ").count
-            if count > liveWordCount { newWordID += 1 }
-            liveWordCount = count
-            let next = CaptionInsight.of(liveText)
-            if next != insight { insight = next }
-        }
-    }
-    /// Live captions card above the bar.
-    @Published var captionsOn = false
-    /// False when this Mac can't recognise the language on-device (captions show how to fix it).
-    @Published var captionsAvailable = true
-    /// "Slack · Casual": where the text goes and in which style.
-    @Published var appLabel = ""
-    /// What was typed, shown briefly in the captions card after a dictation.
-    @Published var finalText: String?
-    /// What Freshflo detects in the words so far: list or sentences, a self-correction, fillers.
-    @Published private(set) var insight = CaptionInsight.empty
-    @Published private(set) var newWordID = 0
-    private var liveWordCount = 0
-
-    let meter = AudioMeter()
-    private var quietSince: Date?
-
-    func push(_ value: Float) {
-        meter.setTarget(level: value)
-        guard phase == .recording else { return }
-        let now = Date()
-        if value < 0.12, liveText.isEmpty {
-            quietSince = quietSince ?? now
-            if hint == nil, now.timeIntervalSince(quietSince!) > 2.5, now.timeIntervalSince(startedAt) > 2.5 {
-                hint = "Too quiet? Speak up or check your mic"
-            }
-        } else {
-            quietSince = nil
-            if hint != nil { hint = nil }
-        }
-    }
-
-    func pushBands(_ value: SIMD3<Float>) {
-        meter.setTarget(bands: value)
-    }
-
-    func resetForRecording() {
-        meter.reset()
-        hint = nil
-        quietSince = nil
-        liveWordCount = 0
-        liveText = ""
-        finalText = nil
-    }
-}
-
-// MARK: - Caption insight
-
-/// What the captions card says it detects, from the raw words heard so far.
-struct CaptionInsight: Equatable {
-    var structure: String
-    var isList = false
-    var correction = false
-    var fillers = 0
-    var language: String?
-
-    static let empty = CaptionInsight(structure: "")
-    static let fillerWords: Set<String> = ["um", "umm", "uh", "uhh", "er", "erm", "ah", "hmm", "mm"]
-    static let correctionPhrases = ["no wait", "wait no", "i mean", "scratch that", "or rather", "sorry i meant", "let me rephrase", "actually no"]
-    private static let questionStarters: Set<String> = ["what", "why", "how", "who", "when", "where", "which", "can", "could", "would", "should",
-                                                         "is", "are", "do", "does", "did", "will", "have", "has"]
-
-    static func of(_ text: String) -> CaptionInsight {
-        let words = text.lowercased().split(whereSeparator: { !$0.isLetter && $0 != "'" }).map(String.init)
-        guard !words.isEmpty else { return .empty }
-        let fillers = words.filter(fillerWords.contains).count
-        let joined = " " + words.joined(separator: " ") + " "
-        let correction = correctionPhrases.contains { joined.contains(" \($0) ") }
-        let list = ListFormat.detect(text)
-        var structure: String
-        switch list.kind {
-        case .numbered: structure = "Numbered list · \(list.items)"
-        case .bulleted: structure = list.items == 1 ? "Bullet points" : "Bullet points · \(list.items)"
-        case nil:
-            let first = words.first { !fillerWords.contains($0) && $0 != "so" && $0 != "okay" }
-            let sentences = text.split(whereSeparator: { ".!?".contains($0) }).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count
-            if text.trimmingCharacters(in: .whitespaces).hasSuffix("?") || (first.map(questionStarters.contains) ?? false) {
-                structure = "Question"
-            } else {
-                structure = sentences > 1 ? "\(sentences) sentences" : "Sentence"
-            }
-        }
-        var result = CaptionInsight(structure: structure, isList: list.kind != nil, correction: correction, fillers: fillers)
-        // The language you're speaking (and what it'll be written in), once there's enough to tell.
-        if words.count >= 4, let spoken = LanguageID.detect(text: text, whisperGuess: nil, hints: AppSettings.shared.spokenLanguages) {
-            let target = AppSettings.shared.outputLanguage.components(separatedBy: " (").first ?? ""
-            if !target.isEmpty, target != spoken.name { result.language = "\(spoken.name) → \(target)" }
-            else if spoken.code != "en" || spoken.hinglish { result.language = spoken.name }
-        }
-        return result
-    }
-}
-
-// MARK: - Accent
-
-/// One restrained accent colour per mode/theme; everything else is white-on-glass.
-enum IndicatorAccent {
-    static func color(mode: DictationMode, theme: IndicatorTheme, error: Bool) -> Color {
-        if error { return Color(red: 1.0, green: 0.72, blue: 0.32) }
-        if theme == .custom {
-            let t = AppSettings.shared.customTheme
-            switch mode {
-            case .command: return Color(hex: t.command)
-            case .ask: return Color(hex: t.ask)
-            case .dictation: return Color(hex: t.accent)
-            }
-        }
-        switch mode {
-        case .command: return Color(red: 0.72, green: 0.58, blue: 1.0)
-        case .ask: return Color(red: 0.42, green: 0.67, blue: 1.0)
-        case .dictation:
-            switch theme {
-            case .fresh: return Color(red: 0.21, green: 0.84, blue: 0.65)
-            case .aurora: return Color(red: 0.52, green: 0.70, blue: 1.0)
-            case .sunset: return Color(red: 1.0, green: 0.58, blue: 0.45)
-            case .mono: return Color(white: 0.94)
-            case .matrix: return Color(red: 0.38, green: 0.95, blue: 0.58)
-            case .custom: return Color(hex: AppSettings.shared.customTheme.accent)
-            case .fluid: return fluid(Date().timeIntervalSinceReferenceDate * fluidSpeed)
-            }
-        }
-    }
-}
-
-extension IndicatorAccent {
-    /// Fluid: soft pastels (mint, sky, lavender, rose, peach) that melt into each other.
-    static let fluidStops: [(Double, Double, Double)] = [
-        (0.37, 0.90, 0.76), (0.44, 0.72, 1.0), (0.72, 0.61, 1.0), (1.0, 0.62, 0.78), (1.0, 0.77, 0.54),
-    ]
-    /// Cycles per second of the slow drift (one full loop every ~12 s: calm, never flashy).
-    static let fluidSpeed = 0.085
-
-    /// The colour at a point on the loop (any number; wraps around), eased so blends stay smooth.
-    static func fluid(_ phase: Double) -> Color {
-        let n = Double(fluidStops.count)
-        var p = phase.truncatingRemainder(dividingBy: 1); if p < 0 { p += 1 }
-        let x = p * n, i = Int(x) % fluidStops.count, j = (i + 1) % fluidStops.count
-        let f = x - floor(x), t = f * f * (3 - 2 * f)
-        let a = fluidStops[i], b = fluidStops[j]
-        return Color(red: a.0 + (b.0 - a.0) * t, green: a.1 + (b.1 - a.1) * t, blue: a.2 + (b.2 - a.2) * t)
-    }
-}
-
 // MARK: - Dot wave
 
 /// The Glass indicator's voice: a row of dots that rise into bars as you speak, breathe gently in silence,
 /// and turn into a travelling shimmer while Freshflo polishes. Same width in every state, so nothing jumps.
-private struct DotWave: View {
+struct DotWave: View {
     enum Mode { case listening, thinking }
     let mode: Mode
     let time: Double
@@ -305,7 +60,7 @@ private struct DotWave: View {
 }
 
 /// A checkmark that draws itself.
-private struct DrawnCheck: View {
+struct DrawnCheck: View {
     let color: Color
     @State private var progress: CGFloat = 0
 
@@ -326,7 +81,7 @@ private struct DrawnCheck: View {
 
 /// The default indicator: a small dark-glass capsule holding nothing but a dot wave of your voice.
 /// Polishing turns the same dots into a shimmer; done draws a check. Minimal, and the same size throughout.
-private struct HaloView: View {
+struct HaloView: View {
     @ObservedObject var model: PillModel
     private let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
 
@@ -464,7 +219,7 @@ private struct HaloView: View {
 
 /// What you're saying (fillers and self-corrections shown struck through, the way Freshflo will drop them)
 /// and what it detects: a list or sentences, a question, a correction. After a dictation it shows what was typed.
-private struct CaptionsCard: View {
+struct CaptionsCard: View {
     @ObservedObject var model: PillModel
     let accent: Color
     static let width: CGFloat = 460
@@ -564,7 +319,7 @@ private struct CaptionsCard: View {
 }
 
 /// The words heard so far: the last few lines, with fillers and self-corrections struck through.
-private struct CaptionText: View {
+struct CaptionText: View {
     let text: String
     private static let maxWords = 48
 
@@ -603,7 +358,7 @@ private struct CaptionText: View {
 
 // MARK: - Minimal (compact bar)
 
-private struct MinimalPillView: View {
+struct MinimalPillView: View {
     @ObservedObject var model: PillModel
 
     private var accent: Color {
@@ -671,7 +426,7 @@ private struct MinimalPillView: View {
 // MARK: - Expressive styles (Orb, Island, Equalizer, Glow line)
 
 /// The recording look differs per style; thinking, done and messages reuse the Glass capsule so they read the same everywhere.
-private struct ExpressiveIndicator: View {
+struct ExpressiveIndicator: View {
     @ObservedObject var model: PillModel
     let style: IndicatorStyle
     private let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
@@ -843,291 +598,6 @@ struct PillView: View {
         case .recording, .processing: return true
         case .done: return model.finalText != nil
         default: return false
-        }
-    }
-}
-
-// MARK: - Controller
-
-/// Floating, non-activating indicator.
-final class PillController {
-    static let bottomInset: CGFloat = 22
-    static let leadingInset: CGFloat = 40
-    private static let capsuleHeight: CGFloat = 32
-
-    let model = PillModel()
-    private let panel: NSPanel
-    private var hideWork: DispatchWorkItem?
-    /// Caret rect to appear next to for the current dictation (nil = bottom of the screen).
-    private var anchor: CGRect?
-    /// Bumped on every show/hide so a fade-out finishing late can't hide a newer indicator.
-    private var generation = 0
-
-    init() {
-        // Extra room around the capsule so the glow is never clipped.
-        panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 760, height: 330),
-            styleMask: [.borderless, .nonactivatingPanel],
-            backing: .buffered,
-            defer: true
-        )
-        panel.isOpaque = false
-        panel.backgroundColor = .clear
-        panel.hasShadow = false
-        panel.level = .statusBar
-        panel.ignoresMouseEvents = true
-        panel.hidesOnDeactivate = false
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
-        panel.contentView = NSHostingView(rootView: PillView(model: model))
-    }
-
-    func showRecording(mode: DictationMode, locked: Bool, anchor: CGRect? = nil) {
-        let settings = AppSettings.shared
-        model.captionsOn = settings.showCaptions
-        // Captions sit above the bar, so with them on the bar stays at the bottom of the screen instead of covering the line you're writing.
-        self.anchor = settings.indicatorPosition == .caret && !settings.showCaptions && !settings.indicatorStyle.atTop ? anchor : nil
-        model.anchoredLeading = self.anchor != nil
-        model.style = settings.indicatorStyle
-        model.theme = settings.indicatorTheme
-        model.scale = settings.indicatorScale
-        model.resetForRecording()
-        model.mode = mode
-        model.locked = locked
-        model.startedAt = Date()
-        model.phase = .recording
-        present()
-        announce(mode == .dictation ? "Listening" : mode == .ask ? "Ask: listening" : "Command: listening")
-    }
-
-    /// The floating bar can't take focus, so VoiceOver users hear what it shows instead.
-    private func announce(_ text: String) {
-        guard NSWorkspace.shared.isVoiceOverEnabled else { return }
-        NSAccessibility.post(element: NSApp as Any, notification: .announcementRequested,
-                             userInfo: [.announcement: text, .priority: NSAccessibilityPriorityLevel.high.rawValue])
-    }
-
-    func showProcessing(_ label: String) {
-        model.phase = .processing(label)
-        present()
-    }
-
-    /// Brief confirmation (check + label) after text lands, then dissolves. With captions on, shows what was typed a little longer.
-    func success(_ label: String, typed: String? = nil) {
-        model.finalText = model.captionsOn ? typed?.trimmingCharacters(in: .whitespacesAndNewlines) : nil
-        model.phase = .done(label)
-        present()
-        announce("Typed: " + label)
-        scheduleHide(after: model.finalText == nil ? 0.9 : 2.6)
-    }
-
-    func flash(_ message: String, seconds: Double = 2.4, isError: Bool = true) {
-        model.phase = .message(message, isError: isError)
-        present()
-        announce(message)
-        scheduleHide(after: seconds)
-    }
-
-    func hide() {
-        hideWork?.cancel()
-        hideWork = nil
-        generation += 1
-        let myGeneration = generation
-        NSAnimationContext.runAnimationGroup({ ctx in
-            ctx.duration = 0.22
-            panel.animator().alphaValue = 0
-        }, completionHandler: { [weak self] in
-            guard let self, self.generation == myGeneration else { return }
-            self.panel.orderOut(nil)
-            // Stops the SwiftUI animations from rendering while hidden.
-            self.model.phase = .hidden
-            self.anchor = nil
-        })
-    }
-
-    private func scheduleHide(after seconds: Double) {
-        let work = DispatchWorkItem { [weak self] in self?.hide() }
-        hideWork = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + seconds, execute: work)
-    }
-
-    private func present() {
-        hideWork?.cancel()
-        hideWork = nil
-        generation += 1
-        let wasVisible = panel.isVisible && panel.alphaValue > 0.5
-        // Only reposition when appearing, never mid-dictation, so it doesn't jump around.
-        if !wasVisible { panel.setFrameOrigin(origin()) }
-        if !panel.isVisible { panel.alphaValue = 0 }
-        panel.orderFrontRegardless()
-        NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.18
-            panel.animator().alphaValue = 1
-        }
-    }
-
-    private func origin() -> NSPoint {
-        let size = panel.frame.size
-        if let anchor, let screen = NSScreen.screens.first(where: { $0.frame.intersects(anchor) }) {
-            let frame = screen.visibleFrame
-            // Just below the line being typed; flip above it near the bottom of the screen.
-            var y = anchor.minY - 10 - Self.capsuleHeight - Self.bottomInset
-            if y + Self.bottomInset < frame.minY { y = anchor.maxY + 10 - Self.bottomInset }
-            // Orb centre (inset + 10 pt padding + 20 pt half-orb) lines up with the caret; keep the panel on screen.
-            var x = anchor.minX - Self.leadingInset - 30
-            x = min(max(x, frame.minX - Self.leadingInset + 8), frame.maxX - size.width)
-            return NSPoint(x: x, y: y)
-        }
-        let screen = NSScreen.screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) } ?? NSScreen.main
-        guard let screen else { return panel.frame.origin }
-        if model.style.atTop {
-            // Hang just below the notch (or the menu bar on Macs without one).
-            let full = screen.frame
-            let menuBar = full.maxY - screen.visibleFrame.maxY
-            model.topInset = max(screen.safeAreaInsets.top, menuBar) + 6
-            return NSPoint(x: full.midX - size.width / 2, y: full.maxY - size.height)
-        }
-        let frame = screen.visibleFrame
-        return NSPoint(x: frame.midX - size.width / 2, y: frame.minY + 6)
-    }
-}
-
-// MARK: - Style gallery (CLI: --render-styles out.png)
-
-enum StyleGallery {
-    @MainActor
-    static func render(to url: URL) {
-        func model(_ style: IndicatorStyle, theme: IndicatorTheme = .fresh, locked: Bool = false) -> PillModel {
-            let m = PillModel()
-            m.style = style
-            m.theme = theme
-            m.phase = .recording
-            m.locked = locked
-            m.startedAt = Date().addingTimeInterval(-74)
-            m.meter.freeze(level: 0.62, bands: SIMD3(0.7, 0.55, 0.4))
-            return m
-        }
-        let tiles: [(String, String, PillModel)] = [
-            ("1  Glass", "Current. Small capsule, dot and waveform.", model(.halo)),
-            ("2  Orb", "A single glowing sphere that breathes with your voice.", model(.orb)),
-            ("3  Island", "Black pill hanging under the notch, like iPhone.", model(.island)),
-            ("4  Equalizer", "Chunky bars bouncing with bass, mids and highs.", model(.bars)),
-            ("5  Glow line", "Just a line of light. No background at all.", model(.line)),
-            ("6  Compact bar", "The older bar with live words.", model(.minimal)),
-        ]
-        let view = VStack(alignment: .leading, spacing: 18) {
-            Text("Pick a dictation indicator").font(.system(size: 26, weight: .semibold)).foregroundStyle(.white)
-            LazyVGrid(columns: [GridItem(.fixed(380), spacing: 18), GridItem(.fixed(380), spacing: 18)], spacing: 18) {
-                ForEach(Array(tiles.enumerated()), id: \.offset) { _, tile in
-                    VStack(alignment: .leading, spacing: 8) {
-                        ZStack(alignment: tile.2.style.atTop ? .top : .bottom) {
-                            // A blurred "desktop with a window" backdrop, so glass and glow read like they will on screen.
-                            LinearGradient(colors: [Color(red: 0.22, green: 0.28, blue: 0.42), Color(red: 0.45, green: 0.33, blue: 0.52), Color(red: 0.9, green: 0.62, blue: 0.5)],
-                                           startPoint: .topLeading, endPoint: .bottomTrailing)
-                            RoundedRectangle(cornerRadius: 10).fill(Color.white.opacity(0.85)).frame(width: 250, height: 120).offset(y: tile.2.style.atTop ? 50 : -30)
-                            if tile.2.style.atTop {
-                                Rectangle().fill(Color.black.opacity(0.25)).frame(height: 20)
-                                Capsule().fill(.black).frame(width: 110, height: 24).offset(y: -4)
-                            }
-                            Group {
-                                switch tile.2.style {
-                                case .halo: HaloView(model: tile.2)
-                                case .minimal: MinimalPillView(model: tile.2)
-                                default: ExpressiveIndicator(model: tile.2, style: tile.2.style)
-                                }
-                            }
-                            .padding(tile.2.style.atTop ? .top : .bottom, tile.2.style.atTop ? 26 : 18)
-                        }
-                        .frame(width: 380, height: 210)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                        Text(tile.0).font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
-                        Text(tile.1).font(.system(size: 12)).foregroundStyle(.white.opacity(0.6))
-                    }
-                }
-            }
-        }
-        .padding(32)
-        .background(Color(red: 0.08, green: 0.09, blue: 0.12))
-        let renderer = ImageRenderer(content: view)
-        renderer.scale = 2
-        if let cg = renderer.cgImage, let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) {
-            try? png.write(to: url)
-        }
-    }
-}
-
-// MARK: - Preview rendering (CLI: --render-pill out.png)
-
-enum PillPreview {
-    /// Renders every indicator state onto a desktop-like backdrop so the design can be reviewed without dictating.
-    @MainActor
-    static func render(to url: URL) {
-        func model(_ phase: PillModel.Phase, mode: DictationMode = .dictation, live: String = "", locked: Bool = false, level: Float = 0.6,
-                   theme: IndicatorTheme = .fresh, bands: SIMD3<Float> = SIMD3(0.6, 0.5, 0.4), hint: String? = nil) -> PillModel {
-            let m = PillModel()
-            m.theme = theme
-            m.phase = phase
-            m.mode = mode
-            m.liveText = live
-            m.locked = locked
-            m.hint = hint
-            m.startedAt = Date().addingTimeInterval(-74)
-            m.meter.freeze(level: level, bands: bands)
-            return m
-        }
-        func captioned(_ phase: PillModel.Phase, live: String, final: String? = nil, app: String = "Slack · Casual", available: Bool = true) -> PillModel {
-            let m = model(phase, live: live)
-            m.captionsOn = true
-            m.captionsAvailable = available
-            m.appLabel = app
-            m.finalText = final
-            return m
-        }
-        let bars: [(String, PillModel)] = [
-            ("Listening", model(.recording)),
-            ("Hands-free", model(.recording, locked: true, level: 0.35)),
-            ("Too quiet", model(.recording, locked: true, level: 0.05, bands: .zero, hint: "Too quiet? Speak up or check your mic")),
-            ("Command", model(.recording, mode: .command, level: 0.4)),
-            ("Polishing", model(.processing("Polishing…"))),
-            ("Done", model(.done("24 words"))),
-            ("Error", model(.message("Network is offline — audio saved, retry from the menu", isError: true))),
-        ]
-        let captions: [(String, PillModel)] = [
-            ("Captions · sentences, a correction", captioned(.recording, live: "um so I think we should push the launch to Tuesday no wait Wednesday because the payment fix isn't in")),
-            ("Captions · a list", captioned(.recording, live: "OK, so for the trip I need three things first my charger second, my passport and third", app: "Notes · Casual")),
-            ("Captions · Prompt mode", captioned(.recording, live: "can you refactor the login page and uh add tests for the token refresh", app: "Cursor · Prompt mode")),
-            ("Captions · typed", captioned(.done("3-item list"), live: "", final: "For the trip I need:\n1. My charger\n2. My passport\n3. Sunscreen", app: "Notes · Casual")),
-            ("Captions · unavailable", captioned(.recording, live: "", available: false)),
-        ]
-        let view = HStack(alignment: .top, spacing: 40) {
-            VStack(alignment: .center, spacing: 18) {
-                ForEach(Array(bars.enumerated()), id: \.offset) { _, item in
-                    VStack(spacing: 6) {
-                        Text(item.0).font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.6))
-                        HaloView(model: item.1)
-                    }
-                }
-            }
-            VStack(alignment: .center, spacing: 22) {
-                ForEach(Array(captions.enumerated()), id: \.offset) { _, item in
-                    VStack(spacing: 6) {
-                        Text(item.0).font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.6))
-                        VStack(spacing: 10) {
-                            CaptionsCard(model: item.1, accent: IndicatorAccent.color(mode: .dictation, theme: .fresh, error: false))
-                            HaloView(model: item.1)
-                        }
-                    }
-                }
-            }
-        }
-        .padding(40)
-        .frame(width: 1080)
-        .background(LinearGradient(colors: [Color(red: 0.12, green: 0.14, blue: 0.22), Color(red: 0.22, green: 0.18, blue: 0.3)],
-                                   startPoint: .top, endPoint: .bottom))
-        let renderer = ImageRenderer(content: view)
-        renderer.scale = 2
-        if let image = renderer.nsImage, let tiff = image.tiffRepresentation,
-           let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
-            try? png.write(to: url)
         }
     }
 }

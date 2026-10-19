@@ -403,40 +403,6 @@ struct OnboardingView: View {
         .animation(.spring(response: 0.45, dampingFraction: 0.8), value: practiced)
     }
 
-    // MARK: Extras
-
-    /// What Freshflo does beyond typing, with the switches right there.
-    private var extrasStep: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            title("It does more than type", "Turn on what you like now; everything is also in the menu bar and Settings.")
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
-                extra("captions.bubble", "Live captions", "See your words as you speak, and what Freshflo will fix.", toggle: $settings.showCaptions)
-                extra("person.2.wave.2", "Meeting notes", "Offers to take notes when a call starts, with who said what.", toggle: $settings.offerMeetingNotes)
-                extra("list.number", "Lists, emails, code", "Say \u{201C}first… second…\u{201D}, \u{201C}Hi Marcus… thanks\u{201D} or \u{201C}camel case user id\u{201D}.", toggle: $settings.smartLists)
-                extra("sparkles", "Claude and Cursor", "Let them read your meeting notes. Connect in Settings → Meetings.", toggle: nil)
-                extra("note.text", "Scratchpad", "Dictate with nothing selected and it lands here, never lost.", toggle: nil)
-                extra("chart.bar.xaxis", "Your Week", "Words, time saved and your streak, from the menu bar.", toggle: nil)
-            }
-        }
-    }
-
-    private func extra(_ icon: String, _ name: String, _ detail: String, toggle: Binding<Bool>?) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: icon).font(.system(size: 16)).foregroundStyle(Brand.mint).frame(width: 22)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(LocalizedStringKey(name)).font(.callout.weight(.semibold))
-                Text(LocalizedStringKey(detail)).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 4)
-            if let toggle { Toggle("", isOn: toggle).toggleStyle(.switch).labelsHidden().controlSize(.small) }
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, minHeight: 86, alignment: .topLeading)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.85)))
-        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.black.opacity(0.06)))
-        .accessibilityElement(children: .combine)
-    }
-
     // MARK: Finish
 
     private var finishStep: some View {

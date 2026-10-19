@@ -56,12 +56,6 @@ enum LanguageID {
         return recognize(t, among: hints).map { Detection(code: $0.0) }
     }
 
-    /// Whisper sometimes picks a language you don't speak on short or accented clips (and then transcribes in it).
-    /// True when the detected language isn't one of yours, so the audio should be transcribed again in yours.
-    static func isOutsideYours(_ detected: String?, hints: [String]) -> Bool {
-        guard let detected, !hints.isEmpty else { return false }
-        return !hints.contains(detected)
-    }
 
     /// How sure Apple's recognizer is that `text` is in `code` (0…1), with no constraints.
     static func confidence(_ text: String, is code: String) -> Double {
@@ -91,12 +85,6 @@ enum LanguageID {
         return recognize(text, among: others)?.0 ?? others.first
     }
 
-    /// The most likely of your languages for this text (used for the second, forced transcription).
-    static func bestOfYours(text: String, hints: [String]) -> String? {
-        if hints.count == 1 { return hints[0] }
-        if hints.contains("hi"), isHinglish(text) { return "hi" }
-        return recognize(text, among: hints)?.0 ?? hints.first
-    }
 
     // MARK: Written language
 

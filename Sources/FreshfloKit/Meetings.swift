@@ -310,7 +310,7 @@ final class MeetingController: ObservableObject {
         self.recorder = recorder
         current = meeting
         status = Status(capturingCall: recorder.capturesSystemAudio, sources: recorder.sources)
-        statusTimer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { [weak self] _ in self?.refreshStatus() }
+        statusTimer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { [weak self] _ in MainActor.assumeIsolated { self?.refreshStatus() } }
         return recorder.capturesSystemAudio ? nil : "Recording your mic only. Allow Screen & System Audio Recording to capture the other side."
     }
 
