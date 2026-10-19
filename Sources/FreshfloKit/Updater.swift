@@ -222,6 +222,9 @@ final class Updater {
 /// Shown once after an update, so people see what got better.
 enum WhatsNew {
     static let notes: [String: [String]] = [
+        "0.21.0": [
+            "Indian languages in their own scripts: Hindi in Devanagari (never Urdu letters), Bengali, Tamil, Telugu and more, with the right full stops (।).",
+        ],
         "0.20.0": [
             "Share Freshflo now gives you a personal link, so we can thank the people who bring friends.",
             "Freshflo Pro subscriptions renew themselves: no pasting a new key each month.",

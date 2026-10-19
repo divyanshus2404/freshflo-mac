@@ -57,6 +57,8 @@ enum TextPolish {
         s = tidy(s)
         if o.lists { s = ListFormat.apply(s, bullet: o.bullet, capitalize: o.tone != .veryCasual) }
         if o.email { s = EmailFormat.apply(s) }
+        // Indian scripts end sentences their own way (।), whichever engine wrote them.
+        s = Indic.punctuate(s)
         return s
     }
 

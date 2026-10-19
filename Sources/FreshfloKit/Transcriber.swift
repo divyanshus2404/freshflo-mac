@@ -91,7 +91,8 @@ enum Transcriber {
     }
 
     private static func transcribeOnce(samples: [Float], endpoint: ProviderEndpoint, vocabulary: [String]) async throws -> String {
-        let prompt = vocabularyPrompt(vocabulary)
+        // With a known Indian language, a sample sentence in its script keeps Whisper writing in that script.
+        let prompt = [Indic.scriptPrompt(endpoint.language), vocabularyPrompt(vocabulary)].compactMap { $0 }.joined(separator: " ").nilIfEmpty
         let seconds = Double(samples.count) / AudioRecorder.sampleRate
         if seconds > compressAfterSeconds, let aac = try? AudioRecorder.m4a(from: samples) {
             do {
@@ -239,4 +240,8 @@ enum Transcriber {
 
         return try await OpenAICompatible.send(req)
     }
+}
+
+private extension String {
+    var nilIfEmpty: String? { isEmpty ? nil : self }
 }

@@ -543,6 +543,19 @@ expect(EnjoyPrompt.shouldAsk(days: 30, dictations: 500, asked: true), false, "ne
 expect(WeeklyRecap.referralCode.count, 8, "referral code is short")
 expectTrue(WeeklyRecap.referralLink.absoluteString.hasPrefix("https://freshflo.vercel.app/?r=") && WeeklyRecap.referralCode.allSatisfy(\.isHexDigit), "referral link carries only the anonymous code")
 
+section("Indian scripts")
+expect(Indic.dominantScript("मुझे कल मीटिंग में जाना है"), .devanagari, "Hindi text is Devanagari")
+expect(Indic.dominantScript("আমি কাল যাব"), .bengali, "Bengali script")
+expectTrue(Indic.wrongScript("مجھے کل میٹنگ میں جانا ہے", lang: "hi"), "Hindi in Urdu letters is the wrong script")
+expect(Indic.wrongScript("mujhe kal meeting mein jaana hai", lang: "hi"), false, "romanised Hindi is Hinglish, not wrong")
+expect(Indic.wrongScript("मुझे कल जाना है", lang: "hi"), false, "Devanagari Hindi is right")
+expect(Indic.punctuate("मुझे कल मीटिंग में जाना है. फिर घर जाऊंगा.", lang: "hi"), "मुझे कल मीटिंग में जाना है। फिर घर जाऊंगा।", "Hindi sentences end with ।")
+expect(Indic.punctuate("मी उद्या मीटिंगला जाणार आहे.", lang: "mr"), "मी उद्या मीटिंगला जाणार आहे.", "Marathi keeps the full stop")
+expect(Indic.punctuate("আমি কাল যাব.", lang: "bn"), "আমি কাল যাব।", "Bengali uses ।")
+expect(Indic.punctuate("Meet at 5 p.m. tomorrow.", lang: "hi"), "Meet at 5 p.m. tomorrow.", "English inside stays untouched")
+expect(Indic.punctuate("कीमत 2.5 लाख है.", lang: "hi"), "कीमत 2.5 लाख है।", "decimals stay, the sentence end changes")
+expectTrue(Indic.scriptPrompt("hi")?.contains("।") == true && Indic.scriptPrompt("en") == nil, "script prompt only for Indian languages")
+
 // MARK: - Result
 
 if failures.isEmpty {

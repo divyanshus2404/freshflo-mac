@@ -48,6 +48,16 @@ enum Pipeline {
                     }
                 }
             }
+            // Right language, wrong script (Hindi in Urdu letters, say): transcribe again with the language named,
+            // which also gives Whisper a sample sentence in the right script.
+            if let code = detected?.code, detected?.hinglish != true, Indic.wrongScript(text, lang: code) {
+                var forced = settings.endpoint
+                forced.language = code
+                if let again = try? await Transcriber.transcribe(samples: samples, endpoint: forced, vocabulary: vocabulary),
+                   !again.isEmpty, !Indic.wrongScript(again, lang: code) {
+                    text = Transcriber.stripHallucinations(again)
+                }
+            }
             return Transcript(text: text, engine: settings.endpoint.transcriptionModel, language: detected)
         } catch {
             guard settings.offlineFallback, Transcriber.isNetworkError(error) else { throw error }
