@@ -108,3 +108,16 @@ jobs:
           name: freshflo-screens
           path: screens/
           if-no-files-found: warn
+
+      # Also print the screens into the log as base64 JPEG, for tools that can read job logs but not artifact storage.
+      - name: Print the screens into the log
+        if: always()
+        run: |
+          for f in screens/*.png; do
+            [ -e "$f" ] || continue
+            jpg="${f%.png}.jpg"
+            sips -s format jpeg -s formatOptions 90 "$f" --out "$jpg" >/dev/null
+            echo "BEGIN-FILE $(basename "$jpg")"
+            base64 -i "$jpg" | fold -w 2000
+            echo "END-FILE"
+          done
