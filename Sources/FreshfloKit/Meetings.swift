@@ -19,6 +19,8 @@ struct Meeting: Codable, Identifiable, Hashable {
     var onDevice: Bool?
     /// The transcript made readable: fillers, repeats and grammar fixed line by line, speakers and times kept.
     var cleanTranscript: String? = nil
+    /// Which model wrote the notes, e.g. "nvidia/nemotron-3-super-120b-a12b · Nebius Token Factory".
+    var writtenBy: String? = nil
 
     /// Everyone who speaks, in order of first appearance ("You", "Priya", "Speaker 2"…).
     var speakers: [String] {
@@ -156,17 +158,10 @@ enum MeetingProcessor {
             meeting.onDevice = settings.provider == .local && !settings.canUseCloud
             store.save(meeting)
 
-            let notes = try await Assistant.completeLong(
-                instructions: notesInstructions(settings),
-                text: meeting.transcript,
-                chunkInstructions: "Extract the key points, decisions, action items (with owners) and open questions from this part of a meeting transcript. Be factual and concise."
-            )
-            meeting.notes = Cleanup.stripThinking(notes)
-            if let firstLine = meeting.notes.components(separatedBy: "\n").first, firstLine.hasPrefix("# ") {
-                meeting.title = String(firstLine.dropFirst(2)).trimmingCharacters(in: .whitespaces)
-                meeting.notes = meeting.notes.components(separatedBy: "\n").dropFirst().joined(separator: "\n")
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
-            }
+            let written = try await writeNotes(transcript: meeting.transcript, settings: settings)
+            meeting.notes = written.notes
+            meeting.writtenBy = written.writtenBy
+            if let title = written.title { meeting.title = title }
             meeting.status = .ready
             store.save(meeting)
             // A readable copy of the transcript: grammar and fillers fixed, who said what kept.
@@ -180,6 +175,21 @@ enum MeetingProcessor {
             meeting.error = error.localizedDescription
             store.save(meeting)
         }
+    }
+
+    /// Structured notes from a transcript, plus the title the model gave them and which model wrote them.
+    static func writeNotes(transcript: String, settings: AppSettings) async throws -> (notes: String, title: String?, writtenBy: String) {
+        var notes = Cleanup.stripThinking(try await Assistant.completeLong(
+            instructions: notesInstructions(settings),
+            text: transcript,
+            chunkInstructions: "Extract the key points, decisions, action items (with owners) and open questions from this part of a meeting transcript. Be factual and concise."
+        ))
+        var title: String?
+        if let firstLine = notes.components(separatedBy: "\n").first, firstLine.hasPrefix("# ") {
+            title = String(firstLine.dropFirst(2)).trimmingCharacters(in: .whitespaces)
+            notes = notes.components(separatedBy: "\n").dropFirst().joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return (notes, title, ModelCredit.current(settings))
     }
 
     nonisolated static let ghostPhrases: Set<String> = ["thank you", "thanks", "thank you very much", "thank you so much", "bye", "you", "okay", "so", "oh", "hmm"]

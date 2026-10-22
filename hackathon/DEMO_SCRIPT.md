@@ -22,22 +22,32 @@ On screen: the app, a list of real meetings.
   owners, open questions.
 > "These notes were written by Nemotron from the transcript."
 
-## 1:15–2:10 — The star: Chat with your meetings
-- Click **Chat with your meetings** in the sidebar.
-- Type: **"What did I commit to last week?"** → show the cited answer, click a source
-  chip to jump to that meeting.
-- Follow up: **"and which of those is most urgent?"** → show it uses the previous
-  answer (no repeated context) and still cites.
-- One more: **"draft a one-line status update from that."**
-> "It remembers the conversation, and every answer cites the meeting it came from.
+## 1:15–1:50 — Chat with your meetings
+- Click **Chat with your meetings** in the sidebar. Point at the green
+  **NVIDIA Nemotron on Nebius Token Factory** badge.
+- Type: **"What do I still owe Acme?"** → the answer streams in, cites the Acme call
+  and the standup; click a source chip to jump to that meeting.
+- Follow up: **"and is it late?"** → it resolves "it" from the previous answer.
+> "It streams, it remembers the conversation, and every answer cites its meeting.
 > Retrieval is local — only the relevant excerpts reach Nemotron."
 
-## 2:10–2:30 — Close
+## 1:50–2:15 — The new one: Open commitments
+- Click **Open commitments**. Show **Overdue** (the Acme quote, merged from two
+  meetings: "Also came up in…"), **Due this week**, and **Done** with the green
+  "Priya said the pricing page went live [Weekly product standup]".
+- Toggle **Mine / Everyone**.
+> "Nemotron read every meeting together. It noticed I promised Acme a quote in one
+> meeting and admitted it slipped in another, and that Priya already shipped the
+> pricing page, so it's not on my list anymore."
+
+## 2:15–2:30 — Close
 > "A real app, re-platformed onto NVIDIA Nemotron and Nebius Token Factory, with a new
 > private meeting assistant on top. Thanks for watching."
 
 ## Record-day checklist
-- [ ] Have 3–4 real/seeded meetings processed (status: Ready).
+- [ ] Seed the sample meetings (**Try it with sample meetings**, or
+      `swift run Freshflo --seed-demo --with-ai` so Nemotron writes the notes and the
+      notes show the Nemotron badge).
 - [ ] Nebius key added, **Test** passes on camera.
 - [ ] Pre-run each chat question once so latency is warm.
 - [ ] Mention "NVIDIA Nemotron on Nebius" early and at the end.

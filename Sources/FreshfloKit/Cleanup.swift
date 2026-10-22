@@ -300,6 +300,24 @@ enum Cleanup {
     private static func chatOnce(instructions: String, prompt: String, endpoint: ProviderEndpoint, temperature: Double) async throws -> String {
         var req = try OpenAICompatible.request(endpoint, path: "/chat/completions")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONSerialization.data(withJSONObject: payload(instructions: instructions, prompt: prompt, endpoint: endpoint, temperature: temperature))
+        let json = try await OpenAICompatible.send(req)
+        guard let choices = json["choices"] as? [[String: Any]],
+              let message = choices.first?["message"] as? [String: Any],
+              let content = message["content"] as? String else { throw APIError.badResponse }
+        lastModel = endpoint.cleanupModel
+        return stripThinking(content)
+    }
+
+    private static let modelLock = NSLock()
+    nonisolated(unsafe) private static var _lastModel: String?
+    /// The model that answered the most recent successful chat call, for crediting it in the interface.
+    static var lastModel: String? {
+        get { modelLock.withLock { _lastModel } }
+        set { modelLock.withLock { _lastModel = newValue } }
+    }
+
+    private static func payload(instructions: String, prompt: String, endpoint: ProviderEndpoint, temperature: Double) -> [String: Any] {
         var payload: [String: Any] = [
             "model": endpoint.cleanupModel,
             "temperature": temperature,
@@ -318,12 +336,64 @@ enum Cleanup {
                 payload["reasoning_format"] = "hidden"
             }
         }
-        req.httpBody = try JSONSerialization.data(withJSONObject: payload)
-        let json = try await OpenAICompatible.send(req)
-        guard let choices = json["choices"] as? [[String: Any]],
-              let message = choices.first?["message"] as? [String: Any],
-              let content = message["content"] as? String else { throw APIError.badResponse }
-        return stripThinking(content)
+        return payload
+    }
+
+    /// Chat completion streamed as server-sent events: `onText` gets the readable reply so far (thinking hidden) as tokens
+    /// arrive. If the stream can't start (rate limit, retired model, no streaming support), falls back to `chat`, which
+    /// handles those; once text has arrived, an error ends the reply instead.
+    static func chatStream(instructions: String, prompt: String, endpoint: ProviderEndpoint, temperature: Double = 0.1,
+                           onText: @escaping @MainActor @Sendable (String) -> Void) async throws -> String {
+        var raw = ""
+        do {
+            var req = try OpenAICompatible.request(endpoint, path: "/chat/completions")
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            req.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+            var body = payload(instructions: instructions, prompt: prompt, endpoint: endpoint, temperature: temperature)
+            body["stream"] = true
+            req.httpBody = try JSONSerialization.data(withJSONObject: body)
+            let (bytes, response) = try await OpenAICompatible.session.bytes(for: req)
+            guard let http = response as? HTTPURLResponse else { throw APIError.badResponse }
+            guard (200..<300).contains(http.statusCode) else {
+                var data = Data()
+                for try await byte in bytes where data.count < 2_000 { data.append(byte) }
+                let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+                let message = ((json?["error"] as? [String: Any])?["message"] as? String) ?? String(decoding: data.prefix(200), as: UTF8.self)
+                throw APIError.http(http.statusCode, message)
+            }
+            for try await line in bytes.lines {
+                if line.hasPrefix("data:"), line.dropFirst(5).trimmingCharacters(in: .whitespaces) == "[DONE]" { break }
+                guard let delta = sseDelta(line), !delta.isEmpty else { continue }
+                raw += delta
+                await onText(visibleText(raw))
+            }
+            guard !stripThinking(raw).isEmpty else { throw APIError.badResponse }
+            lastModel = endpoint.cleanupModel
+            return stripThinking(raw)
+        } catch where raw.isEmpty && !(error is CancellationError) {
+            if debug { print("debug stream fell back: \(error.localizedDescription)") }
+            let reply = try await chat(instructions: instructions, prompt: prompt, endpoint: endpoint, temperature: temperature)
+            await onText(reply)
+            return reply
+        }
+    }
+
+    /// The text in one server-sent event line: `data: {"choices":[{"delta":{"content":"Hi"}}]}` → "Hi".
+    static func sseDelta(_ line: String) -> String? {
+        guard line.hasPrefix("data:") else { return nil }
+        let body = line.dropFirst(5).trimmingCharacters(in: .whitespaces)
+        guard body != "[DONE]", let data = body.data(using: .utf8),
+              let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let choices = json["choices"] as? [[String: Any]],
+              let delta = choices.first?["delta"] as? [String: Any] else { return nil }
+        return delta["content"] as? String
+    }
+
+    /// A partial reply as it should appear while streaming: finished thinking removed, unfinished thinking hidden.
+    static func visibleText(_ raw: String) -> String {
+        var text = stripThinking(raw)
+        if let open = text.range(of: "<think>") { text = String(text[..<open.lowerBound]) }
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     static func stripThinking(_ s: String) -> String {

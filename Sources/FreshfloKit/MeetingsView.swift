@@ -15,6 +15,10 @@ struct MeetingsView: View {
                         .font(.body.weight(.medium))
                         .padding(.vertical, 4)
                         .tag("ask")
+                    Label("Open commitments", systemImage: "checklist")
+                        .font(.body.weight(.medium))
+                        .padding(.vertical, 4)
+                        .tag("commitments")
                 }
                 ForEach(store.meetings) { meeting in
                     VStack(alignment: .leading, spacing: 3) {
@@ -39,6 +43,13 @@ struct MeetingsView: View {
                         Text("No meetings yet").font(.headline)
                         Text("Start meeting notes from the menu bar during any call.")
                             .font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                        Button("Try it with sample meetings") {
+                            Task { @MainActor in
+                                _ = await DemoMeetings.seed()
+                                selection = "ask"
+                            }
+                        }
+                        .buttonStyle(.link)
                     }
                     .padding()
                 }
@@ -46,6 +57,8 @@ struct MeetingsView: View {
         } detail: {
             if selection == "ask" {
                 AskMeetingsView(selection: $selection)
+            } else if selection == "commitments" {
+                CommitmentsView(selection: $selection)
             } else if let id = selection, let meeting = store.meetings.first(where: { $0.id == id }) {
                 MeetingDetail(meeting: meeting)
             } else {
@@ -93,6 +106,9 @@ private struct MeetingDetail: View {
                     Text(meeting.title).font(.title2.weight(.semibold))
                     Text("\(meeting.date.formatted(date: .complete, time: .shortened))\(meeting.appName.isEmpty ? "" : " · \(meeting.appName)")")
                         .font(.callout).foregroundStyle(.secondary)
+                    if meeting.status == .ready, let writtenBy = meeting.writtenBy {
+                        ModelBadge(credit: writtenBy).padding(.top, 4)
+                    }
                 }
                 Spacer()
                 if meeting.status == .ready {
@@ -385,6 +401,9 @@ private struct AskMeetingsView: View {
             }
             Text("Answers come only from your notes, cite the meeting they came from, and remember the conversation so far.")
                 .font(.callout).foregroundStyle(.secondary)
+            if let credit = ModelCredit.configured(.shared) {
+                ModelBadge(credit: credit).padding(.top, 2)
+            }
         }
         .padding(.horizontal, 24).padding(.vertical, 16)
     }
@@ -396,10 +415,15 @@ private struct AskMeetingsView: View {
                     if turns.isEmpty, !asking { emptyState }
                     ForEach(turns) { turn in
                         bubble(role: "You", text: turn.question, mine: true)
-                        bubble(role: "Freshflo", text: turn.answer, mine: false, failed: turn.failed, sources: turn.sources)
-                            .id(turn.id)
+                        if !turn.answer.isEmpty {
+                            bubble(role: "Freshflo", text: turn.answer, mine: false, failed: turn.failed, sources: turn.sources,
+                                   model: turn.model, seconds: turn.seconds)
+                                .id(turn.id)
+                        }
                     }
-                    if asking { HStack(spacing: 8) { ProgressView().controlSize(.small); Text("Reading your notes…").foregroundStyle(.secondary) } }
+                    if asking, turns.last?.answer.isEmpty ?? true {
+                        HStack(spacing: 8) { ProgressView().controlSize(.small); Text("Reading your notes…").foregroundStyle(.secondary) }
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(24)
@@ -407,6 +431,7 @@ private struct AskMeetingsView: View {
             }
             .onChange(of: turns.count) { _, _ in withAnimation { proxy.scrollTo("bottom", anchor: .bottom) } }
             .onChange(of: asking) { _, _ in withAnimation { proxy.scrollTo("bottom", anchor: .bottom) } }
+            .onChange(of: turns.last?.answer) { _, _ in proxy.scrollTo("bottom", anchor: .bottom) }
         }
     }
 
@@ -423,7 +448,8 @@ private struct AskMeetingsView: View {
         .frame(maxWidth: 460)
     }
 
-    @ViewBuilder private func bubble(role: String, text: String, mine: Bool, failed: Bool = false, sources: [Meeting] = []) -> some View {
+    @ViewBuilder private func bubble(role: String, text: String, mine: Bool, failed: Bool = false, sources: [Meeting] = [],
+                                     model: String? = nil, seconds: Double? = nil) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(role).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
             Text(text.isEmpty ? "…" : text)
@@ -432,6 +458,9 @@ private struct AskMeetingsView: View {
                 .fixedSize(horizontal: false, vertical: true)
             if !sources.isEmpty {
                 WrapChips(sources: sources) { selection = $0 }
+            }
+            if let model {
+                ModelBadge(credit: model, extra: seconds.map { String(format: "%.1f s", $0) })
             }
         }
         .padding(12)
@@ -461,16 +490,35 @@ private struct AskMeetingsView: View {
         question = ""
         asking = true
         let history = turns
+        let turn = Knowledge.Turn(question: q, answer: "", sources: [])
+        turns.append(turn)
+        let start = Date()
         Task { @MainActor in
             do {
-                let answer = try await Knowledge.converse(history: history, question: q, meetings: store.meetings, settings: AppSettings.shared)
-                turns.append(Knowledge.Turn(question: q, answer: answer.text, sources: answer.sources))
+                // The reply streams into its bubble as it is written; sources and the model badge arrive with the last token.
+                let answer = try await Knowledge.converse(history: history, question: q, meetings: store.meetings, settings: AppSettings.shared) { partial in
+                    update(turn.id) { $0.answer = partial }
+                }
+                update(turn.id) {
+                    $0.answer = answer.text
+                    $0.sources = answer.sources
+                    $0.model = answer.model
+                    $0.seconds = Date().timeIntervalSince(start)
+                }
             } catch {
-                turns.append(Knowledge.Turn(question: q, answer: error.localizedDescription, sources: [], failed: true))
+                update(turn.id) {
+                    $0.answer = error.localizedDescription
+                    $0.failed = true
+                }
             }
             asking = false
             focused = true
         }
+    }
+
+    private func update(_ id: UUID, _ change: (inout Knowledge.Turn) -> Void) {
+        guard let i = turns.firstIndex(where: { $0.id == id }) else { return }
+        change(&turns[i])
     }
 }
 

@@ -57,6 +57,13 @@ enum Knowledge {
         return String(picked.prefix(maxChars))
     }
 
+    /// Whether an answer names this meeting. Models often shorten "Acme call: SSO and invoicing" to "[Acme call (…)]".
+    static func cites(_ text: String, _ m: Meeting) -> Bool {
+        if text.contains(m.title) { return true }
+        let short = m.title.components(separatedBy: ":")[0].trimmingCharacters(in: .whitespaces)
+        return short.count >= 6 && short != m.title && text.contains("[" + short)
+    }
+
     static func label(_ m: Meeting) -> String {
         "\(m.title) (\(m.date.formatted(date: .abbreviated, time: .omitted)))"
     }
@@ -64,6 +71,8 @@ enum Knowledge {
     struct Answer {
         let text: String
         let sources: [Meeting]
+        /// Which model answered (see `ModelCredit`); nil when no model was asked.
+        var model: String? = nil
     }
 
     /// One exchange in a "Chat with your meetings" conversation.
@@ -73,11 +82,15 @@ enum Knowledge {
         var answer: String
         var sources: [Meeting]
         var failed: Bool = false
+        var model: String? = nil
+        var seconds: Double? = nil
     }
 
     /// Multi-turn chat over your meetings: like `ask`, but the model also sees the conversation so far, so
     /// follow-ups ("who owns that?", "and when is it due?") resolve against the earlier answers. Cited, local-first.
-    static func converse(history: [Turn], question: String, meetings: [Meeting], settings: AppSettings) async throws -> Answer {
+    /// With `onPartial`, the reply streams in as it is written.
+    static func converse(history: [Turn], question: String, meetings: [Meeting], settings: AppSettings,
+                         onPartial: (@MainActor @Sendable (String) -> Void)? = nil) async throws -> Answer {
         // A follow-up may carry no keywords of its own, so retrieve on it plus the previous question.
         let retrievalQuery = ([question] + history.suffix(1).map(\.question)).joined(separator: " ")
         var hits = search(retrievalQuery, in: meetings, limit: 4).map(\.meeting)
@@ -111,17 +124,25 @@ enum Knowledge {
         let prompt = "Meetings:\n\(context)\nConversation so far:\n\(convo)User: \(question)\nAssistant:"
 
         let reply: String
+        let model: String
         if settings.canUseCloud {
-            reply = try await Cleanup.chat(instructions: instructions, prompt: prompt, endpoint: settings.endpoint.smart, temperature: 0.2)
+            let endpoint = settings.endpoint.smart
+            if let onPartial {
+                reply = try await Cleanup.chatStream(instructions: instructions, prompt: prompt, endpoint: endpoint, temperature: 0.2, onText: onPartial)
+            } else {
+                reply = try await Cleanup.chat(instructions: instructions, prompt: prompt, endpoint: endpoint, temperature: 0.2)
+            }
+            model = ModelCredit.label(model: Cleanup.lastModel ?? endpoint.cleanupModel, baseURL: endpoint.baseURL)
         } else if AppleModel.isAvailable {
             reply = try await AppleModel.respond(instructions: instructions, prompt: prompt)
+            model = ModelCredit.appleOnDevice
         } else {
             throw KnowledgeError.noModel
         }
         let text = Cleanup.stripThinking(reply)
         let notFound = text.range(of: #"couldn['’]t find|could not find|not in the (?:provided )?notes"#, options: [.regularExpression, .caseInsensitive]) != nil
-        let cited = hits.filter { text.contains($0.title) }
-        return Answer(text: text, sources: notFound ? [] : (cited.isEmpty ? Array(hits.prefix(3)) : cited))
+        let cited = hits.filter { cites(text, $0) }
+        return Answer(text: text, sources: notFound ? [] : (cited.isEmpty ? Array(hits.prefix(3)) : cited), model: model)
     }
 
     /// "What did we decide about pricing?" → an answer drawn only from your notes, naming the meetings it came from.
@@ -156,7 +177,7 @@ enum Knowledge {
         }
         let text = Cleanup.stripThinking(reply)
         let notFound = text.range(of: #"couldn['’]t find|could not find|not in the (?:provided )?notes"#, options: [.regularExpression, .caseInsensitive]) != nil
-        let cited = hits.filter { text.contains($0.title) }
+        let cited = hits.filter { cites(text, $0) }
         return Answer(text: text, sources: notFound ? [] : (cited.isEmpty ? hits : cited))
     }
 }

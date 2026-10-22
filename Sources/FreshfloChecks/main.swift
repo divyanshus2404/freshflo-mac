@@ -556,6 +556,82 @@ expect(Indic.punctuate("Meet at 5 p.m. tomorrow.", lang: "hi"), "Meet at 5 p.m. 
 expect(Indic.punctuate("कीमत 2.5 लाख है.", lang: "hi"), "कीमत 2.5 लाख है।", "decimals stay, the sentence end changes")
 expectTrue(Indic.scriptPrompt("hi")?.contains("।") == true && Indic.scriptPrompt("en") == nil, "script prompt only for Indian languages")
 
+section("Hackathon: demo meetings")
+let demo = DemoMeetings.all()
+expect(demo.count, 4, "four sample meetings")
+expectTrue(demo.allSatisfy { $0.status == .ready && DemoMeetings.isDemo($0) }, "samples are ready and marked as demo")
+expect(demo.first { $0.id == "demo-standup" }?.speakers, ["You", "Priya", "Rahul", "Meera"], "sample transcript speakers parse")
+expectTrue(zip(demo, demo.dropFirst()).allSatisfy { $0.date > $1.date }, "samples newest first")
+
+section("Hackathon: model credit")
+expect(ModelCredit.label(model: "nvidia/nemotron-3-super-120b-a12b", baseURL: "https://api.tokenfactory.nebius.com/v1"),
+       "nvidia/nemotron-3-super-120b-a12b · Nebius Token Factory", "credit names model and host")
+expect(ModelCredit.parts("nvidia/nemotron-3-super-120b-a12b · Nebius Token Factory"),
+       ModelCredit.Parts(headline: "NVIDIA Nemotron on Nebius Token Factory", model: "nvidia/nemotron-3-super-120b-a12b", nvidia: true), "Nemotron badge")
+expect(ModelCredit.parts("openai/gpt-oss-120b · Groq").headline, "openai/gpt-oss-120b on Groq", "other models named as-is")
+expect(ModelCredit.parts(ModelCredit.appleOnDevice).nvidia, false, "Apple model is not NVIDIA")
+expect(ModelCredit.host("http://localhost:8000/v1"), "localhost", "custom host")
+
+section("Hackathon: streaming")
+expect(Cleanup.sseDelta(#"data: {"id":"x","choices":[{"index":0,"delta":{"content":"Hel"}}]}"#), "Hel", "SSE delta text")
+expect(Cleanup.sseDelta(#"data: {"choices":[{"delta":{"role":"assistant"}}]}"#), nil, "role-only delta has no text")
+expect(Cleanup.sseDelta("data: [DONE]"), nil, "done marker")
+expect(Cleanup.sseDelta(": keep-alive"), nil, "SSE comment")
+expect(Cleanup.visibleText("<think>plan the answer"), "", "unfinished thinking hidden")
+expect(Cleanup.visibleText("<think>plan</think>\nYou owe Acme a quote"), "You owe Acme a quote", "finished thinking removed")
+expect(Cleanup.visibleText("Two items <think>hm"), "Two items", "thinking cut mid-reply")
+
+let acme = demo.first { $0.id == "demo-acme" }!
+expectTrue(Knowledge.cites("late [Acme customer call (Oct 16, 2026)]", acme), "shortened title still cites")
+expect(Knowledge.cites("Acme mentioned in passing", acme), false, "a bare word is not a citation")
+
+section("Hackathon: commitments")
+let cal = Calendar.current
+let tuesday = cal.date(from: DateComponents(year: 2026, month: 10, day: 13, hour: 11))!
+func ymd(_ d: Date?) -> String { d.map { let c = cal.dateComponents([.year, .month, .day], from: $0); return "\(c.year!)-\(c.month!)-\(c.day!)" } ?? "nil" }
+expect(ymd(Commitments.resolveDue("by Friday", from: tuesday)), "2026-10-16", "by Friday from a Tuesday")
+expect(ymd(Commitments.resolveDue("by next Wednesday", from: tuesday)), "2026-10-21", "next Wednesday")
+expect(ymd(Commitments.resolveDue("today", from: tuesday)), "2026-10-13", "today")
+expect(ymd(Commitments.resolveDue("tomorrow", from: tuesday)), "2026-10-14", "tomorrow")
+expect(ymd(Commitments.resolveDue("this week", from: tuesday)), "2026-10-16", "this week ends Friday")
+expect(ymd(Commitments.resolveDue("end of the month", from: tuesday)), "2026-10-31", "end of the month")
+expect(ymd(Commitments.resolveDue("2026-11-04", from: tuesday)), "2026-11-4", "ISO date")
+expect(ymd(Commitments.resolveDue("soon-ish", from: tuesday)), "nil", "vague stays undated")
+
+let notesMeeting = Meeting(id: "m1", title: "Sync", date: tuesday, duration: 60, status: .ready, appName: "", notes: """
+## Decisions
+- Ship it.
+## Action items
+- [ ] Get the new pricing page live — Priya, by Friday
+- [x] Add the annual plan in Stripe — Rahul
+- [ ] Scope SSO — Owner: none
+- Meera: record the onboarding video by Thursday.
+## Open questions
+- [ ] Not an action item — You
+""", transcript: "", error: nil, onDevice: nil)
+let parsedItems = Commitments.parse(notesMeeting)
+expect(parsedItems.map(\.task), ["Get the new pricing page live", "Add the annual plan in Stripe", "Scope SSO", "record the onboarding video"], "only the action items section")
+expect(parsedItems.map(\.owner), ["Priya", "Rahul", "", "Meera"], "owners")
+expect(parsedItems.map(\.due), ["by Friday", "", "", "by Thursday"], "due as written")
+expect(parsedItems[1].doneNote, "Ticked in the notes", "ticked box is done")
+expect(Commitments.parse(demo).filter(\.isMine).count, 4, "sample meetings give you four commitments")
+
+let reply = #"Sure: {"items":[{"ids":[0,3],"task":"Pricing page live","owner":"Priya","due":"2026-10-16","done":"Priya said it went live [Standup]"},{"ids":[2],"owner":"none","due":null,"done":null},{"ids":[99]}]}"#
+let applied = Commitments.apply(reply, to: parsedItems)
+expect(applied?.count, 3, "merged pair, kept the rest")
+expect(applied?.first?.doneNote, "Priya said it went live [Standup]", "done from a later meeting")
+expect(applied?.first?.task, "Pricing page live", "model wording")
+expect(applied?.contains { $0.task == "Add the annual plan in Stripe" && $0.doneNote == "Ticked in the notes" }, true, "items the reply left out are kept")
+expect(Commitments.apply("I can't do that", to: parsedItems) == nil, true, "non-JSON reply rejected")
+let today = cal.date(from: DateComponents(year: 2026, month: 10, day: 22))!
+var overdueItem = parsedItems[0]
+expect(Commitments.bucket(overdueItem, ticked: false, today: today), .overdue, "past due is overdue")
+expect(Commitments.bucket(overdueItem, ticked: true, today: today), .done, "ticked is done")
+overdueItem.dueDate = cal.date(byAdding: .day, value: 3, to: today)
+expect(Commitments.bucket(overdueItem, ticked: false, today: today), .thisWeek, "due in three days")
+overdueItem.dueDate = nil
+expect(Commitments.bucket(overdueItem, ticked: false, today: today), .noDate, "no date")
+
 // MARK: - Result
 
 if failures.isEmpty {

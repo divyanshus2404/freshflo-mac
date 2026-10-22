@@ -7,7 +7,7 @@ import Foundation
 ///   Freshflo --command "make this formal" [--selection "hey whats up"]
 public enum CLI {
     public static var isRequested: Bool {
-        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update", "--grammar-eval", "--ask-meetings", "--render-stats", "--mic-test", "--polish-batch", "--voice-sense", "--render-appearance", "--render-styles", "--diarize", "--mic-info", "--whisper-local"].contains(where: CommandLine.arguments.contains)
+        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update", "--grammar-eval", "--ask-meetings", "--render-stats", "--mic-test", "--polish-batch", "--voice-sense", "--render-appearance", "--render-styles", "--diarize", "--mic-info", "--whisper-local", "--seed-demo", "--remove-demo", "--commitments"].contains(where: CommandLine.arguments.contains)
     }
 
     /// Shows the real floating indicator inside a proper app run loop with synthetic speech (performance checks).
@@ -387,22 +387,43 @@ public enum CLI {
             print("rendered \(out)")
             return
         }
-        if let question = value("--ask-meetings") {
-            // --demo uses made-up meetings so the answer path can be tested without real notes.
-            var meetings = MeetingStore.shared.meetings
-            if CommandLine.arguments.contains("--demo") {
-                func m(_ t: String, _ n: String, _ d: Double, _ tr: String) -> Meeting {
-                    Meeting(id: UUID().uuidString, title: t, date: Date().addingTimeInterval(-d * 86_400), duration: 1800, status: .ready,
-                            appName: "Zoom", notes: n, transcript: tr, error: nil, onDevice: nil)
-                }
-                meetings = [
-                    m("Pricing sync", "## Decisions\n- Pro plan at $8/month, annual $72.\n- Free tier stays unlimited.\n## Action items\n- Priya: update the pricing page by Friday.", 2,
-                      "You: so are we doing eight or ten\nThem: eight, and seventy two a year\nYou: okay Priya can you update the page by Friday"),
-                    m("Hiring plan", "## Decisions\n- Open two backend roles.\n## Action items\n- Rahul: screen candidates this week.", 1, ""),
-                    m("Customer call: Acme", "## Summary\nAcme wants SSO and an invoice option.\n## Action items\n- You: send a quote by Wednesday.", 4, ""),
-                ]
-            }
+        if CommandLine.arguments.contains("--seed-demo") {
+            let seeded = await DemoMeetings.seed(rewriteNotes: CommandLine.arguments.contains("--with-ai"))
+            print("seeded \(seeded.count) sample meetings:")
+            seeded.forEach { print("  \(Knowledge.label($0))\($0.writtenBy.map { " · notes by \($0)" } ?? "")") }
+            return
+        }
+        if CommandLine.arguments.contains("--remove-demo") {
+            print("removed \(DemoMeetings.remove()) sample meetings")
+            return
+        }
+        // --demo uses the sample meetings without saving them, so these paths can be tested without real notes.
+        let meetings = CommandLine.arguments.contains("--demo") ? DemoMeetings.all() : MeetingStore.shared.meetings
+        if CommandLine.arguments.contains("--commitments") {
+            let parsed = Commitments.parse(meetings)
+            print("parsed \(parsed.count) action items")
             let start = Date()
+            let result = try await Commitments.organize(parsed, meetings: meetings, settings: settings)
+            print("organized [\(ms(since: start))] by \(result.model):")
+            for item in result.items {
+                let bucket = Commitments.bucket(item, ticked: false)
+                let due = item.dueDate.map { $0.formatted(date: .abbreviated, time: .omitted) } ?? (item.due.isEmpty ? "-" : item.due)
+                print("  [\(bucket.title)] \(item.task) — \(item.owner.isEmpty ? "no owner" : item.owner), \(due) (\(item.meetingTitle))"
+                      + (item.alsoIn.isEmpty ? "" : " also in: \(item.alsoIn.joined(separator: ", "))")
+                      + (item.doneNote.map { " ✓ \($0)" } ?? ""))
+            }
+            return
+        }
+        if let question = value("--ask-meetings") {
+            let start = Date()
+            if CommandLine.arguments.contains("--stream") {
+                nonisolated(unsafe) var shown = 0
+                let answer = try await Knowledge.converse(history: [], question: question, meetings: meetings, settings: settings) { partial in
+                    if partial.count > shown { print(partial.dropFirst(shown), terminator: ""); fflush(stdout); shown = partial.count }
+                }
+                print("\n[\(ms(since: start))] by \(answer.model ?? "-") · sources: \(answer.sources.map(Knowledge.label))")
+                return
+            }
             let answer = try await Knowledge.ask(question, meetings: meetings, settings: settings)
             print("answer [\(ms(since: start))]:\n\(answer.text)\nsources: \(answer.sources.map(Knowledge.label))")
             return

@@ -11,7 +11,9 @@ hard requirements for the Nebius x NVIDIA Global AI Hackathon.
 | Speech → text (dictation, meetings) | WhisperKit (on-device) | Your Mac — private, offline, free |
 | Cleanup / grammar / tone | **NVIDIA Nemotron** | **Nebius Token Factory** |
 | Meeting notes (decisions, action items) | **NVIDIA Nemotron** | **Nebius Token Factory** |
-| Chat with your meetings | **NVIDIA Nemotron** | **Nebius Token Factory** |
+| Chat with your meetings (streamed) | **NVIDIA Nemotron** | **Nebius Token Factory** |
+| Open commitments (merge, done-detection) | **NVIDIA Nemotron** | **Nebius Token Factory** |
+| Due dates ("by next Wednesday") | Deterministic rules | Your Mac |
 | Ask / Command / translate | **NVIDIA Nemotron** | **Nebius Token Factory** |
 
 Token Factory serves LLMs, not audio, so transcription stays on-device and only
@@ -44,9 +46,35 @@ reply cites the meeting it came from, and retrieval stays 100% local — only th
 most relevant excerpts reach Nemotron. See `Knowledge.converse` and
 `AskMeetingsView` in `Sources/FreshfloKit`.
 
+## Also built for the hackathon
+
+- **Open commitments** (sidebar of Meeting Notes): every action item across every
+  meeting, merged and dated, with items a later meeting finished marked done. See
+  `Commitments.swift` and `CommitmentsView.swift`.
+- **Streaming chat**: answers arrive token by token (`Cleanup.chatStream`).
+- **Model badge**: notes, answers and commitments show "NVIDIA Nemotron on Nebius
+  Token Factory" plus the exact model id (`ModelCredit.swift`).
+
+## Demo data
+
+Four connected sample meetings (pricing → customer call → standup → hiring) whose
+commitments carry across meetings: one finished later, one overdue, one restated.
+
+```bash
+swift run Freshflo --seed-demo            # add them (written notes included)
+swift run Freshflo --seed-demo --with-ai  # same, but Nemotron rewrites the notes from the transcripts
+swift run Freshflo --remove-demo          # take them out again
+```
+
+The app's empty Meeting Notes window also has a **Try it with sample meetings** link.
+Note: `swift run` reads the CLI's own settings, not the app's. Set the Nebius key for
+the CLI too, or use the in-app link so the app's settings are used.
+
 ## Build & verify
 
 ```bash
-swift build            # builds the app + CLI
-swift run FreshfloChecks   # 339 logic checks
+swift build                 # builds the app + CLI
+swift run FreshfloChecks    # 379 logic checks
+swift run Freshflo --commitments --demo                                   # organise the sample commitments
+swift run Freshflo --ask-meetings "What do I owe Acme?" --demo --stream   # streamed, cited answer
 ```
