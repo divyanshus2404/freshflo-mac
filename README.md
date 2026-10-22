@@ -21,7 +21,7 @@
   <img alt="macOS 14+" src="https://img.shields.io/badge/macOS-14%2B-0c2421?logo=apple&logoColor=white">
   <img alt="Swift 6" src="https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white">
   <img alt="Universal" src="https://img.shields.io/badge/Apple%20Silicon%20%2B%20Intel-universal-35d6a6">
-  <img alt="Checks" src="https://img.shields.io/badge/checks-339%20passing-35d6a6">
+  <img alt="Checks" src="https://img.shields.io/badge/checks-460%20passing-35d6a6">
   <img alt="Grammar" src="https://img.shields.io/badge/grammar%20eval-76%2F76-35d6a6">
   <img alt="Size" src="https://img.shields.io/badge/app-~10%20MB-0c2421">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-35d6a6"></a>

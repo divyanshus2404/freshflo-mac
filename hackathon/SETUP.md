@@ -122,7 +122,7 @@ the CLI too, or use the in-app link so the app's settings are used.
 
 ```bash
 swift build                 # builds the app + CLI
-swift run FreshfloChecks    # 379 logic checks
+swift run FreshfloChecks    # 460 logic checks
 swift run Freshflo --commitments --demo                                   # organise the sample commitments
 swift run Freshflo --ask-meetings "What do I owe Acme?" --demo --stream   # streamed, cited answer
 swift run Freshflo --next-step "pricing page" --demo                     # tool-calling next step
