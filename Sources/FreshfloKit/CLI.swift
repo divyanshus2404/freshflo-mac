@@ -7,7 +7,7 @@ import Foundation
 ///   Freshflo --command "make this formal" [--selection "hey whats up"]
 public enum CLI {
     public static var isRequested: Bool {
-        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update", "--grammar-eval", "--ask-meetings", "--render-stats", "--mic-test", "--polish-batch", "--voice-sense", "--render-appearance", "--render-styles", "--diarize", "--mic-info", "--whisper-local"].contains(where: CommandLine.arguments.contains)
+        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update", "--grammar-eval", "--ask-meetings", "--render-stats", "--mic-test", "--polish-batch", "--voice-sense", "--render-appearance", "--render-styles", "--diarize", "--mic-info", "--whisper-local", "--seed-demo", "--remove-demo", "--commitments", "--next-step", "--research", "--commitments-eval", "--render-ui"].contains(where: CommandLine.arguments.contains)
     }
 
     /// Shows the real floating indicator inside a proper app run loop with synthetic speech (performance checks).
@@ -15,6 +15,12 @@ public enum CLI {
     /// Launched by Claude Desktop, Claude Code or Cursor as an MCP server.
     public static var isMCPRequested: Bool { CommandLine.arguments.contains("--mcp") }
     public static func runMCP() -> Never { MCPServer.run() }
+    /// Serves MCP over HTTP for sandboxed agents (NemoClaw / OpenShell): `--mcp-http [--port 8765] [--bind 127.0.0.1]`.
+    public static var isMCPHTTPRequested: Bool { CommandLine.arguments.contains("--mcp-http") }
+    public static func runMCPHTTP() -> Never {
+        MCPHTTP.run(port: UInt16(value("--port") ?? "") ?? 8765, bind: value("--bind") ?? "127.0.0.1",
+                    token: ProcessInfo.processInfo.environment["FRESHFLO_MCP_TOKEN"]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "")
+    }
 
     @MainActor
     public static func runDemo() -> Never {
@@ -86,6 +92,34 @@ public enum CLI {
         let savedCleanupModel = settings.cleanupModel
         defer { settings.cleanupModel = savedCleanupModel }
         if let model = value("--cleanup-model") { settings.cleanupModel = model }
+        let savedSmartModel = settings.smartModel
+        defer { settings.smartModel = savedSmartModel }
+        if let model = value("--smart-model") { settings.smartModel = model }
+        // CI and scripted runs: `--provider nebius` with the key in FRESHFLO_API_KEY (or NEBIUS_API_KEY), for this run only.
+        let savedProvider = settings.provider
+        // What the overridden provider had before this run: its saved key and models, put back on exit.
+        var overridden: (provider: Provider, key: String, cleanup: String, smart: String)?
+        if let raw = value("--provider"), let provider = Provider(rawValue: raw) {
+            let env = ProcessInfo.processInfo.environment
+            let key = (env["FRESHFLO_API_KEY"] ?? env["NEBIUS_API_KEY"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let storedKey = Keychain.get(provider.rawValue)
+            settings.provider = provider
+            overridden = (provider, storedKey, settings.cleanupModel, settings.smartModel)
+            if !key.isEmpty { settings.apiKey = key }
+            if let model = value("--cleanup-model") { settings.cleanupModel = model }
+            if let model = value("--smart-model") { settings.smartModel = model }
+            print("provider: \(provider.label) · fast \(settings.cleanupModel) · smart \(settings.smartModel) · key \(settings.apiKey.isEmpty ? "missing" : "set")")
+        }
+        defer {
+            if let o = overridden {
+                if settings.provider == o.provider {
+                    settings.apiKey = o.key
+                    settings.cleanupModel = o.cleanup
+                    settings.smartModel = o.smart
+                }
+                settings.provider = savedProvider
+            }
+        }
         if let lang = value("--write-in") { settings.outputLanguage = lang }
         if let region = value("--region").flatMap(RegionalFormat.init(rawValue:)) { settings.regionalFormat = region }
 
@@ -387,22 +421,82 @@ public enum CLI {
             print("rendered \(out)")
             return
         }
-        if let question = value("--ask-meetings") {
-            // --demo uses made-up meetings so the answer path can be tested without real notes.
-            var meetings = MeetingStore.shared.meetings
-            if CommandLine.arguments.contains("--demo") {
-                func m(_ t: String, _ n: String, _ d: Double, _ tr: String) -> Meeting {
-                    Meeting(id: UUID().uuidString, title: t, date: Date().addingTimeInterval(-d * 86_400), duration: 1800, status: .ready,
-                            appName: "Zoom", notes: n, transcript: tr, error: nil, onDevice: nil)
-                }
-                meetings = [
-                    m("Pricing sync", "## Decisions\n- Pro plan at $8/month, annual $72.\n- Free tier stays unlimited.\n## Action items\n- Priya: update the pricing page by Friday.", 2,
-                      "You: so are we doing eight or ten\nThem: eight, and seventy two a year\nYou: okay Priya can you update the page by Friday"),
-                    m("Hiring plan", "## Decisions\n- Open two backend roles.\n## Action items\n- Rahul: screen candidates this week.", 1, ""),
-                    m("Customer call: Acme", "## Summary\nAcme wants SSO and an invoice option.\n## Action items\n- You: send a quote by Wednesday.", 4, ""),
-                ]
-            }
+        if CommandLine.arguments.contains("--seed-demo") {
+            let seeded = await DemoMeetings.seed(rewriteNotes: CommandLine.arguments.contains("--with-ai"))
+            print("seeded \(seeded.count) sample meetings:")
+            seeded.forEach { print("  \(Knowledge.label($0))\($0.writtenBy.map { " · notes by \($0)" } ?? "")") }
+            return
+        }
+        if CommandLine.arguments.contains("--remove-demo") {
+            print("removed \(DemoMeetings.remove()) sample meetings")
+            return
+        }
+        // --demo uses the sample meetings without saving them, so these paths can be tested without real notes.
+        let meetings = CommandLine.arguments.contains("--demo") ? DemoMeetings.all() : MeetingStore.shared.meetings
+        if CommandLine.arguments.contains("--commitments") {
+            let parsed = Commitments.parse(meetings)
+            print("parsed \(parsed.count) action items")
             let start = Date()
+            let result = try await Commitments.organize(parsed, meetings: meetings, settings: settings)
+            print("organized [\(ms(since: start))] by \(result.model):")
+            for item in result.items {
+                let bucket = Commitments.bucket(item, ticked: false)
+                let due = item.dueDate.map { $0.formatted(date: .abbreviated, time: .omitted) } ?? (item.due.isEmpty ? "-" : item.due)
+                print("  [\(bucket.title)] \(item.task) — \(item.owner.isEmpty ? "no owner" : item.owner), \(due) (\(item.meetingTitle))"
+                      + (item.alsoIn.isEmpty ? "" : " also in: \(item.alsoIn.joined(separator: ", "))")
+                      + (item.doneNote.map { " ✓ \($0)" } ?? ""))
+            }
+            return
+        }
+        if let query = value("--research") {
+            let start = Date()
+            let found = try await Tavily.search(query)
+            print("tavily [\(ms(since: start))]: \(found.answer ?? "(no summary)")")
+            found.results.enumerated().forEach { print("  [\($0.offset + 1)] \($0.element.title) — \($0.element.url)") }
+            return
+        }
+        if let wanted = value("--next-step") {
+            // A commitment id from --commitments, or words from its task ("acme quote").
+            let (items, _) = Commitments.current(meetings)
+            let words = wanted.lowercased().split(separator: " ")
+            guard let item = items.first(where: { $0.id == wanted }) ?? items.first(where: { item in words.allSatisfy { item.task.lowercased().contains($0) } }) else {
+                print("no commitment matches “\(wanted)”. Commitments:")
+                items.forEach { print("  \($0.id)") }
+                return
+            }
+            print("commitment: \(item.task) (\(item.meetingTitle))\nresearch: \(Tavily.isConfigured ? "on (Tavily)" : "off (no TAVILY_API_KEY)")")
+            let start = Date()
+            let proposal = try await CommitmentAgent.propose(item, meetings: meetings, settings: settings)
+            print("next step [\(ms(since: start))] by \(proposal.proposedBy): \(proposal.kind.label)")
+            print("  title: \(proposal.title)" + (proposal.to.isEmpty ? "" : "\n  to: \(proposal.to)")
+                  + (proposal.due.map { "\n  due: \($0.formatted(date: .abbreviated, time: .omitted))" } ?? ""))
+            print(proposal.body.split(separator: "\n", omittingEmptySubsequences: false).map { "  | " + $0 }.joined(separator: "\n"))
+            proposal.sources.enumerated().forEach { print("  [\($0.offset + 1)] \($0.element)") }
+            if CommandLine.arguments.contains("--queue") {
+                AgentInbox.add(proposal)
+                print("queued for approval in Open commitments")
+            }
+            return
+        }
+        if let dir = value("--render-ui") {
+            try await renderUI(to: URL(fileURLWithPath: dir), settings: settings)
+            return
+        }
+        if let path = value("--commitments-eval") {
+            try await CommitmentsEval.run(path: path, settings: settings, runs: Int(value("--runs") ?? "") ?? 1,
+                                          verbose: CommandLine.arguments.contains("--verbose"))
+            return
+        }
+        if let question = value("--ask-meetings") {
+            let start = Date()
+            if CommandLine.arguments.contains("--stream") {
+                nonisolated(unsafe) var shown = 0
+                let answer = try await Knowledge.converse(history: [], question: question, meetings: meetings, settings: settings) { partial in
+                    if partial.count > shown { print(partial.dropFirst(shown), terminator: ""); fflush(stdout); shown = partial.count }
+                }
+                print("\n[\(ms(since: start))] by \(answer.model ?? "-") · sources: \(answer.sources.map(Knowledge.label))")
+                return
+            }
             let answer = try await Knowledge.ask(question, meetings: meetings, settings: settings)
             print("answer [\(ms(since: start))]:\n\(answer.text)\nsources: \(answer.sources.map(Knowledge.label))")
             return
@@ -441,6 +535,70 @@ public enum CLI {
         let result = await Pipeline.polish(raw: transcript.text, context: context, settings: settings, mode: mode, extraVocabulary: vocab)
         let final = context.spaced(result.text, fallbackTrailingSpace: false)
         print("final [\(result.engine), \(ms(since: start))]: \(final.debugDescription)")
+    }
+
+    /// Screenshots of the real app for the demo video: the sample meetings with notes written by the model, the
+    /// organised commitments, a real chat answer and a real Next step draft (all from the configured model; without one,
+    /// the screens show the notes as written). Seeds the sample meetings into this Mac's store.
+    @MainActor
+    private static func renderUI(to out: URL, settings: AppSettings) async throws {
+        _ = NSApplication.shared
+        NSApp.appearance = NSAppearance(named: .aqua)
+        try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        let live = settings.canUseCloud
+        let seeded = await DemoMeetings.seed(rewriteNotes: live)
+        print("seeded \(seeded.count) sample meetings\(live ? " (notes by \(seeded.first?.writtenBy ?? "the model"))" : "")")
+        let meetings = MeetingStore.shared.meetings
+        var turns: [Knowledge.Turn] = []
+        if live {
+            let parsed = Commitments.parse(meetings)
+            do {
+                let organized = try await Commitments.organize(parsed, meetings: meetings, settings: settings)
+                Commitments.save(.init(key: Commitments.cacheKey(meetings), items: organized.items, model: organized.model))
+                print("commitments organised by \(organized.model)")
+            } catch { print("organise failed: \(error.localizedDescription)") }
+            let question = value("--question") ?? "What do I still owe Acme, and is it late?"
+            let start = Date()
+            do {
+                let answer = try await Knowledge.converse(history: [], question: question, meetings: meetings, settings: settings)
+                turns = [Knowledge.Turn(question: question, answer: answer.text, sources: answer.sources, model: answer.model,
+                                        seconds: Date().timeIntervalSince(start))]
+                print("chat answered by \(answer.model ?? "-")")
+            } catch { print("chat failed: \(error.localizedDescription)") }
+            if let item = Commitments.current(meetings).items.first(where: { $0.isMine && $0.doneNote == nil && $0.task.lowercased().contains("acme") }) {
+                do {
+                    let proposal = try await CommitmentAgent.propose(item, meetings: meetings, settings: settings)
+                    AgentInbox.add(proposal)
+                    print("next step for “\(item.task)”: \(proposal.kind.label) by \(proposal.proposedBy)")
+                } catch { print("next step failed: \(error.localizedDescription)") }
+            }
+        }
+
+        func snap<V: View>(_ view: V, _ name: String, width: CGFloat, height: CGFloat, wait: Double = 2.5) throws {
+            let host = NSHostingView(rootView: view.frame(width: width, height: height))
+            let window = NSWindow(contentRect: NSRect(x: -5000, y: 0, width: width, height: height), styleMask: [.titled],
+                                  backing: .buffered, defer: false)
+            window.contentView = host
+            window.orderFrontRegardless()
+            spinRunLoop(wait)
+            // Twice the points, so text stays sharp in a 1080p video.
+            guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(width * 2), pixelsHigh: Int(height * 2), bitsPerSample: 8,
+                                             samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
+                                             bytesPerRow: 0, bitsPerPixel: 0) else { return }
+            rep.size = NSSize(width: width, height: height)
+            host.cacheDisplay(in: host.bounds, to: rep)
+            try rep.representation(using: .png, properties: [:])?.write(to: out.appendingPathComponent(name))
+            window.orderOut(nil)
+            print("rendered \(name)")
+        }
+
+        let notesID = meetings.first { $0.id == "demo-acme" }?.id ?? meetings.first?.id
+        try snap(MeetingsView(initialSelection: notesID), "1-meeting-notes.png", width: 1280, height: 800)
+        try snap(MeetingsView(initialSelection: "ask", initialTurns: turns), "2-chat.png", width: 1280, height: 800)
+        try snap(MeetingsView(initialSelection: "commitments"), "3-commitments.png", width: 1280, height: 800, wait: 4)
+        if let proposal = AgentInbox.load().last {
+            try snap(ProposalSheet(proposal: proposal) { _ in }, "4-next-step.png", width: 580, height: 640)
+        }
     }
 
     private static func ms(since date: Date) -> String {

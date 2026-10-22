@@ -6,15 +6,26 @@ struct MeetingsView: View {
     @ObservedObject private var store = MeetingStore.shared
     @ObservedObject private var controller = MeetingController.shared
     @State private var selection: String?
+    /// A conversation to open "Chat with your meetings" with (the `--render-ui` screenshots).
+    private let initialTurns: [Knowledge.Turn]
+
+    init(initialSelection: String? = nil, initialTurns: [Knowledge.Turn] = []) {
+        _selection = State(initialValue: initialSelection)
+        self.initialTurns = initialTurns
+    }
 
     var body: some View {
         NavigationSplitView {
             List(selection: $selection) {
                 if !store.meetings.isEmpty {
-                    Label("Ask your meetings", systemImage: "sparkles")
+                    Label("Chat with your meetings", systemImage: "sparkles")
                         .font(.body.weight(.medium))
                         .padding(.vertical, 4)
                         .tag("ask")
+                    Label("Open commitments", systemImage: "checklist")
+                        .font(.body.weight(.medium))
+                        .padding(.vertical, 4)
+                        .tag("commitments")
                 }
                 ForEach(store.meetings) { meeting in
                     VStack(alignment: .leading, spacing: 3) {
@@ -39,13 +50,22 @@ struct MeetingsView: View {
                         Text("No meetings yet").font(.headline)
                         Text("Start meeting notes from the menu bar during any call.")
                             .font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                        Button("Try it with sample meetings") {
+                            Task { @MainActor in
+                                _ = await DemoMeetings.seed()
+                                selection = "ask"
+                            }
+                        }
+                        .buttonStyle(.link)
                     }
                     .padding()
                 }
             }
         } detail: {
             if selection == "ask" {
-                AskMeetingsView(selection: $selection)
+                AskMeetingsView(selection: $selection, initialTurns: initialTurns)
+            } else if selection == "commitments" {
+                CommitmentsView(selection: $selection)
             } else if let id = selection, let meeting = store.meetings.first(where: { $0.id == id }) {
                 MeetingDetail(meeting: meeting)
             } else {
@@ -93,6 +113,9 @@ private struct MeetingDetail: View {
                     Text(meeting.title).font(.title2.weight(.semibold))
                     Text("\(meeting.date.formatted(date: .complete, time: .shortened))\(meeting.appName.isEmpty ? "" : " · \(meeting.appName)")")
                         .font(.callout).foregroundStyle(.secondary)
+                    if meeting.status == .ready, let writtenBy = meeting.writtenBy {
+                        ModelBadge(credit: writtenBy).padding(.top, 4)
+                    }
                 }
                 Spacer()
                 if meeting.status == .ready {
@@ -352,72 +375,177 @@ private struct ResultSheet: View {
 /// "What did we decide about pricing?" across every meeting, answered from your notes with the meetings it came from.
 private struct AskMeetingsView: View {
     @Binding var selection: String?
+    var initialTurns: [Knowledge.Turn] = []
     @ObservedObject private var store = MeetingStore.shared
     @State private var question = ""
-    @State private var answer: Knowledge.Answer?
+    @State private var turns: [Knowledge.Turn] = []
     @State private var asking = false
-    @State private var error: String?
     @FocusState private var focused: Bool
 
     private let suggestions = ["What did we decide this week?", "What are my action items?", "What did the client ask for?", "Summarise my last meeting"]
 
+    private var canSend: Bool { !asking && question.trimmingCharacters(in: .whitespaces).count >= 3 }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Ask your meetings").font(.system(size: 26, design: .serif))
-            Text("Answers come only from your notes, and say which meeting each point came from.")
-                .foregroundStyle(.secondary)
-            HStack {
-                TextField("e.g. What did we decide about pricing?", text: $question)
-                    .textFieldStyle(.roundedBorder)
-                    .controlSize(.large)
-                    .focused($focused)
-                    .onSubmit(ask)
-                Button(asking ? "Asking…" : "Ask", action: ask)
-                    .controlSize(.large)
-                    .buttonStyle(.borderedProminent)
-                    .disabled(asking || question.trimmingCharacters(in: .whitespaces).count < 3)
-            }
-            if answer == nil, !asking {
-                HStack(spacing: 8) {
-                    ForEach(suggestions, id: \.self) { s in
-                        Button(s) { question = s; ask() }.buttonStyle(.bordered).controlSize(.small)
-                    }
-                }
-            }
-            if let error { Text(error).foregroundStyle(.red) }
-            if asking { ProgressView().controlSize(.small) }
-            if let answer {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 14) {
-                        Text(answer.text).textSelection(.enabled).font(.body).fixedSize(horizontal: false, vertical: true)
-                        if !answer.sources.isEmpty {
-                            Divider()
-                            Text("From").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                            ForEach(answer.sources) { m in
-                                Button { selection = m.id } label: {
-                                    Label(Knowledge.label(m), systemImage: "doc.text")
-                                }
-                                .buttonStyle(.link)
-                            }
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-            Spacer()
+        VStack(spacing: 0) {
+            header
+            Divider()
+            conversation
+            Divider()
+            composer
         }
-        .padding(24)
-        .onAppear { focused = true }
+        .onAppear {
+            focused = true
+            if turns.isEmpty { turns = initialTurns }
+        }
     }
 
-    private func ask() {
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text("Chat with your meetings").font(.system(size: 22, design: .serif))
+                Spacer()
+                if !turns.isEmpty {
+                    Button { turns = [] } label: { Label("New chat", systemImage: "square.and.pencil") }
+                        .buttonStyle(.borderless)
+                }
+            }
+            Text("Answers come only from your notes, cite the meeting they came from, and remember the conversation so far.")
+                .font(.callout).foregroundStyle(.secondary)
+            if let credit = ModelCredit.configured(.shared) {
+                ModelBadge(credit: credit).padding(.top, 2)
+            }
+        }
+        .padding(.horizontal, 24).padding(.vertical, 16)
+    }
+
+    private var conversation: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    if turns.isEmpty, !asking { emptyState }
+                    ForEach(turns) { turn in
+                        bubble(role: "You", text: turn.question, mine: true)
+                        if !turn.answer.isEmpty {
+                            bubble(role: "Freshflo", text: turn.answer, mine: false, failed: turn.failed, sources: turn.sources,
+                                   model: turn.model, seconds: turn.seconds)
+                                .id(turn.id)
+                        }
+                    }
+                    if asking, turns.last?.answer.isEmpty ?? true {
+                        HStack(spacing: 8) { ProgressView().controlSize(.small); Text("Reading your notes…").foregroundStyle(.secondary) }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(24)
+                .id("bottom")
+            }
+            .onChange(of: turns.count) { _, _ in withAnimation { proxy.scrollTo("bottom", anchor: .bottom) } }
+            .onChange(of: asking) { _, _ in withAnimation { proxy.scrollTo("bottom", anchor: .bottom) } }
+            .onChange(of: turns.last?.answer) { _, _ in proxy.scrollTo("bottom", anchor: .bottom) }
+        }
+    }
+
+    private var emptyState: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Ask anything about your meetings").font(.headline)
+            ForEach(suggestions, id: \.self) { s in
+                Button { question = s; send() } label: {
+                    Label(s, systemImage: "sparkles").frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.bordered).controlSize(.large)
+            }
+        }
+        .frame(maxWidth: 460)
+    }
+
+    @ViewBuilder private func bubble(role: String, text: String, mine: Bool, failed: Bool = false, sources: [Meeting] = [],
+                                     model: String? = nil, seconds: Double? = nil) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(role).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            Text(text.isEmpty ? "…" : text)
+                .textSelection(.enabled).font(.body)
+                .foregroundStyle(failed ? Color.red : Color.primary)
+                .fixedSize(horizontal: false, vertical: true)
+            if !sources.isEmpty {
+                WrapChips(sources: sources) { selection = $0 }
+            }
+            if let model {
+                ModelBadge(credit: model, extra: seconds.map { String(format: "%.1f s", $0) })
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(mine ? Color.secondary.opacity(0.08) : Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private var composer: some View {
+        HStack(spacing: 10) {
+            TextField("Ask a follow-up… e.g. and who owns that?", text: $question)
+                .textFieldStyle(.roundedBorder)
+                .controlSize(.large)
+                .focused($focused)
+                .onSubmit(send)
+            Button(action: send) {
+                Image(systemName: "arrow.up.circle.fill").font(.title2)
+            }
+            .buttonStyle(.borderless)
+            .disabled(!canSend)
+        }
+        .padding(.horizontal, 24).padding(.vertical, 14)
+    }
+
+    private func send() {
         let q = question.trimmingCharacters(in: .whitespaces)
         guard q.count >= 3, !asking else { return }
-        asking = true; error = nil; answer = nil
+        question = ""
+        asking = true
+        let history = turns
+        let turn = Knowledge.Turn(question: q, answer: "", sources: [])
+        turns.append(turn)
+        let start = Date()
         Task { @MainActor in
-            do { answer = try await Knowledge.ask(q, meetings: store.meetings, settings: AppSettings.shared) }
-            catch { self.error = error.localizedDescription }
+            do {
+                // The reply streams into its bubble as it is written; sources and the model badge arrive with the last token.
+                let answer = try await Knowledge.converse(history: history, question: q, meetings: store.meetings, settings: AppSettings.shared) { partial in
+                    update(turn.id) { $0.answer = partial }
+                }
+                update(turn.id) {
+                    $0.answer = answer.text
+                    $0.sources = answer.sources
+                    $0.model = answer.model
+                    $0.seconds = Date().timeIntervalSince(start)
+                }
+            } catch {
+                update(turn.id) {
+                    $0.answer = error.localizedDescription
+                    $0.failed = true
+                }
+            }
             asking = false
+            focused = true
+        }
+    }
+
+    private func update(_ id: UUID, _ change: (inout Knowledge.Turn) -> Void) {
+        guard let i = turns.firstIndex(where: { $0.id == id }) else { return }
+        change(&turns[i])
+    }
+}
+
+/// Source meeting chips that wrap onto multiple lines.
+private struct WrapChips: View {
+    let sources: [Meeting]
+    let open: (String) -> Void
+
+    var body: some View {
+        FlowLayout(spacing: 6) {
+            ForEach(sources) { m in
+                Button { open(m.id) } label: {
+                    Label(Knowledge.label(m), systemImage: "doc.text").font(.caption)
+                }
+                .buttonStyle(.bordered).controlSize(.small)
+            }
         }
     }
 }

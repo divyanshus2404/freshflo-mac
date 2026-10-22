@@ -21,10 +21,30 @@
   <img alt="macOS 14+" src="https://img.shields.io/badge/macOS-14%2B-0c2421?logo=apple&logoColor=white">
   <img alt="Swift 6" src="https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white">
   <img alt="Universal" src="https://img.shields.io/badge/Apple%20Silicon%20%2B%20Intel-universal-35d6a6">
-  <img alt="Checks" src="https://img.shields.io/badge/checks-339%20passing-35d6a6">
+  <img alt="Checks" src="https://img.shields.io/badge/checks-460%20passing-35d6a6">
   <img alt="Grammar" src="https://img.shields.io/badge/grammar%20eval-76%2F76-35d6a6">
   <img alt="Size" src="https://img.shields.io/badge/app-~10%20MB-0c2421">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-35d6a6"></a>
 </p>
+
+---
+
+## Built on NVIDIA Nemotron + Nebius Token Factory
+
+Freshflo's entire intelligence layer runs on **[NVIDIA Nemotron](https://www.nvidia.com/en-us/ai-data-science/foundation-models/nemotron/) served by [Nebius Token Factory](https://tokenfactory.nebius.com)** (OpenAI-compatible, `api.tokenfactory.nebius.com/v1`). Pick the **Nebius Token Factory (NVIDIA Nemotron)** engine in *Settings → General → Transcription*.
+
+- **Nemotron for all reasoning** — meeting notes, Ask, Command, cleanup, and the new **Chat with your meetings**. A resolver queries Token Factory's live `/models` catalog and always prefers a Nemotron model, so the app stays on an NVIDIA model even if ids change.
+- **Token Factory for speed and scale** — streamed server-sent events from `/chat/completions` power token-by-token chat; **Nemotron 3 Super** handles the fast everyday calls (dictation cleanup) and **Nemotron 3 Ultra** handles the serious reasoning (cross-meeting commitment tracking, multi-turn chat).
+- **Private by design** — Token Factory serves LLMs, not audio, so speech is transcribed **on-device** (WhisperKit) and only the few most relevant text excerpts ever reach the cloud.
+- **Shows its work** — every note, chat answer and commitment list carries a *"NVIDIA Nemotron on Nebius Token Factory"* badge with the exact model id.
+- **It acts, with your approval** — **Next step** on any commitment sends it to Nemotron with three tools (draft an email, add a reminder, research). Nemotron picks one, and the draft waits under *Waiting for your approval* until you approve it into Mail or Reminders.
+- **Research with Tavily** — when a commitment needs facts the notes don't have, Tavily searches the web (only the question leaves the Mac) and Nemotron writes a short brief citing its sources.
+- **Your agent keeps your promises** — Freshflo's MCP server gives a **Hermes Agent** (optionally sandboxed by **NVIDIA NemoClaw / OpenShell**) your commitments and a `propose_action` tool. A daily Hermes job queues drafts for anything overdue; the agent can't send anything itself. Kit: [`hackathon/agent/`](hackathon/agent/README.md).
+- **Measured** — `--commitments-eval` scores merge precision/recall, done detection and due dates on [7 labelled scenarios](Benchmarks/commitments-eval.json), so Super and Ultra can be compared on numbers.
+
+**Setup & demo:** [`hackathon/SETUP.md`](hackathon/SETUP.md) · **Agent kit:** [`hackathon/agent/`](hackathon/agent/README.md) · **Write-up:** [`hackathon/DEVPOST.md`](hackathon/DEVPOST.md) · **Demo script:** [`hackathon/DEMO_SCRIPT.md`](hackathon/DEMO_SCRIPT.md). No meetings yet? Click **Try it with sample meetings**, or run `swift run Freshflo --seed-demo`.
+
+> Built for the **Nebius × NVIDIA Global AI Hackathon** (Personal AI track). Freshflo is a pre-existing macOS app; the hackathon work re-platformed its AI stack onto Nebius Token Factory + NVIDIA Nemotron and added **Chat with your meetings**, **Open commitments**, **Next step** (Nemotron tool calling + Tavily), and the **Hermes / NemoClaw agent** integration.
 
 ---
 

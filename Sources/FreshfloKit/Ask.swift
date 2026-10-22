@@ -182,10 +182,11 @@ enum LocalActionError: LocalizedError {
 enum LocalActions {
     private static let store = EKEventStore()
 
-    static func addReminder(title: String, due: Date?) async throws {
+    static func addReminder(title: String, due: Date?, notes: String? = nil) async throws {
         guard try await store.requestFullAccessToReminders() else { throw LocalActionError.denied("Reminders") }
         let reminder = EKReminder(eventStore: store)
         reminder.title = title
+        reminder.notes = notes
         reminder.calendar = store.defaultCalendarForNewReminders()
         if let due {
             reminder.dueDateComponents = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: due)

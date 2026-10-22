@@ -556,6 +556,225 @@ expect(Indic.punctuate("Meet at 5 p.m. tomorrow.", lang: "hi"), "Meet at 5 p.m. 
 expect(Indic.punctuate("कीमत 2.5 लाख है.", lang: "hi"), "कीमत 2.5 लाख है।", "decimals stay, the sentence end changes")
 expectTrue(Indic.scriptPrompt("hi")?.contains("।") == true && Indic.scriptPrompt("en") == nil, "script prompt only for Indian languages")
 
+section("Hackathon: demo meetings")
+let demo = DemoMeetings.all()
+expect(demo.count, 4, "four sample meetings")
+expectTrue(demo.allSatisfy { $0.status == .ready && DemoMeetings.isDemo($0) }, "samples are ready and marked as demo")
+expect(demo.first { $0.id == "demo-standup" }?.speakers, ["You", "Priya", "Rahul", "Meera"], "sample transcript speakers parse")
+expectTrue(zip(demo, demo.dropFirst()).allSatisfy { $0.date > $1.date }, "samples newest first")
+
+section("Hackathon: model credit")
+expect(ModelCredit.label(model: "nvidia/nemotron-3-super-120b-a12b", baseURL: "https://api.tokenfactory.nebius.com/v1"),
+       "nvidia/nemotron-3-super-120b-a12b · Nebius Token Factory", "credit names model and host")
+expect(ModelCredit.parts("nvidia/nemotron-3-super-120b-a12b · Nebius Token Factory"),
+       ModelCredit.Parts(headline: "NVIDIA Nemotron on Nebius Token Factory", model: "nvidia/nemotron-3-super-120b-a12b", nvidia: true), "Nemotron badge")
+expect(ModelCredit.parts("openai/gpt-oss-120b · Groq").headline, "openai/gpt-oss-120b on Groq", "other models named as-is")
+expect(ModelCredit.parts(ModelCredit.appleOnDevice).nvidia, false, "Apple model is not NVIDIA")
+expect(ModelCredit.host("http://localhost:8000/v1"), "localhost", "custom host")
+
+section("Hackathon: streaming")
+expect(Cleanup.sseDelta(#"data: {"id":"x","choices":[{"index":0,"delta":{"content":"Hel"}}]}"#), "Hel", "SSE delta text")
+expect(Cleanup.sseDelta(#"data: {"choices":[{"delta":{"role":"assistant"}}]}"#), nil, "role-only delta has no text")
+expect(Cleanup.sseDelta("data: [DONE]"), nil, "done marker")
+expect(Cleanup.sseDelta(": keep-alive"), nil, "SSE comment")
+expect(Cleanup.visibleText("<think>plan the answer"), "", "unfinished thinking hidden")
+expect(Cleanup.visibleText("<think>plan</think>\nYou owe Acme a quote"), "You owe Acme a quote", "finished thinking removed")
+expect(Cleanup.visibleText("Two items <think>hm"), "Two items", "thinking cut mid-reply")
+
+let acme = demo.first { $0.id == "demo-acme" }!
+expectTrue(Knowledge.cites("late [Acme customer call (Oct 16, 2026)]", acme), "shortened title still cites")
+expect(Knowledge.cites("Acme mentioned in passing", acme), false, "a bare word is not a citation")
+
+section("Hackathon: commitments")
+let cal = Calendar.current
+let tuesday = cal.date(from: DateComponents(year: 2026, month: 10, day: 13, hour: 11))!
+func ymd(_ d: Date?) -> String { d.map { let c = cal.dateComponents([.year, .month, .day], from: $0); return "\(c.year!)-\(c.month!)-\(c.day!)" } ?? "nil" }
+expect(ymd(Commitments.resolveDue("by Friday", from: tuesday)), "2026-10-16", "by Friday from a Tuesday")
+expect(ymd(Commitments.resolveDue("by next Wednesday", from: tuesday)), "2026-10-21", "next Wednesday")
+expect(ymd(Commitments.resolveDue("today", from: tuesday)), "2026-10-13", "today")
+expect(ymd(Commitments.resolveDue("tomorrow", from: tuesday)), "2026-10-14", "tomorrow")
+expect(ymd(Commitments.resolveDue("this week", from: tuesday)), "2026-10-16", "this week ends Friday")
+expect(ymd(Commitments.resolveDue("end of the month", from: tuesday)), "2026-10-31", "end of the month")
+expect(ymd(Commitments.resolveDue("2026-11-04", from: tuesday)), "2026-11-4", "ISO date")
+expect(ymd(Commitments.resolveDue("soon-ish", from: tuesday)), "nil", "vague stays undated")
+
+let notesMeeting = Meeting(id: "m1", title: "Sync", date: tuesday, duration: 60, status: .ready, appName: "", notes: """
+## Decisions
+- Ship it.
+## Action items
+- [ ] Get the new pricing page live — Priya, by Friday
+- [x] Add the annual plan in Stripe — Rahul
+- [ ] Scope SSO — Owner: none
+- Meera: record the onboarding video by Thursday.
+## Open questions
+- [ ] Not an action item — You
+""", transcript: "", error: nil, onDevice: nil)
+let parsedItems = Commitments.parse(notesMeeting)
+expect(parsedItems.map(\.task), ["Get the new pricing page live", "Add the annual plan in Stripe", "Scope SSO", "record the onboarding video"], "only the action items section")
+expect(parsedItems.map(\.owner), ["Priya", "Rahul", "", "Meera"], "owners")
+expect(parsedItems.map(\.due), ["by Friday", "", "", "by Thursday"], "due as written")
+expect(parsedItems[1].doneNote, "Ticked in the notes", "ticked box is done")
+expect(Commitments.parse(demo).filter(\.isMine).count, 4, "sample meetings give you four commitments")
+
+let reply = #"Sure: {"items":[{"ids":[0,3],"task":"Pricing page live","owner":"Priya","due":"2026-10-16","done":"Priya said it went live [Standup]"},{"ids":[2],"owner":"none","due":null,"done":null},{"ids":[99]}]}"#
+let applied = Commitments.apply(reply, to: parsedItems)
+expect(applied?.count, 3, "merged pair, kept the rest")
+expect(applied?.first?.doneNote, "Priya said it went live [Standup]", "done from a later meeting")
+expect(applied?.first?.task, "Pricing page live", "model wording")
+expect(applied?.contains { $0.task == "Add the annual plan in Stripe" && $0.doneNote == "Ticked in the notes" }, true, "items the reply left out are kept")
+expect(Commitments.apply("I can't do that", to: parsedItems) == nil, true, "non-JSON reply rejected")
+let today = cal.date(from: DateComponents(year: 2026, month: 10, day: 22))!
+var overdueItem = parsedItems[0]
+expect(Commitments.bucket(overdueItem, ticked: false, today: today), .overdue, "past due is overdue")
+expect(Commitments.bucket(overdueItem, ticked: true, today: today), .done, "ticked is done")
+overdueItem.dueDate = cal.date(byAdding: .day, value: 3, to: today)
+expect(Commitments.bucket(overdueItem, ticked: false, today: today), .thisWeek, "due in three days")
+overdueItem.dueDate = nil
+expect(Commitments.bucket(overdueItem, ticked: false, today: today), .noDate, "no date")
+
+section("Hackathon: commitments for agents")
+expect(Commitments.cacheKey(demo), Commitments.cacheKey(Array(demo.reversed())), "cache key ignores order")
+expect(Commitments.cacheKey(demo).count, 64, "cache key is a SHA-256 hex string, stable across processes")
+var editedDemo = demo
+editedDemo[0].notes += "\n- [ ] One more thing — You"
+expectTrue(Commitments.cacheKey(editedDemo) != Commitments.cacheKey(demo), "edited notes change the key")
+let mineText = Commitments.agentText(parsedItems, model: nil, ticked: [], everyone: false, includeDone: false, today: today)
+expectTrue(mineText.contains("## No date (1)") && mineText.contains("Scope SSO") && mineText.contains("commitment_id: m1|scope sso"), "mine: unowned item with its id")
+expect(mineText.contains("Priya"), false, "mine leaves out other people's items")
+expectTrue(mineText.hasPrefix("As written in the meeting notes"), "says when the list isn't organised yet")
+let everyoneText = Commitments.agentText(parsedItems, model: "nvidia/nemotron-3-ultra-550b-a55b · Nebius Token Factory", ticked: [], everyone: true, includeDone: false, today: today)
+expectTrue(everyoneText.contains("## Overdue (2)") && everyoneText.contains("due: 2026-10-16 (\"by Friday\")"), "everyone: overdue items with dates")
+expect(everyoneText.contains("## Done"), false, "done items hidden by default")
+expectTrue(everyoneText.hasPrefix("Organised by nvidia/nemotron-3-ultra-550b-a55b"), "names the model that organised it")
+expectTrue(Commitments.agentText(parsedItems, model: nil, ticked: [], everyone: true, includeDone: true, today: today).contains("done: Ticked in the notes"), "done items on request")
+
+let ssoID = "m1|scope sso"
+let (emailProposal, emailMessage) = MCPServer.proposal(from: ["commitment_id": ssoID, "kind": "email", "title": "SSO scope", "body": "Hi Acme,", "to": "dana@acme.com"], items: parsedItems, by: "hermes-agent")
+expect(emailProposal?.kind, .email, "agent proposes an email")
+expect(emailProposal?.commitmentTask, "Scope SSO", "proposal names its commitment")
+expect(emailProposal?.proposedBy, "hermes-agent", "proposal names the agent")
+expectTrue(emailMessage.contains("nothing is sent"), "agent is told it needs approval")
+expect(MCPServer.proposal(from: ["commitment_id": "nope", "kind": "email", "title": "x"], items: parsedItems, by: "a").0 == nil, true, "unknown commitment rejected")
+expect(MCPServer.proposal(from: ["commitment_id": ssoID, "kind": "research", "title": "x"], items: parsedItems, by: "a").0 == nil, true, "agents can't queue research briefs")
+expect(MCPServer.proposal(from: ["commitment_id": ssoID, "kind": "email", "title": "  "], items: parsedItems, by: "a").0 == nil, true, "title required")
+expect(MCPServer.proposal(from: ["commitment_id": ssoID, "kind": "reminder", "title": "x", "due": "Friday"], items: parsedItems, by: "a").0 == nil, true, "reminder due must be a date")
+let pricingID = "m1|get the new pricing page live"
+expect(ymd(MCPServer.proposal(from: ["commitment_id": pricingID, "kind": "reminder", "title": "Pricing page"], items: parsedItems, by: "a").0?.due), "2026-10-16", "reminder defaults to the commitment's date")
+
+_ = try! MCPServer.handle(method: "initialize", params: ["protocolVersion": "2025-06-18", "clientInfo": ["name": "hermes-agent", "version": "1"]])
+expect(MCPServer.clientName, "hermes-agent", "MCP remembers which agent connected")
+let mcpTools = (try! MCPServer.handle(method: "tools/list", params: [:]))["tools"] as? [[String: Any]] ?? []
+let proposeTool = mcpTools.first { $0["name"] as? String == "propose_action" }
+expectTrue(mcpTools.contains { $0["name"] as? String == "list_commitments" }, "MCP lists commitments")
+expect((proposeTool?["annotations"] as? [String: Any])?["readOnlyHint"] as? Bool, false, "propose_action is marked as writing")
+expect((proposeTool?["annotations"] as? [String: Any])?["destructiveHint"] as? Bool, false, "propose_action is not destructive")
+
+section("Hackathon: model resolver")
+let catalog = ["nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B", "nvidia/Nemotron-3-Ultra-550b-a55b", "nvidia/nemotron-3-super-120b-a12b-v2", "meta-llama/Llama-3.3-70B-Instruct"]
+expect(ModelResolver.pick(.chat, replacing: "nvidia/nemotron-3-ultra-550b-a55b", from: catalog), "nvidia/Nemotron-3-Ultra-550b-a55b", "same id in the provider's capitalisation")
+expect(ModelResolver.pick(.chat, replacing: "nvidia/nemotron-3-super-120b-a12b", from: catalog), "nvidia/nemotron-3-super-120b-a12b-v2", "retired Super → another Super")
+expect(ModelResolver.pick(.chat, replacing: "nvidia/nemotron-nano-old", from: catalog), "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B", "retired Nano → Nano, not Ultra")
+expect(ModelResolver.pick(.chat, replacing: "some/model", from: catalog), "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B", "any Nemotron before other families")
+expect(ModelResolver.pick(.chat, replacing: "qwen/gone", from: ["openai/gpt-oss-120b", "whisper-large-v3"]), "openai/gpt-oss-120b", "no Nemotron: known good chat model")
+expect(ModelResolver.pick(.chat, replacing: "nvidia/Nemotron-3-Ultra-550b-a55b", from: ["nvidia/Nemotron-3-Ultra-550b-a55b"]), nil, "never 'replaces' a model with itself")
+expect(ModelResolver.pick(.transcription, replacing: "whisper-1", from: ["llama", "whisper-large-v3"]), "whisper-large-v3", "transcription fallback")
+
+section("Hackathon: next step (tool calling)")
+let openAICall: [String: Any] = ["role": "assistant", "content": NSNull(), "tool_calls": [["id": "c1", "type": "function",
+    "function": ["name": "draft_email", "arguments": #"{"to":"dana@acme.com","subject":"Revised quote","body":"Hi Dana,\n\nHere is the revised quote."}"#]]]]
+expect(CommitmentAgent.toolCall(from: openAICall), CommitmentAgent.ToolCall(name: "draft_email", arguments: ["to": "dana@acme.com", "subject": "Revised quote", "body": "Hi Dana,\n\nHere is the revised quote."]), "OpenAI tool_calls")
+let nemotronText: [String: Any] = ["content": #"<think>owed to Acme</think><TOOLCALL>[{"name": "add_reminder", "arguments": {"title": "Book the venue", "due_date": "2026-10-20"}}]</TOOLCALL>"#]
+expect(CommitmentAgent.toolCall(from: nemotronText), CommitmentAgent.ToolCall(name: "add_reminder", arguments: ["title": "Book the venue", "due_date": "2026-10-20"]), "Nemotron's text tool call")
+expect(CommitmentAgent.toolCall(inText: #"{"tool": "research", "parameters": {"query": "SSO pricing", "why": null}}"#), CommitmentAgent.ToolCall(name: "research", arguments: ["query": "SSO pricing"]), "bare JSON call, nulls dropped")
+expect(CommitmentAgent.toolCall(from: ["content": "I suggest emailing Dana."]), nil, "plain prose is not a call")
+expect(CommitmentAgent.arguments(#"{"n": 3, "ok": true}"#), ["n": "3", "ok": "1"], "non-string arguments flattened")
+let ssoItem = parsedItems[2]
+let emailStep = CommitmentAgent.proposal(.init(name: "draft_email", arguments: ["subject": "", "body": "Hi team"]), item: ssoItem, by: "nemotron · Nebius Token Factory")
+expect(emailStep?.kind, .email, "email proposal")
+expect(emailStep?.title, "Scope SSO", "empty subject falls back to the task")
+expect(CommitmentAgent.proposal(.init(name: "draft_email", arguments: ["subject": "x"]), item: ssoItem, by: "m") == nil, true, "email needs a body")
+let pricingItem = parsedItems[0]
+expect(ymd(CommitmentAgent.proposal(.init(name: "add_reminder", arguments: ["title": "Pricing page"]), item: pricingItem, by: "m")?.due), "2026-10-16", "reminder without a date uses the commitment's")
+expect(ymd(CommitmentAgent.proposal(.init(name: "add_reminder", arguments: ["title": "x", "due_date": "2026-10-18"]), item: pricingItem, by: "m")?.due), "2026-10-18", "reminder date from the model")
+expect(CommitmentAgent.proposal(.init(name: "research", arguments: ["query": "Stripe annual plans"]), item: pricingItem, by: "m")?.kind, .research, "research proposal")
+expect(CommitmentAgent.proposal(.init(name: "delete_everything", arguments: [:]), item: pricingItem, by: "m") == nil, true, "unknown tools ignored")
+let toolNamesWithResearch = CommitmentAgent.tools(research: true).compactMap { ($0["function"] as? [String: Any])?["name"] as? String }
+expect(toolNamesWithResearch, ["draft_email", "add_reminder", "research"], "three tools with Tavily")
+expect(CommitmentAgent.tools(research: false).count, 2, "no research tool without a Tavily key")
+expectTrue(CommitmentAgent.prompt(for: pricingItem, meetings: [notesMeeting]).contains("where it was agreed"), "prompt carries the source meeting")
+
+section("Hackathon: MCP over HTTP")
+func httpRequest(_ method: String = "POST", path: String = "/mcp", headers: [String: String] = [:], body: String = "") -> MCPHTTP.Request {
+    var h = headers
+    h["content-length"] = String(body.utf8.count)
+    return MCPHTTP.Request(method: method, path: path, headers: h, body: Data(body.utf8))
+}
+let rawPost = "POST /mcp?x=1 HTTP/1.1\r\nHost: 10.0.0.5\r\nAuthorization: Bearer s3cret\r\nContent-Length: 5\r\n\r\n{\"a\""
+expect(MCPHTTP.parse(Data(rawPost.utf8)), .incomplete, "waits for the rest of the body")
+if case .request(let r) = MCPHTTP.parse(Data((rawPost + "}").utf8)) {
+    expect(r.path, "/mcp", "query string dropped")
+    expect(r.headers["authorization"], "Bearer s3cret", "headers by lowercase name")
+    expect(String(data: r.body, encoding: .utf8), "{\"a\"}", "body by Content-Length")
+} else { expectTrue(false, "complete request parses") }
+expect(MCPHTTP.parse(Data("GARBAGE\r\n\r\n".utf8)), .bad, "malformed request line")
+expect(MCPHTTP.parse(Data("POST /mcp HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n".utf8)), .bad, "chunked bodies refused")
+let initBody = #"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","clientInfo":{"name":"nemohermes"}}}"#
+let ok = MCPHTTP.respond(to: httpRequest(headers: ["authorization": "Bearer s3cret"], body: initBody), token: "s3cret")
+expect(ok.status, 200, "authorised initialize")
+expect((try? JSONSerialization.jsonObject(with: ok.body) as? [String: Any])?["id"] as? Int, 1, "reply carries the request id")
+expect(MCPHTTP.respond(to: httpRequest(body: initBody), token: "s3cret").status, 401, "missing token")
+expect(MCPHTTP.respond(to: httpRequest(headers: ["authorization": "Bearer s3cres"], body: initBody), token: "s3cret").status, 401, "wrong token")
+expect(MCPHTTP.respond(to: httpRequest(body: initBody), token: "").status, 200, "no token configured (loopback only)")
+expect(MCPHTTP.respond(to: httpRequest(headers: ["origin": "https://evil.example"], body: initBody), token: "").status, 403, "foreign browser origin refused")
+expect(MCPHTTP.respond(to: httpRequest(headers: ["origin": "http://localhost:3000"], body: initBody), token: "").status, 200, "local origin allowed")
+expect(MCPHTTP.respond(to: httpRequest("GET"), token: "").status, 405, "no event stream")
+expect(MCPHTTP.respond(to: httpRequest(path: "/"), token: "").status, 404, "only /mcp")
+expect(MCPHTTP.respond(to: httpRequest(body: #"{"jsonrpc":"2.0","method":"notifications/initialized"}"#), token: "").status, 202, "notification accepted without a body")
+expect(MCPHTTP.respond(to: httpRequest(body: "{nope"), token: "").status, 400, "bad JSON")
+let batchReply = MCPHTTP.respond(to: httpRequest(body: #"[{"jsonrpc":"2.0","id":7,"method":"ping"},{"jsonrpc":"2.0","method":"notifications/initialized"}]"#), token: "")
+expect((try? JSONSerialization.jsonObject(with: batchReply.body) as? [[String: Any]])?.count, 1, "batch: one reply per request")
+expectTrue(MCPHTTP.sameSecret("abc", "abc") && !MCPHTTP.sameSecret("abc", "abd") && !MCPHTTP.sameSecret("abc", "abcd"), "secret comparison")
+expect(MCPHTTP.isLoopback("0.0.0.0"), false, "all interfaces is not loopback")
+let wire = String(data: MCPHTTP.serialize(.init(status: 202)), encoding: .utf8) ?? ""
+expectTrue(wire.hasPrefix("HTTP/1.1 202 Accepted\r\n") && wire.contains("Content-Length: 0\r\n") && wire.hasSuffix("\r\n\r\n"), "response on the wire")
+
+section("Hackathon: Tavily")
+let tavilyReply: [String: Any] = ["answer": " Stripe supports annual prices. ", "results": [
+    ["title": "Prices", "url": "https://docs.stripe.com/prices", "content": "Create a yearly price."], ["title": "", "url": "https://x.dev/a"], ["title": "no url"]]]
+expect(Tavily.parse(tavilyReply), Tavily.Response(answer: "Stripe supports annual prices.", results: [
+    .init(title: "Prices", url: "https://docs.stripe.com/prices", content: "Create a yearly price."), .init(title: "https://x.dev/a", url: "https://x.dev/a", content: "")]), "answer and pages")
+expect(Tavily.parse(["detail": "bad key"]), nil, "error body is not a response")
+expect(Tavily.parse(["answer": "", "results": []])?.answer, nil, "empty answer is no answer")
+
+section("Hackathon: commitments eval")
+let evalItems = Commitments.parse(notesMeeting)
+let evalExpect = CommitmentsEval.Scenario.Expect(groups: [["pricing page", "onboarding video"], ["annual plan"], ["scope sso"]],
+                                                 done: ["annual plan"], open: ["pricing page"], due: ["scope sso": "2026-10-30"])
+var mergedOut = [evalItems[0]]
+mergedOut[0].sourceIDs = [evalItems[0].id, evalItems[3].id]
+mergedOut += [evalItems[1], evalItems[2]]
+let perfect = CommitmentsEval.score(parsed: evalItems, output: mergedOut, expect: evalExpect)
+expect(perfect.mergePrecision, 1, "right merge: precision")
+expect(perfect.mergeRecall, 1, "right merge: recall")
+expect(perfect.doneCorrect, 2, "done and open both right")
+expect(perfect.dueCorrect, 0, "undated item misses its due date")
+expect(perfect.lost, 0, "nothing lost")
+let unmerged = CommitmentsEval.score(parsed: evalItems, output: evalItems, expect: evalExpect)
+expect(unmerged.mergeRecall, 0, "missed merge: recall 0")
+expect(unmerged.mergePrecision, 1, "no merges: nothing wrongly merged")
+var overMerged = [evalItems[0]]
+overMerged[0].sourceIDs = evalItems.map(\.id)
+expect(CommitmentsEval.score(parsed: evalItems, output: overMerged, expect: evalExpect).mergePrecision, 1.0 / 6, "everything merged: precision 1/6")
+expect(CommitmentsEval.score(parsed: evalItems, output: [evalItems[0]], expect: evalExpect).lost, 3, "dropped items counted")
+expect(CommitmentsEval.labels(evalItems, groups: [["stripe"]]), [nil, 0, nil, nil], "labels by phrase")
+let evalFile = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("../../Benchmarks/commitments-eval.json")
+let scenarios = (try? JSONDecoder().decode(CommitmentsEval.File.self, from: Data(contentsOf: evalFile)))?.scenarios ?? []
+expect(scenarios.count, 7, "eval file loads")
+expectTrue(scenarios.allSatisfy { s in
+    let parsed = Commitments.parse(CommitmentsEval.meetings(s))
+    return CommitmentsEval.labels(parsed, groups: s.expect.groups).allSatisfy { $0 != nil } && Set(CommitmentsEval.labels(parsed, groups: s.expect.groups).compactMap { $0 }).count == s.expect.groups.count
+}, "every eval item is labelled and every group has an item")
+
 // MARK: - Result
 
 if failures.isEmpty {

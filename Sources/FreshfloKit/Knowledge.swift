@@ -57,6 +57,13 @@ enum Knowledge {
         return String(picked.prefix(maxChars))
     }
 
+    /// Whether an answer names this meeting. Models often shorten "Acme call: SSO and invoicing" to "[Acme call (…)]".
+    static func cites(_ text: String, _ m: Meeting) -> Bool {
+        if text.contains(m.title) { return true }
+        let short = m.title.components(separatedBy: ":")[0].trimmingCharacters(in: .whitespaces)
+        return short.count >= 6 && short != m.title && text.contains("[" + short)
+    }
+
     static func label(_ m: Meeting) -> String {
         "\(m.title) (\(m.date.formatted(date: .abbreviated, time: .omitted)))"
     }
@@ -64,6 +71,78 @@ enum Knowledge {
     struct Answer {
         let text: String
         let sources: [Meeting]
+        /// Which model answered (see `ModelCredit`); nil when no model was asked.
+        var model: String? = nil
+    }
+
+    /// One exchange in a "Chat with your meetings" conversation.
+    struct Turn: Identifiable, Hashable {
+        let id = UUID()
+        let question: String
+        var answer: String
+        var sources: [Meeting]
+        var failed: Bool = false
+        var model: String? = nil
+        var seconds: Double? = nil
+    }
+
+    /// Multi-turn chat over your meetings: like `ask`, but the model also sees the conversation so far, so
+    /// follow-ups ("who owns that?", "and when is it due?") resolve against the earlier answers. Cited, local-first.
+    /// With `onPartial`, the reply streams in as it is written.
+    static func converse(history: [Turn], question: String, meetings: [Meeting], settings: AppSettings,
+                         onPartial: (@MainActor @Sendable (String) -> Void)? = nil) async throws -> Answer {
+        // A follow-up may carry no keywords of its own, so retrieve on it plus the previous question.
+        let retrievalQuery = ([question] + history.suffix(1).map(\.question)).joined(separator: " ")
+        var hits = search(retrievalQuery, in: meetings, limit: 4).map(\.meeting)
+        // Keep meetings cited in the last turn in view, so pronoun references still have their source.
+        for m in history.last?.sources ?? [] where !hits.contains(where: { $0.id == m.id }) { hits.append(m) }
+        if hits.isEmpty { hits = Array(meetings.filter { $0.status == .ready }.prefix(3)) }
+        guard !hits.isEmpty else { return Answer(text: "You don't have any processed meeting notes yet.", sources: []) }
+
+        var context = ""
+        for m in hits.prefix(5) {
+            context += "### \(label(m))\n\(m.notes.prefix(3_000))\n"
+            let ex = excerpt(m.transcript, for: retrievalQuery)
+            if !ex.isEmpty { context += "Transcript excerpts:\n\(ex)\n" }
+            context += "\n"
+        }
+
+        let instructions = """
+        You are a chat assistant answering questions about the user's own meetings, using only the notes and transcript \
+        excerpts provided. You are in an ongoing conversation; use the earlier turns to resolve references like "that", \
+        "they" or "it" in the latest question.
+        Be direct and brief: one to four sentences, or a short list when there are several items (decisions, owners, dates).
+        After each fact, name the meeting it came from in brackets, like [Pricing sync (Oct 3, 2026)].
+        "You" in the notes and transcripts is the user, so "my action items" means only the items owned by You (or with no owner).
+        If the answer isn't in the provided meetings, say you couldn't find it in the notes. Never guess or add outside knowledge.
+        Today is \(Date().formatted(date: .complete, time: .omitted)).
+        """
+        var convo = ""
+        for turn in history.suffix(6) {
+            convo += "User: \(turn.question)\nAssistant: \(turn.answer)\n\n"
+        }
+        let prompt = "Meetings:\n\(context)\nConversation so far:\n\(convo)User: \(question)\nAssistant:"
+
+        let reply: String
+        let model: String
+        if settings.canUseCloud {
+            let endpoint = settings.endpoint.smart
+            if let onPartial {
+                reply = try await Cleanup.chatStream(instructions: instructions, prompt: prompt, endpoint: endpoint, temperature: 0.2, onText: onPartial)
+            } else {
+                reply = try await Cleanup.chat(instructions: instructions, prompt: prompt, endpoint: endpoint, temperature: 0.2)
+            }
+            model = ModelCredit.label(model: Cleanup.lastModel ?? endpoint.cleanupModel, baseURL: endpoint.baseURL)
+        } else if AppleModel.isAvailable {
+            reply = try await AppleModel.respond(instructions: instructions, prompt: prompt)
+            model = ModelCredit.appleOnDevice
+        } else {
+            throw KnowledgeError.noModel
+        }
+        let text = Cleanup.stripThinking(reply)
+        let notFound = text.range(of: #"couldn['’]t find|could not find|not in the (?:provided )?notes"#, options: [.regularExpression, .caseInsensitive]) != nil
+        let cited = hits.filter { cites(text, $0) }
+        return Answer(text: text, sources: notFound ? [] : (cited.isEmpty ? Array(hits.prefix(3)) : cited), model: model)
     }
 
     /// "What did we decide about pricing?" → an answer drawn only from your notes, naming the meetings it came from.
@@ -98,7 +177,7 @@ enum Knowledge {
         }
         let text = Cleanup.stripThinking(reply)
         let notFound = text.range(of: #"couldn['’]t find|could not find|not in the (?:provided )?notes"#, options: [.regularExpression, .caseInsensitive]) != nil
-        let cited = hits.filter { text.contains($0.title) }
+        let cited = hits.filter { cites(text, $0) }
         return Answer(text: text, sources: notFound ? [] : (cited.isEmpty ? hits : cited))
     }
 }
@@ -123,19 +202,21 @@ enum MCPServer {
         while let line = readLine(strippingNewline: true) {
             guard let data = line.data(using: .utf8),
                   let message = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let method = message["method"] as? String else { continue }
-            let id = message["id"]
-            // Notifications (no id) never get a reply.
-            guard let id, !(id is NSNull) else { continue }
-            let params = message["params"] as? [String: Any] ?? [:]
-            do {
-                let result = try handle(method: method, params: params)
-                send(["jsonrpc": "2.0", "id": id, "result": result])
-            } catch {
-                send(["jsonrpc": "2.0", "id": id, "error": ["code": -32601, "message": error.localizedDescription]])
-            }
+                  let response = reply(to: message) else { continue }
+            send(response)
         }
         exit(0)
+    }
+
+    /// The JSON-RPC response to one message, for either transport. Notifications (no id) never get a reply.
+    static func reply(to message: [String: Any]) -> [String: Any]? {
+        guard let method = message["method"] as? String, let id = message["id"], !(id is NSNull) else { return nil }
+        let params = message["params"] as? [String: Any] ?? [:]
+        do {
+            return ["jsonrpc": "2.0", "id": id, "result": try handle(method: method, params: params)]
+        } catch {
+            return ["jsonrpc": "2.0", "id": id, "error": ["code": -32601, "message": error.localizedDescription]]
+        }
     }
 
     private struct Unknown: LocalizedError {
@@ -147,11 +228,12 @@ enum MCPServer {
         switch method {
         case "initialize":
             let requested = params["protocolVersion"] as? String
+            if let name = (params["clientInfo"] as? [String: Any])?["name"] as? String, !name.isEmpty { clientName = name }
             return [
                 "protocolVersion": requested ?? protocolVersion,
                 "capabilities": ["tools": ["listChanged": false]],
                 "serverInfo": ["name": "freshflo", "title": "Freshflo", "version": Updater.currentVersion],
-                "instructions": "Freshflo is the user's Mac dictation app. Use these tools to look up their meeting notes (summaries, decisions, action items, who said what) and, if they allowed it, things they recently dictated.",
+                "instructions": "Freshflo is the user's Mac dictation and meeting-notes app. Use these tools to look up their meeting notes (summaries, decisions, action items, who said what), their open commitments across all meetings, and, if they allowed it, things they recently dictated. To act on a commitment, call propose_action: it queues a draft for the user to approve in Freshflo; nothing is sent or created without them.",
             ]
         case "ping":
             return [:]
@@ -169,6 +251,9 @@ enum MCPServer {
 
     static var historyAllowed: Bool { AppSettings.shared.mcpShareHistory }
 
+    /// The connected app, from its `initialize` request ("hermes-agent", "claude-ai"…), so proposals say who made them.
+    nonisolated(unsafe) static var clientName = "An AI agent"
+
     static func tools() -> [[String: Any]] {
         var list: [[String: Any]] = [
             tool("search_meetings", "Search the user's meeting notes by keywords (people, topics, projects). Returns matching meetings with their notes.",
@@ -177,6 +262,17 @@ enum MCPServer {
                  ["limit": ["type": "integer", "description": "How many (default 10)"]], required: []),
             tool("get_meeting", "Full notes and transcript of one meeting, by id from list_meetings or search_meetings.",
                  ["id": ["type": "string"], "include_transcript": ["type": "boolean", "description": "Include the full transcript (default false)"]], required: ["id"]),
+            tool("list_commitments", "The user's open commitments: every action item from every meeting, grouped Overdue / Due this week / Later / No date, with owner, due date, source meeting and the commitment_id that propose_action needs.",
+                 ["owner": ["type": "string", "enum": ["mine", "everyone"], "description": "\"mine\" (default): items the user owns or nobody owns. \"everyone\": all items."],
+                  "include_done": ["type": "boolean", "description": "Also list finished items (default false)"]], required: []),
+            tool("propose_action", "Queue a drafted action for one commitment: a follow-up email, a reminder or a note. The user reviews and approves it in Freshflo; nothing is sent or created until they do. Base drafts only on the meeting notes (get_meeting) and facts you verified.",
+                 ["commitment_id": ["type": "string", "description": "From list_commitments"],
+                  "kind": ["type": "string", "enum": ["email", "reminder", "note"]],
+                  "title": ["type": "string", "description": "Email subject, reminder title or note heading"],
+                  "body": ["type": "string", "description": "Email body, reminder notes or note text"],
+                  "to": ["type": "string", "description": "Email recipient(s), if known from the notes"],
+                  "due": ["type": "string", "description": "Reminder due date, YYYY-MM-DD"]],
+                 required: ["commitment_id", "kind", "title"], readOnly: false),
         ]
         if historyAllowed {
             list.append(tool("search_dictations", "Search text the user recently dictated with Freshflo (messages, emails, prompts), newest first.",
@@ -185,9 +281,12 @@ enum MCPServer {
         return list
     }
 
-    private static func tool(_ name: String, _ description: String, _ properties: [String: Any], required: [String]) -> [String: Any] {
-        ["name": name, "description": description, "inputSchema": ["type": "object", "properties": properties, "required": required],
-         "annotations": ["readOnlyHint": true, "openWorldHint": false]]
+    private static func tool(_ name: String, _ description: String, _ properties: [String: Any], required: [String], readOnly: Bool = true) -> [String: Any] {
+        // propose_action only queues a draft for approval, so it is neither destructive nor open-world.
+        let annotations: [String: Any] = readOnly ? ["readOnlyHint": true, "openWorldHint": false]
+            : ["readOnlyHint": false, "destructiveHint": false, "idempotentHint": false, "openWorldHint": false]
+        return ["name": name, "description": description, "inputSchema": ["type": "object", "properties": properties, "required": required],
+                "annotations": annotations]
     }
 
     static func call(_ name: String, _ args: [String: Any]) -> (String, Bool) {
@@ -209,6 +308,13 @@ enum MCPServer {
             var text = describe(m, notes: true)
             if args["include_transcript"] as? Bool == true, !m.transcript.isEmpty { text += "\n\nTranscript:\n" + m.transcript }
             return (text, false)
+        case "list_commitments":
+            let (items, model) = Commitments.current(store.meetings)
+            let everyone = (args["owner"] as? String)?.lowercased() == "everyone"
+            return (Commitments.agentText(items, model: model, ticked: Commitments.ticked, everyone: everyone,
+                                          includeDone: args["include_done"] as? Bool ?? false), false)
+        case "propose_action":
+            return propose(args, items: Commitments.current(store.meetings).items, by: clientName)
         case "search_dictations" where historyAllowed:
             let items = Knowledge.search(args["query"] as? String ?? "", in: HistoryStore.shared.items, limit: args["limit"] == nil ? 10 : limit)
             guard !items.isEmpty else { return ("Nothing found.", false) }
@@ -216,6 +322,32 @@ enum MCPServer {
         default:
             return ("Unknown tool \(name).", true)
         }
+    }
+
+    /// Checks an agent's `propose_action` arguments against the real commitments. Returns the proposal, or the error to show.
+    static func proposal(from args: [String: Any], items: [Commitments.Item], by agent: String) -> (ActionProposal?, String) {
+        let kind = (args["kind"] as? String).flatMap(ActionProposal.Kind.init(rawValue:))
+        let title = (args["title"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let id = args["commitment_id"] as? String, let kind, kind != .research, !title.isEmpty else {
+            return (nil, "propose_action needs commitment_id, kind (email, reminder or note) and a title.")
+        }
+        guard let item = items.first(where: { $0.id == id }) else {
+            return (nil, "No commitment has the id \"\(id)\". Call list_commitments and use a commitment_id from it.")
+        }
+        let due = (args["due"] as? String).flatMap(Commitments.isoDay)
+        if kind == .reminder, args["due"] != nil, due == nil { return (nil, "due must be a date like 2026-10-30.") }
+        let proposal = ActionProposal(kind: kind, commitmentID: id, commitmentTask: item.task, title: title,
+                                      body: (args["body"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines),
+                                      to: (args["to"] as? String ?? "").trimmingCharacters(in: .whitespaces),
+                                      due: due ?? (kind == .reminder ? item.dueDate : nil), proposedBy: agent)
+        return (proposal, "Queued \(kind.label.lowercased()) \"\(title)\" for \"\(item.task)\". The user will review it in Freshflo (Open commitments → Waiting for your approval); nothing is sent or created until they approve it.")
+    }
+
+    private static func propose(_ args: [String: Any], items: [Commitments.Item], by agent: String) -> (String, Bool) {
+        let (queued, message) = proposal(from: args, items: items, by: agent)
+        guard let queued else { return (message, true) }
+        AgentInbox.add(queued)
+        return (message, false)
     }
 
     private static func describe(_ m: Meeting, notes: Bool) -> String {
@@ -246,6 +378,16 @@ enum MCPServer {
             "freshflo": { "command": "\(executablePath)", "args": ["--mcp"] }
           }
         }
+        """
+    }
+
+    /// For ~/.hermes/config.yaml: Hermes starts Freshflo as a stdio MCP server.
+    static var hermesSnippet: String {
+        """
+        mcp_servers:
+          freshflo:
+            command: "\(executablePath)"
+            args: ["--mcp"]
         """
     }
 

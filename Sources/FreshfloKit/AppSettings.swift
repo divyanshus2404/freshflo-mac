@@ -227,11 +227,15 @@ final class AppSettings: ObservableObject {
         regionalFormat = RegionalFormat(rawValue: d.string(forKey: "regionalFormat") ?? "")
             ?? (Locale.current.region?.identifier == "IN" ? .india : .none)
         customInstructions = d.string(forKey: "customInstructions") ?? ""
-        ModelResolver.onResolved = { kind, model in
+        ModelResolver.onResolved = { kind, missing, model in
             DispatchQueue.main.async {
+                let settings = AppSettings.shared
                 switch kind {
-                case .chat: AppSettings.shared.cleanupModel = model
-                case .transcription: AppSettings.shared.transcriptionModel = model
+                // A retired smart model (Ultra) is replaced in its own slot, never over the fast cleanup model.
+                case .chat where !settings.smartModel.isEmpty && missing == settings.smartModel.trimmingCharacters(in: .whitespaces):
+                    settings.smartModel = model
+                case .chat: settings.cleanupModel = model
+                case .transcription: settings.transcriptionModel = model
                 }
             }
         }

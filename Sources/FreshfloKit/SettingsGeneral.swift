@@ -135,7 +135,7 @@ struct GeneralTab: View {
                 Picker("Engine", selection: $settings.provider) {
                     ForEach(Provider.allCases) { Text($0.label).tag($0) }
                 }
-                if settings.provider == .local {
+                if !settings.provider.transcribesInCloud {
                     WhisperRow()
                     LabeledContent("Apple speech model") {
                         HStack {
@@ -339,6 +339,7 @@ struct GeneralTab: View {
 
     private var keyPrompt: String {
         switch settings.provider {
+        case .nebius: return "Paste key (nebius_…)"
         case .groq: return "Paste key (gsk_…)"
         case .openai: return "Paste key (sk-…)"
         case .custom: return "Optional"
@@ -377,7 +378,7 @@ struct GeneralTab: View {
     }
 
     private func refreshLocalStatus() {
-        guard settings.provider == .local || settings.offlineFallback || settings.livePreview || settings.showCaptions else { return }
+        guard !settings.provider.transcribesInCloud || settings.offlineFallback || settings.livePreview || settings.showCaptions else { return }
         let language = settings.language
         Task { @MainActor in localStatus = await LocalSpeech.status(language: language) }
     }

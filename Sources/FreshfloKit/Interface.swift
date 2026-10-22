@@ -163,6 +163,7 @@ enum SettingsIndex {
         .init(title: "App language", keywords: "interface hindi localization", tab: .advanced, advanced: true),
         .init(title: "Sync", keywords: "icloud folder team share dictionary", tab: .advanced, advanced: true),
         .init(title: "Use in Claude and Cursor", keywords: "mcp claude cursor connect", tab: .general, advanced: false),
+        .init(title: "Agents and research", keywords: "tavily hermes agent research next step nemoclaw web search", tab: .meetings, advanced: false),
         .init(title: "Diagnostics", keywords: "logs debug problem report", tab: .advanced, advanced: true),
         .init(title: "Turn off in certain apps", keywords: "block disable app", tab: .advanced, advanced: true),
     ]
