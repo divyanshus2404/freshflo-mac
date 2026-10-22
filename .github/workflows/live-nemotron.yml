@@ -50,13 +50,17 @@ jobs:
         run: swift build
 
       - name: Check the key
+        id: key
         run: |
           if [ -z "$NEBIUS_API_KEY" ]; then
-            echo "::error::Add a NEBIUS_API_KEY repository secret (Settings → Secrets and variables → Actions)."
-            exit 1
+            echo "::warning::No NEBIUS_API_KEY repository secret (Settings → Secrets and variables → Actions): skipping the live calls, rendering the screens without a model."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Run the live checks
+        if: steps.key.outputs.present == 'true'
         env:
           RUNS: ${{ inputs.runs }}
           COMPARE_SUPER: ${{ inputs.compare_super }}
@@ -92,3 +96,15 @@ jobs:
             run "Commitments eval · Nemotron 3 Super as the smart model" --commitments-eval Benchmarks/commitments-eval.json --runs "$RUNS" --smart-model nvidia/nemotron-3-super-120b-a12b
           fi
           exit $FAILED
+
+      - name: Render the real app screens for the demo video
+        if: always()
+        run: .build/debug/Freshflo --render-ui screens --provider nebius
+
+      - name: Upload the screens
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: freshflo-screens
+          path: screens/
+          if-no-files-found: warn

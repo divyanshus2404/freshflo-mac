@@ -7,7 +7,7 @@ import Foundation
 ///   Freshflo --command "make this formal" [--selection "hey whats up"]
 public enum CLI {
     public static var isRequested: Bool {
-        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update", "--grammar-eval", "--ask-meetings", "--render-stats", "--mic-test", "--polish-batch", "--voice-sense", "--render-appearance", "--render-styles", "--diarize", "--mic-info", "--whisper-local", "--seed-demo", "--remove-demo", "--commitments", "--next-step", "--research", "--commitments-eval"].contains(where: CommandLine.arguments.contains)
+        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update", "--grammar-eval", "--ask-meetings", "--render-stats", "--mic-test", "--polish-batch", "--voice-sense", "--render-appearance", "--render-styles", "--diarize", "--mic-info", "--whisper-local", "--seed-demo", "--remove-demo", "--commitments", "--next-step", "--research", "--commitments-eval", "--render-ui"].contains(where: CommandLine.arguments.contains)
     }
 
     /// Shows the real floating indicator inside a proper app run loop with synthetic speech (performance checks).
@@ -478,6 +478,10 @@ public enum CLI {
             }
             return
         }
+        if let dir = value("--render-ui") {
+            try await renderUI(to: URL(fileURLWithPath: dir), settings: settings)
+            return
+        }
         if let path = value("--commitments-eval") {
             try await CommitmentsEval.run(path: path, settings: settings, runs: Int(value("--runs") ?? "") ?? 1,
                                           verbose: CommandLine.arguments.contains("--verbose"))
@@ -531,6 +535,70 @@ public enum CLI {
         let result = await Pipeline.polish(raw: transcript.text, context: context, settings: settings, mode: mode, extraVocabulary: vocab)
         let final = context.spaced(result.text, fallbackTrailingSpace: false)
         print("final [\(result.engine), \(ms(since: start))]: \(final.debugDescription)")
+    }
+
+    /// Screenshots of the real app for the demo video: the sample meetings with notes written by the model, the
+    /// organised commitments, a real chat answer and a real Next step draft (all from the configured model; without one,
+    /// the screens show the notes as written). Seeds the sample meetings into this Mac's store.
+    @MainActor
+    private static func renderUI(to out: URL, settings: AppSettings) async throws {
+        _ = NSApplication.shared
+        NSApp.appearance = NSAppearance(named: .aqua)
+        try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        let live = settings.canUseCloud
+        let seeded = await DemoMeetings.seed(rewriteNotes: live)
+        print("seeded \(seeded.count) sample meetings\(live ? " (notes by \(seeded.first?.writtenBy ?? "the model"))" : "")")
+        let meetings = MeetingStore.shared.meetings
+        var turns: [Knowledge.Turn] = []
+        if live {
+            let parsed = Commitments.parse(meetings)
+            do {
+                let organized = try await Commitments.organize(parsed, meetings: meetings, settings: settings)
+                Commitments.save(.init(key: Commitments.cacheKey(meetings), items: organized.items, model: organized.model))
+                print("commitments organised by \(organized.model)")
+            } catch { print("organise failed: \(error.localizedDescription)") }
+            let question = value("--question") ?? "What do I still owe Acme, and is it late?"
+            let start = Date()
+            do {
+                let answer = try await Knowledge.converse(history: [], question: question, meetings: meetings, settings: settings)
+                turns = [Knowledge.Turn(question: question, answer: answer.text, sources: answer.sources, model: answer.model,
+                                        seconds: Date().timeIntervalSince(start))]
+                print("chat answered by \(answer.model ?? "-")")
+            } catch { print("chat failed: \(error.localizedDescription)") }
+            if let item = Commitments.current(meetings).items.first(where: { $0.isMine && $0.doneNote == nil && $0.task.lowercased().contains("acme") }) {
+                do {
+                    let proposal = try await CommitmentAgent.propose(item, meetings: meetings, settings: settings)
+                    AgentInbox.add(proposal)
+                    print("next step for “\(item.task)”: \(proposal.kind.label) by \(proposal.proposedBy)")
+                } catch { print("next step failed: \(error.localizedDescription)") }
+            }
+        }
+
+        func snap<V: View>(_ view: V, _ name: String, width: CGFloat, height: CGFloat, wait: Double = 2.5) throws {
+            let host = NSHostingView(rootView: view.frame(width: width, height: height))
+            let window = NSWindow(contentRect: NSRect(x: -5000, y: 0, width: width, height: height), styleMask: [.titled],
+                                  backing: .buffered, defer: false)
+            window.contentView = host
+            window.orderFrontRegardless()
+            spinRunLoop(wait)
+            // Twice the points, so text stays sharp in a 1080p video.
+            guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(width * 2), pixelsHigh: Int(height * 2), bitsPerSample: 8,
+                                             samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
+                                             bytesPerRow: 0, bitsPerPixel: 0) else { return }
+            rep.size = NSSize(width: width, height: height)
+            host.cacheDisplay(in: host.bounds, to: rep)
+            try rep.representation(using: .png, properties: [:])?.write(to: out.appendingPathComponent(name))
+            window.orderOut(nil)
+            print("rendered \(name)")
+        }
+
+        let notesID = meetings.first { $0.id == "demo-acme" }?.id ?? meetings.first?.id
+        try snap(MeetingsView(initialSelection: notesID), "1-meeting-notes.png", width: 1280, height: 800)
+        try snap(MeetingsView(initialSelection: "ask", initialTurns: turns), "2-chat.png", width: 1280, height: 800)
+        try snap(MeetingsView(initialSelection: "commitments"), "3-commitments.png", width: 1280, height: 800, wait: 4)
+        if let proposal = AgentInbox.load().last {
+            try snap(ProposalSheet(proposal: proposal) { _ in }, "4-next-step.png", width: 580, height: 640)
+        }
     }
 
     private static func ms(since date: Date) -> String {

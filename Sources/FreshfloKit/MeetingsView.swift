@@ -6,6 +6,13 @@ struct MeetingsView: View {
     @ObservedObject private var store = MeetingStore.shared
     @ObservedObject private var controller = MeetingController.shared
     @State private var selection: String?
+    /// A conversation to open "Chat with your meetings" with (the `--render-ui` screenshots).
+    private let initialTurns: [Knowledge.Turn]
+
+    init(initialSelection: String? = nil, initialTurns: [Knowledge.Turn] = []) {
+        _selection = State(initialValue: initialSelection)
+        self.initialTurns = initialTurns
+    }
 
     var body: some View {
         NavigationSplitView {
@@ -56,7 +63,7 @@ struct MeetingsView: View {
             }
         } detail: {
             if selection == "ask" {
-                AskMeetingsView(selection: $selection)
+                AskMeetingsView(selection: $selection, initialTurns: initialTurns)
             } else if selection == "commitments" {
                 CommitmentsView(selection: $selection)
             } else if let id = selection, let meeting = store.meetings.first(where: { $0.id == id }) {
@@ -368,6 +375,7 @@ private struct ResultSheet: View {
 /// "What did we decide about pricing?" across every meeting, answered from your notes with the meetings it came from.
 private struct AskMeetingsView: View {
     @Binding var selection: String?
+    var initialTurns: [Knowledge.Turn] = []
     @ObservedObject private var store = MeetingStore.shared
     @State private var question = ""
     @State private var turns: [Knowledge.Turn] = []
@@ -386,7 +394,10 @@ private struct AskMeetingsView: View {
             Divider()
             composer
         }
-        .onAppear { focused = true }
+        .onAppear {
+            focused = true
+            if turns.isEmpty { turns = initialTurns }
+        }
     }
 
     private var header: some View {
