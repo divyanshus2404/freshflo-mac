@@ -202,19 +202,21 @@ enum MCPServer {
         while let line = readLine(strippingNewline: true) {
             guard let data = line.data(using: .utf8),
                   let message = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let method = message["method"] as? String else { continue }
-            let id = message["id"]
-            // Notifications (no id) never get a reply.
-            guard let id, !(id is NSNull) else { continue }
-            let params = message["params"] as? [String: Any] ?? [:]
-            do {
-                let result = try handle(method: method, params: params)
-                send(["jsonrpc": "2.0", "id": id, "result": result])
-            } catch {
-                send(["jsonrpc": "2.0", "id": id, "error": ["code": -32601, "message": error.localizedDescription]])
-            }
+                  let response = reply(to: message) else { continue }
+            send(response)
         }
         exit(0)
+    }
+
+    /// The JSON-RPC response to one message, for either transport. Notifications (no id) never get a reply.
+    static func reply(to message: [String: Any]) -> [String: Any]? {
+        guard let method = message["method"] as? String, let id = message["id"], !(id is NSNull) else { return nil }
+        let params = message["params"] as? [String: Any] ?? [:]
+        do {
+            return ["jsonrpc": "2.0", "id": id, "result": try handle(method: method, params: params)]
+        } catch {
+            return ["jsonrpc": "2.0", "id": id, "error": ["code": -32601, "message": error.localizedDescription]]
+        }
     }
 
     private struct Unknown: LocalizedError {

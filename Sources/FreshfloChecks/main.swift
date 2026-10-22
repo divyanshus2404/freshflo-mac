@@ -703,6 +703,41 @@ expect(toolNamesWithResearch, ["draft_email", "add_reminder", "research"], "thre
 expect(CommitmentAgent.tools(research: false).count, 2, "no research tool without a Tavily key")
 expectTrue(CommitmentAgent.prompt(for: pricingItem, meetings: [notesMeeting]).contains("where it was agreed"), "prompt carries the source meeting")
 
+section("Hackathon: MCP over HTTP")
+func httpRequest(_ method: String = "POST", path: String = "/mcp", headers: [String: String] = [:], body: String = "") -> MCPHTTP.Request {
+    var h = headers
+    h["content-length"] = String(body.utf8.count)
+    return MCPHTTP.Request(method: method, path: path, headers: h, body: Data(body.utf8))
+}
+let rawPost = "POST /mcp?x=1 HTTP/1.1\r\nHost: 10.0.0.5\r\nAuthorization: Bearer s3cret\r\nContent-Length: 5\r\n\r\n{\"a\""
+expect(MCPHTTP.parse(Data(rawPost.utf8)), .incomplete, "waits for the rest of the body")
+if case .request(let r) = MCPHTTP.parse(Data((rawPost + "}").utf8)) {
+    expect(r.path, "/mcp", "query string dropped")
+    expect(r.headers["authorization"], "Bearer s3cret", "headers by lowercase name")
+    expect(String(data: r.body, encoding: .utf8), "{\"a\"}", "body by Content-Length")
+} else { expectTrue(false, "complete request parses") }
+expect(MCPHTTP.parse(Data("GARBAGE\r\n\r\n".utf8)), .bad, "malformed request line")
+expect(MCPHTTP.parse(Data("POST /mcp HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n".utf8)), .bad, "chunked bodies refused")
+let initBody = #"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","clientInfo":{"name":"nemohermes"}}}"#
+let ok = MCPHTTP.respond(to: httpRequest(headers: ["authorization": "Bearer s3cret"], body: initBody), token: "s3cret")
+expect(ok.status, 200, "authorised initialize")
+expect((try? JSONSerialization.jsonObject(with: ok.body) as? [String: Any])?["id"] as? Int, 1, "reply carries the request id")
+expect(MCPHTTP.respond(to: httpRequest(body: initBody), token: "s3cret").status, 401, "missing token")
+expect(MCPHTTP.respond(to: httpRequest(headers: ["authorization": "Bearer s3cres"], body: initBody), token: "s3cret").status, 401, "wrong token")
+expect(MCPHTTP.respond(to: httpRequest(body: initBody), token: "").status, 200, "no token configured (loopback only)")
+expect(MCPHTTP.respond(to: httpRequest(headers: ["origin": "https://evil.example"], body: initBody), token: "").status, 403, "foreign browser origin refused")
+expect(MCPHTTP.respond(to: httpRequest(headers: ["origin": "http://localhost:3000"], body: initBody), token: "").status, 200, "local origin allowed")
+expect(MCPHTTP.respond(to: httpRequest("GET"), token: "").status, 405, "no event stream")
+expect(MCPHTTP.respond(to: httpRequest(path: "/"), token: "").status, 404, "only /mcp")
+expect(MCPHTTP.respond(to: httpRequest(body: #"{"jsonrpc":"2.0","method":"notifications/initialized"}"#), token: "").status, 202, "notification accepted without a body")
+expect(MCPHTTP.respond(to: httpRequest(body: "{nope"), token: "").status, 400, "bad JSON")
+let batchReply = MCPHTTP.respond(to: httpRequest(body: #"[{"jsonrpc":"2.0","id":7,"method":"ping"},{"jsonrpc":"2.0","method":"notifications/initialized"}]"#), token: "")
+expect((try? JSONSerialization.jsonObject(with: batchReply.body) as? [[String: Any]])?.count, 1, "batch: one reply per request")
+expectTrue(MCPHTTP.sameSecret("abc", "abc") && !MCPHTTP.sameSecret("abc", "abd") && !MCPHTTP.sameSecret("abc", "abcd"), "secret comparison")
+expect(MCPHTTP.isLoopback("0.0.0.0"), false, "all interfaces is not loopback")
+let wire = String(data: MCPHTTP.serialize(.init(status: 202)), encoding: .utf8) ?? ""
+expectTrue(wire.hasPrefix("HTTP/1.1 202 Accepted\r\n") && wire.contains("Content-Length: 0\r\n") && wire.hasSuffix("\r\n\r\n"), "response on the wire")
+
 section("Hackathon: Tavily")
 let tavilyReply: [String: Any] = ["answer": " Stripe supports annual prices. ", "results": [
     ["title": "Prices", "url": "https://docs.stripe.com/prices", "content": "Create a yearly price."], ["title": "", "url": "https://x.dev/a"], ["title": "no url"]]]

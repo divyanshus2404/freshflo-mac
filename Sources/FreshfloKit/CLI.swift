@@ -15,6 +15,12 @@ public enum CLI {
     /// Launched by Claude Desktop, Claude Code or Cursor as an MCP server.
     public static var isMCPRequested: Bool { CommandLine.arguments.contains("--mcp") }
     public static func runMCP() -> Never { MCPServer.run() }
+    /// Serves MCP over HTTP for sandboxed agents (NemoClaw / OpenShell): `--mcp-http [--port 8765] [--bind 127.0.0.1]`.
+    public static var isMCPHTTPRequested: Bool { CommandLine.arguments.contains("--mcp-http") }
+    public static func runMCPHTTP() -> Never {
+        MCPHTTP.run(port: UInt16(value("--port") ?? "") ?? 8765, bind: value("--bind") ?? "127.0.0.1",
+                    token: ProcessInfo.processInfo.environment["FRESHFLO_MCP_TOKEN"]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "")
+    }
 
     @MainActor
     public static func runDemo() -> Never {

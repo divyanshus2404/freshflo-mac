@@ -29,10 +29,22 @@ shipping your private audio to anyone.
   ("Priya said the pricing page went live [Weekly standup]"). Items are grouped into
   Overdue / Due this week / Later, filtered to *Mine* or *Everyone*, and each one
   links back to the meeting it came from.
-- **Shows its work** — every note, chat answer and commitment list carries a
+- **Next step** *(new)* — one click on a commitment and Nemotron chooses what moves it
+  forward by **tool calling**: draft the follow-up email, add a reminder, or research
+  what the notes don't say. The draft waits under *Waiting for your approval*;
+  approving opens it in Mail or adds it to Reminders. Nothing is sent without you.
+- **Research with Tavily** *(new)* — when a commitment needs outside facts, Tavily
+  searches the web (only the question leaves the Mac) and Nemotron writes a short
+  brief that cites its sources.
+- **Your agent keeps your promises** *(new)* — a **Hermes Agent** on Nemotron 3 Ultra
+  (Token Factory), optionally sandboxed by **NVIDIA NemoClaw / OpenShell**, reads your
+  commitments through Freshflo's MCP server every morning and queues drafts into the
+  same approval list. Its only write is `propose_action`.
+- **Shows its work** — every note, chat answer, commitment list and draft carries a
   "NVIDIA Nemotron on Nebius Token Factory" badge with the exact model id (and the
   answer's latency), so you can see what produced it.
-- **MCP server** — exposes your meetings to Claude/Cursor read-only, locally.
+- **MCP server** — exposes your meetings and commitments to Hermes, Claude and Cursor,
+  locally over stdio or over HTTP with a bearer token for sandboxed agents.
 
 ## How we built it
 - **Native Swift / SwiftUI** macOS app.
@@ -59,11 +71,29 @@ shipping your private audio to anyone.
   that a later conversation finished one. A malformed reply can merge items or mark
   them done, but never drop one.
 
+- **Tool calling that works with any Token Factory setup** — `CommitmentAgent` sends
+  OpenAI-style `tools` and reads `tool_calls`, and also parses Nemotron's text form
+  (`<TOOLCALL>[…]</TOOLCALL>`) when the endpoint doesn't parse calls itself.
+- **Approval by design** — in-app drafts and agent drafts share one `ActionProposal`
+  type and one approval list; only an approved draft reaches Mail or Reminders.
+- **Agent integration** — new MCP tools `list_commitments` and `propose_action`, and a
+  Streamable HTTP transport (`--mcp-http`: bearer token, loopback by default, browser
+  origins refused) so a NemoClaw sandbox can reach Freshflo through an HTTPS proxy.
+  The Hermes kit (config, `keep-my-promises` skill, daily cron) is in `hackathon/agent/`.
+- **Measured, not guessed** — `--commitments-eval` scores merge precision/recall,
+  done detection, due dates and latency on 7 labelled scenarios, so Nemotron 3 Super
+  and Ultra can be compared on numbers.
+
 ## Satisfying the requirements
 - ✅ **Runs on Nebius Token Factory** — every LLM call goes to
   `api.tokenfactory.nebius.com`.
-- ✅ **Uses an NVIDIA open model** — Nemotron for cleanup, meeting notes, Ask, and the
-  new chat; enforced by the model resolver.
+- ✅ **Uses an NVIDIA open model** — Nemotron for cleanup, meeting notes, Ask, the
+  new chat, commitments and tool calling; enforced by the model resolver, which keeps
+  the tier (Ultra stays Ultra) if an id changes.
+- ✅ **Personal AI track tools** — persistent memory (meetings on the Mac), reusable
+  skills and tool access (Freshflo's MCP tools and the `keep-my-promises` Hermes
+  skill), tasks carried out across your day (daily Hermes job), with a kit for
+  **Hermes Agent** and **NVIDIA NemoClaw / OpenShell**.
 
 ## Challenges
 - Token Factory is LLM-only, so we split the pipeline: on-device ASR + cloud Nemotron.
@@ -79,7 +109,8 @@ shipping your private audio to anyone.
 
 ## What's next
 - A weekly digest of open commitments, delivered as a notification.
-- Nemotron function-calling to act on items (draft the follow-up email, add the task).
+- More approved actions: calendar holds and Slack messages from the same approval list.
+- Run the agent on Nebius Serverless for people who don't want it on their Mac.
 
 ## Try it
 See `hackathon/SETUP.md`. `swift build` then pick the Nebius provider in Settings.

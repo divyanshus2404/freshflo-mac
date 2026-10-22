@@ -1,0 +1,18 @@
+# Merge into ~/.hermes/config.yaml (Hermes Agent on the same Mac as Freshflo).
+# Put your Token Factory key in ~/.hermes/.env as NEBIUS_API_KEY=...
+
+model:
+  # Hermes has a built-in Nebius Token Factory provider.
+  provider: "nebius-token-factory"
+  # NVIDIA Nemotron 3 Ultra for the agent's reasoning. If Token Factory spells the id differently,
+  # run `hermes model` and pick the Nemotron Ultra entry from the live list.
+  default: "nvidia/nemotron-3-ultra-550b-a55b"
+
+mcp_servers:
+  freshflo:
+    # Hermes starts Freshflo as a stdio MCP server. Adjust the path if the app isn't in /Applications.
+    command: "/Applications/Freshflo.app/Contents/MacOS/Freshflo"
+    args: ["--mcp"]
+    tools:
+      # Meeting notes and commitments only: the agent never sees what the user dictates.
+      include: [list_commitments, get_meeting, search_meetings, list_meetings, propose_action]

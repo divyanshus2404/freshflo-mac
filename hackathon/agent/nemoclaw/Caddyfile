@@ -1,0 +1,16 @@
+# HTTPS front for Freshflo's MCP server, so a Hermes agent inside an NVIDIA NemoClaw / OpenShell sandbox can reach it.
+# Replace 192.168.1.20 with your Mac's private IP (System Settings → Wi-Fi → Details). Run: caddy run --config Caddyfile
+# NemoClaw rejects loopback MCP URLs, so the proxy listens on the private address and forwards to Freshflo on loopback.
+https://192.168.1.20 {
+	# Caddy's own local CA. Give its root certificate to NemoClaw with NEMOCLAW_CORPORATE_CA_BUNDLE (see README).
+	tls internal
+	bind 192.168.1.20
+
+	# Only the MCP path is exposed.
+	handle /mcp {
+		reverse_proxy 127.0.0.1:8765
+	}
+	handle {
+		respond 404
+	}
+}
