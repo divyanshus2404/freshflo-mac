@@ -24,7 +24,23 @@
   <img alt="Checks" src="https://img.shields.io/badge/checks-339%20passing-35d6a6">
   <img alt="Grammar" src="https://img.shields.io/badge/grammar%20eval-76%2F76-35d6a6">
   <img alt="Size" src="https://img.shields.io/badge/app-~10%20MB-0c2421">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-35d6a6"></a>
 </p>
+
+---
+
+## Built on NVIDIA Nemotron + Nebius Token Factory
+
+Freshflo's entire intelligence layer runs on **[NVIDIA Nemotron](https://www.nvidia.com/en-us/ai-data-science/foundation-models/nemotron/) served by [Nebius Token Factory](https://tokenfactory.nebius.com)** (OpenAI-compatible, `api.tokenfactory.nebius.com/v1`). Pick the **Nebius Token Factory (NVIDIA Nemotron)** engine in *Settings → General → Transcription*.
+
+- **Nemotron for all reasoning** — meeting notes, Ask, Command, cleanup, and the new **Chat with your meetings**. A resolver queries Token Factory's live `/models` catalog and always prefers a Nemotron model, so the app stays on an NVIDIA model even if ids change.
+- **Token Factory for speed and scale** — streamed server-sent events from `/chat/completions` power token-by-token chat; Super/Nano handle fast everyday calls and the larger Nemotron handles heavier reasoning (cross-meeting commitment tracking).
+- **Private by design** — Token Factory serves LLMs, not audio, so speech is transcribed **on-device** (WhisperKit) and only the few most relevant text excerpts ever reach the cloud.
+- **Shows its work** — every note, chat answer and commitment list carries a *"NVIDIA Nemotron on Nebius Token Factory"* badge with the exact model id.
+
+**Setup & demo:** [`hackathon/SETUP.md`](hackathon/SETUP.md) · **Write-up:** [`hackathon/DEVPOST.md`](hackathon/DEVPOST.md) · **Demo script:** [`hackathon/DEMO_SCRIPT.md`](hackathon/DEMO_SCRIPT.md). No meetings yet? Click **Try it with sample meetings**, or run `swift run Freshflo --seed-demo`.
+
+> Built for the **Nebius × NVIDIA Global AI Hackathon** (Personal AI track). Freshflo is a pre-existing macOS app; the hackathon work re-platformed its AI stack onto Nebius Token Factory + NVIDIA Nemotron and added **Chat with your meetings** and **Open commitments**.
 
 ---
 
