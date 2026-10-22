@@ -632,6 +632,53 @@ expect(Commitments.bucket(overdueItem, ticked: false, today: today), .thisWeek, 
 overdueItem.dueDate = nil
 expect(Commitments.bucket(overdueItem, ticked: false, today: today), .noDate, "no date")
 
+section("Hackathon: commitments for agents")
+expect(Commitments.cacheKey(demo), Commitments.cacheKey(Array(demo.reversed())), "cache key ignores order")
+expect(Commitments.cacheKey(demo).count, 64, "cache key is a SHA-256 hex string, stable across processes")
+var editedDemo = demo
+editedDemo[0].notes += "\n- [ ] One more thing — You"
+expectTrue(Commitments.cacheKey(editedDemo) != Commitments.cacheKey(demo), "edited notes change the key")
+let mineText = Commitments.agentText(parsedItems, model: nil, ticked: [], everyone: false, includeDone: false, today: today)
+expectTrue(mineText.contains("## No date (1)") && mineText.contains("Scope SSO") && mineText.contains("commitment_id: m1|scope sso"), "mine: unowned item with its id")
+expect(mineText.contains("Priya"), false, "mine leaves out other people's items")
+expectTrue(mineText.hasPrefix("As written in the meeting notes"), "says when the list isn't organised yet")
+let everyoneText = Commitments.agentText(parsedItems, model: "nvidia/nemotron-3-ultra-550b-a55b · Nebius Token Factory", ticked: [], everyone: true, includeDone: false, today: today)
+expectTrue(everyoneText.contains("## Overdue (2)") && everyoneText.contains("due: 2026-10-16 (\"by Friday\")"), "everyone: overdue items with dates")
+expect(everyoneText.contains("## Done"), false, "done items hidden by default")
+expectTrue(everyoneText.hasPrefix("Organised by nvidia/nemotron-3-ultra-550b-a55b"), "names the model that organised it")
+expectTrue(Commitments.agentText(parsedItems, model: nil, ticked: [], everyone: true, includeDone: true, today: today).contains("done: Ticked in the notes"), "done items on request")
+
+let ssoID = "m1|scope sso"
+let (emailProposal, emailMessage) = MCPServer.proposal(from: ["commitment_id": ssoID, "kind": "email", "title": "SSO scope", "body": "Hi Acme,", "to": "dana@acme.com"], items: parsedItems, by: "hermes-agent")
+expect(emailProposal?.kind, .email, "agent proposes an email")
+expect(emailProposal?.commitmentTask, "Scope SSO", "proposal names its commitment")
+expect(emailProposal?.proposedBy, "hermes-agent", "proposal names the agent")
+expectTrue(emailMessage.contains("nothing is sent"), "agent is told it needs approval")
+expect(MCPServer.proposal(from: ["commitment_id": "nope", "kind": "email", "title": "x"], items: parsedItems, by: "a").0 == nil, true, "unknown commitment rejected")
+expect(MCPServer.proposal(from: ["commitment_id": ssoID, "kind": "research", "title": "x"], items: parsedItems, by: "a").0 == nil, true, "agents can't queue research briefs")
+expect(MCPServer.proposal(from: ["commitment_id": ssoID, "kind": "email", "title": "  "], items: parsedItems, by: "a").0 == nil, true, "title required")
+expect(MCPServer.proposal(from: ["commitment_id": ssoID, "kind": "reminder", "title": "x", "due": "Friday"], items: parsedItems, by: "a").0 == nil, true, "reminder due must be a date")
+let pricingID = "m1|get the new pricing page live"
+expect(ymd(MCPServer.proposal(from: ["commitment_id": pricingID, "kind": "reminder", "title": "Pricing page"], items: parsedItems, by: "a").0?.due), "2026-10-16", "reminder defaults to the commitment's date")
+
+_ = try! MCPServer.handle(method: "initialize", params: ["protocolVersion": "2025-06-18", "clientInfo": ["name": "hermes-agent", "version": "1"]])
+expect(MCPServer.clientName, "hermes-agent", "MCP remembers which agent connected")
+let mcpTools = (try! MCPServer.handle(method: "tools/list", params: [:]))["tools"] as? [[String: Any]] ?? []
+let proposeTool = mcpTools.first { $0["name"] as? String == "propose_action" }
+expectTrue(mcpTools.contains { $0["name"] as? String == "list_commitments" }, "MCP lists commitments")
+expect((proposeTool?["annotations"] as? [String: Any])?["readOnlyHint"] as? Bool, false, "propose_action is marked as writing")
+expect((proposeTool?["annotations"] as? [String: Any])?["destructiveHint"] as? Bool, false, "propose_action is not destructive")
+
+section("Hackathon: model resolver")
+let catalog = ["nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B", "nvidia/Nemotron-3-Ultra-550b-a55b", "nvidia/nemotron-3-super-120b-a12b-v2", "meta-llama/Llama-3.3-70B-Instruct"]
+expect(ModelResolver.pick(.chat, replacing: "nvidia/nemotron-3-ultra-550b-a55b", from: catalog), "nvidia/Nemotron-3-Ultra-550b-a55b", "same id in the provider's capitalisation")
+expect(ModelResolver.pick(.chat, replacing: "nvidia/nemotron-3-super-120b-a12b", from: catalog), "nvidia/nemotron-3-super-120b-a12b-v2", "retired Super → another Super")
+expect(ModelResolver.pick(.chat, replacing: "nvidia/nemotron-nano-old", from: catalog), "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B", "retired Nano → Nano, not Ultra")
+expect(ModelResolver.pick(.chat, replacing: "some/model", from: catalog), "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B", "any Nemotron before other families")
+expect(ModelResolver.pick(.chat, replacing: "qwen/gone", from: ["openai/gpt-oss-120b", "whisper-large-v3"]), "openai/gpt-oss-120b", "no Nemotron: known good chat model")
+expect(ModelResolver.pick(.chat, replacing: "nvidia/Nemotron-3-Ultra-550b-a55b", from: ["nvidia/Nemotron-3-Ultra-550b-a55b"]), nil, "never 'replaces' a model with itself")
+expect(ModelResolver.pick(.transcription, replacing: "whisper-1", from: ["llama", "whisper-large-v3"]), "whisper-large-v3", "transcription fallback")
+
 // MARK: - Result
 
 if failures.isEmpty {

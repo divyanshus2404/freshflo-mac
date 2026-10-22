@@ -135,6 +135,13 @@ struct CommitmentsView: View {
             model = cache.model
             return
         }
+        // Organised in an earlier session and the notes haven't changed since: no model call needed.
+        if !force, let saved = Commitments.loadSaved(), saved.key == key {
+            items = saved.items
+            model = saved.model
+            Commitments.cache = (key, saved.items, saved.model)
+            return
+        }
         let parsed = Commitments.parse(meetings)
         items = parsed
         model = nil
@@ -151,6 +158,8 @@ struct CommitmentsView: View {
             items = result.items
             model = result.model
             Commitments.cache = (key, result.items, result.model)
+            // Agents connected over MCP read this copy instead of asking the model again.
+            Commitments.save(.init(key: key, items: result.items, model: result.model))
         } catch where error is CancellationError || (error as? URLError)?.code == .cancelled {
         } catch {
             note = "Showing the items as written in your notes (\(error.localizedDescription))."

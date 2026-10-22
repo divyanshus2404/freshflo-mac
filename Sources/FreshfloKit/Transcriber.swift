@@ -83,7 +83,7 @@ enum Transcriber {
             return try await transcribeOnce(samples: samples, endpoint: endpoint, vocabulary: vocabulary)
         } catch where ModelResolver.isModelMissing(error) {
             guard let model = await ModelResolver.best(.transcription, endpoint: endpoint), model != endpoint.transcriptionModel else { throw error }
-            ModelResolver.onResolved?(.transcription, model)
+            ModelResolver.onResolved?(.transcription, endpoint.transcriptionModel, model)
             var fixed = endpoint
             fixed.transcriptionModel = model
             return try await transcribeOnce(samples: samples, endpoint: fixed, vocabulary: vocabulary)

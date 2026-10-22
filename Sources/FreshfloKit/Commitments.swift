@@ -1,10 +1,11 @@
+import CryptoKit
 import Foundation
 
 /// Open commitments: every action item from every meeting in one list. Items are read from each meeting's notes on this
 /// Mac; a model then merges the same commitment raised in several meetings, turns "by Friday" into a date relative to the
 /// meeting it was said in, and checks later meetings for items already done.
 enum Commitments {
-    struct Item: Identifiable, Hashable {
+    struct Item: Identifiable, Hashable, Codable {
         /// Meeting id + task, so a tick survives re-reading the notes.
         let id: String
         var task: String
@@ -238,14 +239,69 @@ enum Commitments {
     }
 
     /// The last organised list, reused while the meetings' notes haven't changed.
-    @MainActor static var cache: (key: Int, items: [Item], model: String)?
+    @MainActor static var cache: (key: String, items: [Item], model: String)?
 
-    static func cacheKey(_ meetings: [Meeting]) -> Int {
-        var hasher = Hasher()
-        for m in meetings where m.status == .ready {
-            hasher.combine(m.id)
-            hasher.combine(m.notes)
+    /// Same notes, same key, in every process: the MCP server reads the list the app organised.
+    static func cacheKey(_ meetings: [Meeting]) -> String {
+        var text = ""
+        for m in meetings.filter({ $0.status == .ready }).sorted(by: { $0.id < $1.id }) {
+            text += m.id + "\u{1}" + m.notes + "\u{2}"
         }
-        return hasher.finalize()
+        return SHA256.hash(data: Data(text.utf8)).map { String(format: "%02x", $0) }.joined()
+    }
+
+    struct Saved: Codable {
+        let key: String
+        let items: [Item]
+        let model: String
+    }
+
+    private static var savedURL: URL {
+        MeetingStore.shared.root.deletingLastPathComponent().appendingPathComponent("commitments.json")
+    }
+
+    static func save(_ saved: Saved) {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        if let data = try? encoder.encode(saved) { try? data.write(to: savedURL, options: .atomic) }
+    }
+
+    static func loadSaved() -> Saved? {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return (try? Data(contentsOf: savedURL)).flatMap { try? decoder.decode(Saved.self, from: $0) }
+    }
+
+    /// The organised list when it matches the current notes, else the items as written. `model` is nil for the latter.
+    static func current(_ meetings: [Meeting]) -> (items: [Item], model: String?) {
+        if let saved = loadSaved(), saved.key == cacheKey(meetings) { return (saved.items, saved.model) }
+        return (parse(meetings), nil)
+    }
+
+    // MARK: For agents
+
+    /// The list as an agent reads it over MCP: grouped by when it's due, every item with the ids `propose_action` needs.
+    static func agentText(_ items: [Item], model: String?, ticked: Set<String>, everyone: Bool, includeDone: Bool, today: Date = Date()) -> String {
+        let visible = items.filter { everyone || $0.isMine }
+        let groups = Dictionary(grouping: visible) { bucket($0, ticked: ticked.contains($0.id), today: today) }
+        var out = model.map { "Organised by \($0): duplicates merged, deadlines dated, finished items marked done." }
+            ?? "As written in the meeting notes (open Open commitments in Freshflo to merge duplicates and spot finished items)."
+        out += "\nToday is \(day(today)). \"You\" is the user.\n"
+        var shown = 0
+        for b in Bucket.allCases where includeDone || b != .done {
+            guard let rows = groups[b], !rows.isEmpty else { continue }
+            out += "\n## \(b.title) (\(rows.count))\n"
+            for item in rows.sorted(by: { ($0.dueDate ?? .distantFuture) < ($1.dueDate ?? .distantFuture) }) {
+                shown += 1
+                var due = item.dueDate.map(isoString) ?? "none"
+                if !item.due.isEmpty { due += " (\"\(item.due)\")" }
+                out += "- \(item.task)\n  commitment_id: \(item.id)\n"
+                out += "  owner: \(item.owner.isEmpty ? "none" : item.owner) · due: \(due) · from: \(item.meetingTitle) (\(isoString(item.meetingDate))), meeting_id: \(item.meetingID)\n"
+                if !item.alsoIn.isEmpty { out += "  also came up in: \(item.alsoIn.joined(separator: ", "))\n" }
+                if let doneNote = item.doneNote { out += "  done: \(doneNote)\n" }
+            }
+        }
+        if shown == 0 { out += everyone ? "\nNo open commitments." : "\nNo open commitments owned by the user. Pass owner: \"everyone\" to see the rest.\n" }
+        return out
     }
 }

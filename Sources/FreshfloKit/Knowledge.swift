@@ -226,11 +226,12 @@ enum MCPServer {
         switch method {
         case "initialize":
             let requested = params["protocolVersion"] as? String
+            if let name = (params["clientInfo"] as? [String: Any])?["name"] as? String, !name.isEmpty { clientName = name }
             return [
                 "protocolVersion": requested ?? protocolVersion,
                 "capabilities": ["tools": ["listChanged": false]],
                 "serverInfo": ["name": "freshflo", "title": "Freshflo", "version": Updater.currentVersion],
-                "instructions": "Freshflo is the user's Mac dictation app. Use these tools to look up their meeting notes (summaries, decisions, action items, who said what) and, if they allowed it, things they recently dictated.",
+                "instructions": "Freshflo is the user's Mac dictation and meeting-notes app. Use these tools to look up their meeting notes (summaries, decisions, action items, who said what), their open commitments across all meetings, and, if they allowed it, things they recently dictated. To act on a commitment, call propose_action: it queues a draft for the user to approve in Freshflo; nothing is sent or created without them.",
             ]
         case "ping":
             return [:]
@@ -248,6 +249,9 @@ enum MCPServer {
 
     static var historyAllowed: Bool { AppSettings.shared.mcpShareHistory }
 
+    /// The connected app, from its `initialize` request ("hermes-agent", "claude-ai"…), so proposals say who made them.
+    nonisolated(unsafe) static var clientName = "An AI agent"
+
     static func tools() -> [[String: Any]] {
         var list: [[String: Any]] = [
             tool("search_meetings", "Search the user's meeting notes by keywords (people, topics, projects). Returns matching meetings with their notes.",
@@ -256,6 +260,17 @@ enum MCPServer {
                  ["limit": ["type": "integer", "description": "How many (default 10)"]], required: []),
             tool("get_meeting", "Full notes and transcript of one meeting, by id from list_meetings or search_meetings.",
                  ["id": ["type": "string"], "include_transcript": ["type": "boolean", "description": "Include the full transcript (default false)"]], required: ["id"]),
+            tool("list_commitments", "The user's open commitments: every action item from every meeting, grouped Overdue / Due this week / Later / No date, with owner, due date, source meeting and the commitment_id that propose_action needs.",
+                 ["owner": ["type": "string", "enum": ["mine", "everyone"], "description": "\"mine\" (default): items the user owns or nobody owns. \"everyone\": all items."],
+                  "include_done": ["type": "boolean", "description": "Also list finished items (default false)"]], required: []),
+            tool("propose_action", "Queue a drafted action for one commitment: a follow-up email, a reminder or a note. The user reviews and approves it in Freshflo; nothing is sent or created until they do. Base drafts only on the meeting notes (get_meeting) and facts you verified.",
+                 ["commitment_id": ["type": "string", "description": "From list_commitments"],
+                  "kind": ["type": "string", "enum": ["email", "reminder", "note"]],
+                  "title": ["type": "string", "description": "Email subject, reminder title or note heading"],
+                  "body": ["type": "string", "description": "Email body, reminder notes or note text"],
+                  "to": ["type": "string", "description": "Email recipient(s), if known from the notes"],
+                  "due": ["type": "string", "description": "Reminder due date, YYYY-MM-DD"]],
+                 required: ["commitment_id", "kind", "title"], readOnly: false),
         ]
         if historyAllowed {
             list.append(tool("search_dictations", "Search text the user recently dictated with Freshflo (messages, emails, prompts), newest first.",
@@ -264,9 +279,12 @@ enum MCPServer {
         return list
     }
 
-    private static func tool(_ name: String, _ description: String, _ properties: [String: Any], required: [String]) -> [String: Any] {
-        ["name": name, "description": description, "inputSchema": ["type": "object", "properties": properties, "required": required],
-         "annotations": ["readOnlyHint": true, "openWorldHint": false]]
+    private static func tool(_ name: String, _ description: String, _ properties: [String: Any], required: [String], readOnly: Bool = true) -> [String: Any] {
+        // propose_action only queues a draft for approval, so it is neither destructive nor open-world.
+        let annotations: [String: Any] = readOnly ? ["readOnlyHint": true, "openWorldHint": false]
+            : ["readOnlyHint": false, "destructiveHint": false, "idempotentHint": false, "openWorldHint": false]
+        return ["name": name, "description": description, "inputSchema": ["type": "object", "properties": properties, "required": required],
+                "annotations": annotations]
     }
 
     static func call(_ name: String, _ args: [String: Any]) -> (String, Bool) {
@@ -288,6 +306,13 @@ enum MCPServer {
             var text = describe(m, notes: true)
             if args["include_transcript"] as? Bool == true, !m.transcript.isEmpty { text += "\n\nTranscript:\n" + m.transcript }
             return (text, false)
+        case "list_commitments":
+            let (items, model) = Commitments.current(store.meetings)
+            let everyone = (args["owner"] as? String)?.lowercased() == "everyone"
+            return (Commitments.agentText(items, model: model, ticked: Commitments.ticked, everyone: everyone,
+                                          includeDone: args["include_done"] as? Bool ?? false), false)
+        case "propose_action":
+            return propose(args, items: Commitments.current(store.meetings).items, by: clientName)
         case "search_dictations" where historyAllowed:
             let items = Knowledge.search(args["query"] as? String ?? "", in: HistoryStore.shared.items, limit: args["limit"] == nil ? 10 : limit)
             guard !items.isEmpty else { return ("Nothing found.", false) }
@@ -295,6 +320,32 @@ enum MCPServer {
         default:
             return ("Unknown tool \(name).", true)
         }
+    }
+
+    /// Checks an agent's `propose_action` arguments against the real commitments. Returns the proposal, or the error to show.
+    static func proposal(from args: [String: Any], items: [Commitments.Item], by agent: String) -> (ActionProposal?, String) {
+        let kind = (args["kind"] as? String).flatMap(ActionProposal.Kind.init(rawValue:))
+        let title = (args["title"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let id = args["commitment_id"] as? String, let kind, kind != .research, !title.isEmpty else {
+            return (nil, "propose_action needs commitment_id, kind (email, reminder or note) and a title.")
+        }
+        guard let item = items.first(where: { $0.id == id }) else {
+            return (nil, "No commitment has the id \"\(id)\". Call list_commitments and use a commitment_id from it.")
+        }
+        let due = (args["due"] as? String).flatMap(Commitments.isoDay)
+        if kind == .reminder, args["due"] != nil, due == nil { return (nil, "due must be a date like 2026-10-30.") }
+        let proposal = ActionProposal(kind: kind, commitmentID: id, commitmentTask: item.task, title: title,
+                                      body: (args["body"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines),
+                                      to: (args["to"] as? String ?? "").trimmingCharacters(in: .whitespaces),
+                                      due: due ?? (kind == .reminder ? item.dueDate : nil), proposedBy: agent)
+        return (proposal, "Queued \(kind.label.lowercased()) \"\(title)\" for \"\(item.task)\". The user will review it in Freshflo (Open commitments → Waiting for your approval); nothing is sent or created until they approve it.")
+    }
+
+    private static func propose(_ args: [String: Any], items: [Commitments.Item], by agent: String) -> (String, Bool) {
+        let (queued, message) = proposal(from: args, items: items, by: agent)
+        guard let queued else { return (message, true) }
+        AgentInbox.add(queued)
+        return (message, false)
     }
 
     private static func describe(_ m: Meeting, notes: Bool) -> String {

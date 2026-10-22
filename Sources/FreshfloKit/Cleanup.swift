@@ -290,7 +290,7 @@ enum Cleanup {
             return try await chatOnce(instructions: instructions, prompt: prompt, endpoint: endpoint, temperature: temperature)
         } catch where ModelResolver.isModelMissing(error) {
             guard let model = await ModelResolver.best(.chat, endpoint: endpoint), model != endpoint.cleanupModel else { throw error }
-            ModelResolver.onResolved?(.chat, model)
+            ModelResolver.onResolved?(.chat, endpoint.cleanupModel, model)
             var fixed = endpoint
             fixed.cleanupModel = model
             return try await chatOnce(instructions: instructions, prompt: prompt, endpoint: fixed, temperature: temperature)
