@@ -1,0 +1,94 @@
+name: Live Nemotron check
+
+# Runs Freshflo's AI features against the real NVIDIA Nemotron models on Nebius Token Factory (and Tavily, if a key
+# is set), using the sample meetings. Never runs on its own: start it from the Actions tab, or add the
+# `live-nemotron` label to a pull request (pull requests from forks don't get the secrets).
+# Needs repository secrets: NEBIUS_API_KEY (required), TAVILY_API_KEY (optional).
+
+on:
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: "Eval runs per scenario"
+        default: "2"
+      compare_super:
+        description: "Also run the eval with Nemotron 3 Super as the smart model"
+        type: boolean
+        default: true
+  pull_request:
+    types: [labeled]
+
+concurrency:
+  group: live-nemotron
+  cancel-in-progress: false
+
+jobs:
+  live:
+    name: Nemotron on Token Factory
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'live-nemotron'
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      NEBIUS_API_KEY: ${{ secrets.NEBIUS_API_KEY }}
+      TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use the newest Xcode
+        run: |
+          XCODE="$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+          sudo xcode-select -s "$XCODE"
+
+      - name: Cache SwiftPM build
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: spm-${{ runner.os }}-${{ hashFiles('Package.swift', 'Package.resolved') }}-${{ hashFiles('Sources/**/*.swift') }}
+          restore-keys: spm-${{ runner.os }}-${{ hashFiles('Package.swift', 'Package.resolved') }}-
+
+      - name: Build
+        run: swift build
+
+      - name: Check the key
+        run: |
+          if [ -z "$NEBIUS_API_KEY" ]; then
+            echo "::error::Add a NEBIUS_API_KEY repository secret (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+
+      - name: Run the live checks
+        env:
+          RUNS: ${{ inputs.runs }}
+          COMPARE_SUPER: ${{ inputs.compare_super }}
+        run: |
+          set +e
+          F=".build/debug/Freshflo"
+          S="$GITHUB_STEP_SUMMARY"
+          run() {
+            local title="$1"; shift
+            echo "## $title" >> "$S"
+            echo '```' >> "$S"
+            "$F" "$@" --provider nebius 2>&1 | tee -a "$S"
+            local code=${PIPESTATUS[0]}
+            echo '```' >> "$S"
+            [ "$code" -eq 0 ] && echo "✅ ok" >> "$S" || { echo "❌ exit $code" >> "$S"; FAILED=1; }
+            echo >> "$S"
+          }
+          FAILED=0
+          case "$RUNS" in ''|*[!0-9]*) RUNS=2;; esac
+          echo "# Live Nemotron check · $(date -u +'%Y-%m-%d %H:%M UTC') · ${GITHUB_SHA::7}" >> "$S"
+          run "Nemotron models on Token Factory" --models
+          run "Chat with your meetings (streamed)" --ask-meetings "What do I still owe Acme, and is it late?" --demo --stream
+          run "Open commitments (organised by Nemotron)" --commitments --demo
+          run "Next step on the Acme quote (tool calling)" --next-step "acme quote" --demo
+          run "Next step on the pricing page" --next-step "pricing page" --demo
+          if [ -n "$TAVILY_API_KEY" ]; then
+            run "Tavily research" --research "Stripe annual subscription pricing setup"
+          else
+            echo "## Tavily research" >> "$S"; echo "Skipped: no TAVILY_API_KEY secret." >> "$S"; echo >> "$S"
+          fi
+          run "Commitments eval · default smart model (Ultra)" --commitments-eval Benchmarks/commitments-eval.json --runs "$RUNS" --verbose
+          if [ "$COMPARE_SUPER" != "false" ]; then
+            run "Commitments eval · Nemotron 3 Super as the smart model" --commitments-eval Benchmarks/commitments-eval.json --runs "$RUNS" --smart-model nvidia/nemotron-3-super-120b-a12b
+          fi
+          exit $FAILED

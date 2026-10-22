@@ -95,6 +95,31 @@ public enum CLI {
         let savedSmartModel = settings.smartModel
         defer { settings.smartModel = savedSmartModel }
         if let model = value("--smart-model") { settings.smartModel = model }
+        // CI and scripted runs: `--provider nebius` with the key in FRESHFLO_API_KEY (or NEBIUS_API_KEY), for this run only.
+        let savedProvider = settings.provider
+        // What the overridden provider had before this run: its saved key and models, put back on exit.
+        var overridden: (provider: Provider, key: String, cleanup: String, smart: String)?
+        if let raw = value("--provider"), let provider = Provider(rawValue: raw) {
+            let env = ProcessInfo.processInfo.environment
+            let key = (env["FRESHFLO_API_KEY"] ?? env["NEBIUS_API_KEY"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let storedKey = Keychain.get(provider.rawValue)
+            settings.provider = provider
+            overridden = (provider, storedKey, settings.cleanupModel, settings.smartModel)
+            if !key.isEmpty { settings.apiKey = key }
+            if let model = value("--cleanup-model") { settings.cleanupModel = model }
+            if let model = value("--smart-model") { settings.smartModel = model }
+            print("provider: \(provider.label) · fast \(settings.cleanupModel) · smart \(settings.smartModel) · key \(settings.apiKey.isEmpty ? "missing" : "set")")
+        }
+        defer {
+            if let o = overridden {
+                if settings.provider == o.provider {
+                    settings.apiKey = o.key
+                    settings.cleanupModel = o.cleanup
+                    settings.smartModel = o.smart
+                }
+                settings.provider = savedProvider
+            }
+        }
         if let lang = value("--write-in") { settings.outputLanguage = lang }
         if let region = value("--region").flatMap(RegionalFormat.init(rawValue:)) { settings.regionalFormat = region }
 
