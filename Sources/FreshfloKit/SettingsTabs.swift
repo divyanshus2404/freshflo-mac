@@ -53,8 +53,38 @@ struct MeetingsTab: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
 
+            Section {
+                TavilyKeyRow()
+                LabeledContent("Hermes Agent") {
+                    Button("Copy config") {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(MCPServer.hermesSnippet, forType: .string)
+                    }
+                }
+            } header: {
+                Text("Agents and research")
+            } footer: {
+                Text("Next step on a commitment asks your model to draft the follow-up email, a reminder or a research brief. Research uses Tavily: only the search question leaves your Mac. Agents you connect (Hermes, Claude) can read your commitments and propose drafts too. Every draft waits in Open commitments until you approve it.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
+    }
+}
+
+/// The Tavily key lives in the Keychain, next to the model provider's key.
+private struct TavilyKeyRow: View {
+    @State private var key = Keychain.get(Tavily.keychainAccount)
+
+    var body: some View {
+        LabeledContent("Tavily API key") {
+            HStack {
+                SecureField("", text: $key, prompt: Text("tvly-…"))
+                    .frame(width: 220)
+                    .onChange(of: key) { _, value in Keychain.set(value.trimmingCharacters(in: .whitespacesAndNewlines), for: Tavily.keychainAccount) }
+                Link("Get a key", destination: URL(string: "https://app.tavily.com")!)
+            }
+        }
     }
 }
 

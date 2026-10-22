@@ -1,0 +1,85 @@
+{
+  "about": "Hand-labelled meetings for Open commitments. Run: swift run Freshflo --commitments-eval Benchmarks/commitments-eval.json [--runs 3] [--smart-model <id>]. Each group lists phrases that pick out the parsed items (by task text) that are one commitment; done/open name groups that a later meeting finished or did not; due gives the date the item should end up with.",
+  "scenarios": [
+    {
+      "name": "Quote restated after it slipped",
+      "meetings": [
+        {"id": "e1a", "title": "Acme customer call", "date": "2026-10-05T18:00", "notes": "## Summary\nAcme wants SSO before renewal.\n## Action items\n- [ ] Send Acme the revised quote — You, by Friday\n- [ ] Share the SSO setup guide with Dana — Priya, by Wednesday"},
+        {"id": "e1b", "title": "Weekly standup", "date": "2026-10-12T10:00", "notes": "## Summary\nYou said the Acme quote slipped and you still owe it. Priya sent Dana the SSO setup guide last week.\n## Action items\n- [ ] Send the Acme quote — You, by Thursday"}
+      ],
+      "expect": {
+        "groups": [["revised quote", "acme quote"], ["sso setup guide"]],
+        "done": ["sso setup guide"],
+        "open": ["acme quote"]
+      }
+    },
+    {
+      "name": "Similar items that are different work",
+      "meetings": [
+        {"id": "e2a", "title": "Design review", "date": "2026-10-07T15:00", "notes": "## Action items\n- [ ] Update the onboarding screens — Meera, by Friday\n- [ ] Update the onboarding email copy — Rahul, by Friday"},
+        {"id": "e2b", "title": "Marketing sync", "date": "2026-10-09T12:00", "notes": "## Action items\n- [ ] Update the pricing email copy — Rahul, next week"}
+      ],
+      "expect": {
+        "groups": [["onboarding screens"], ["onboarding email"], ["pricing email"]],
+        "open": ["onboarding screens", "onboarding email", "pricing email"]
+      }
+    },
+    {
+      "name": "Done, mentioned in passing",
+      "meetings": [
+        {"id": "e3a", "title": "Pricing sync", "date": "2026-10-01T11:00", "notes": "## Decisions\n- Pro is $8 a month.\n## Action items\n- [ ] Get the new pricing page live — Priya, by Friday\n- [ ] Add the annual plan in Stripe — Rahul, by next Wednesday"},
+        {"id": "e3b", "title": "Weekly standup", "date": "2026-10-08T10:00", "notes": "## Summary\nThe pricing page went live on Thursday, Priya confirmed. Rahul is still waiting on Stripe support before the annual plan can go in.\n## Action items\n- [ ] Follow up with Stripe support — Rahul, tomorrow"}
+      ],
+      "expect": {
+        "groups": [["pricing page"], ["annual plan"], ["stripe support"]],
+        "done": ["pricing page"],
+        "open": ["annual plan", "stripe support"]
+      }
+    },
+    {
+      "name": "Owner changes hands",
+      "meetings": [
+        {"id": "e4a", "title": "Hiring sync", "date": "2026-10-02T16:00", "notes": "## Action items\n- [ ] Write the backend job description — Rahul, by Monday"},
+        {"id": "e4b", "title": "Hiring sync", "date": "2026-10-09T16:00", "notes": "## Summary\nRahul is out this week, so You are taking over the job description.\n## Action items\n- [ ] Finish the backend job description — You, by Wednesday"}
+      ],
+      "expect": {
+        "groups": [["job description"]],
+        "open": ["job description"]
+      }
+    },
+    {
+      "name": "Deadlines the rules can't date",
+      "meetings": [
+        {"id": "e5a", "title": "Offsite planning", "date": "2026-10-14T09:30", "notes": "## Action items\n- [ ] Book the offsite venue — You, by the 20th\n- [ ] Send the board update — You, before the board meeting on October 28"}
+      ],
+      "expect": {
+        "groups": [["offsite venue"], ["board update"]],
+        "open": ["offsite venue", "board update"],
+        "due": {"offsite venue": "2026-10-20", "board update": "2026-10-28"}
+      }
+    },
+    {
+      "name": "Half done is not done",
+      "meetings": [
+        {"id": "e6a", "title": "Globex customer call", "date": "2026-10-06T17:00", "notes": "## Action items\n- [ ] Send Globex the security questionnaire — You, by Friday"},
+        {"id": "e6b", "title": "Globex customer call", "date": "2026-10-13T17:00", "notes": "## Summary\nGlobex asked again for the security questionnaire. You said it is half done and will send it by Wednesday.\n## Action items\n- [ ] Send the security questionnaire — You, by Wednesday"}
+      ],
+      "expect": {
+        "groups": [["security questionnaire"]],
+        "open": ["security questionnaire"]
+      }
+    },
+    {
+      "name": "Reported back, plus a new follow-on task",
+      "meetings": [
+        {"id": "e7a", "title": "Engineering sync", "date": "2026-10-01T14:00", "notes": "## Action items\n- [ ] Scope the SSO work — You, by next week\n- [ ] Fix the login timeout bug — Arjun, by Friday"},
+        {"id": "e7b", "title": "Engineering sync", "date": "2026-10-08T14:00", "notes": "## Summary\nYou scoped SSO: about three weeks of work. Arjun's login timeout fix shipped on Tuesday.\n## Action items\n- [ ] Start the SSO implementation — You, by Monday"}
+      ],
+      "expect": {
+        "groups": [["scope the sso"], ["login timeout"], ["sso implementation"]],
+        "done": ["scope the sso", "login timeout"],
+        "open": ["sso implementation"]
+      }
+    }
+  ]
+}

@@ -379,6 +379,16 @@ enum MCPServer {
         """
     }
 
+    /// For ~/.hermes/config.yaml: Hermes starts Freshflo as a stdio MCP server.
+    static var hermesSnippet: String {
+        """
+        mcp_servers:
+          freshflo:
+            command: "\(executablePath)"
+            args: ["--mcp"]
+        """
+    }
+
     static func isConnected(_ url: URL) -> Bool {
         guard let data = try? Data(contentsOf: url), let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let servers = json["mcpServers"] as? [String: Any] else { return false }

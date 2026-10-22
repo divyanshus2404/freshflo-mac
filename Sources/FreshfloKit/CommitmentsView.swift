@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 
 /// Every action item from every meeting, grouped by when it's due, each linked to the meeting it came from.
@@ -10,14 +11,78 @@ struct CommitmentsView: View {
     @State private var note: String?
     @State private var mineOnly = true
     @State private var ticked = Commitments.ticked
+    /// Drafts waiting for approval: from "Next step" here, or from an agent connected over MCP (a separate process).
+    @State private var proposals = AgentInbox.load()
+    @State private var reviewing: ActionProposal?
+    /// The commitment whose next step is being worked out.
+    @State private var thinking: String?
+    private let inboxTick = Timer.publish(every: 3, on: .main, in: .common).autoconnect()
 
     var body: some View {
         VStack(spacing: 0) {
             header
             Divider()
-            ScrollView { list.padding(24) }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    if !proposals.isEmpty { inbox }
+                    list
+                }
+                .padding(24)
+            }
         }
         .task(id: Commitments.cacheKey(store.meetings)) { await load() }
+        .onReceive(inboxTick) { _ in
+            let latest = AgentInbox.load()
+            if latest != proposals { proposals = latest }
+        }
+        .sheet(item: $reviewing) { proposal in
+            ProposalSheet(proposal: proposal) { done in
+                proposals = AgentInbox.load()
+                note = done
+            }
+        }
+    }
+
+    private var inbox: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Text("Waiting for your approval").font(.headline)
+                Text("\(proposals.count)").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+            }
+            ForEach(proposals.reversed()) { proposal in
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: proposal.kind.icon).foregroundStyle(Color.accentColor).frame(width: 20)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(proposal.title).fontWeight(.medium).lineLimit(2)
+                        Text("\(proposal.kind.label) for “\(proposal.commitmentTask)”").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        ModelBadge(credit: proposal.proposedBy)
+                    }
+                    Spacer()
+                    Button("Review…") { reviewing = proposal }
+                    Button {
+                        AgentInbox.remove(proposal.id)
+                        proposals = AgentInbox.load()
+                    } label: { Image(systemName: "xmark") }
+                    .buttonStyle(.borderless).help("Dismiss")
+                }
+                .padding(10)
+                .background(RoundedRectangle(cornerRadius: 10).fill(Color.accentColor.opacity(0.08)))
+            }
+        }
+    }
+
+    private func nextStep(_ item: Commitments.Item) async {
+        thinking = item.id
+        defer { thinking = nil }
+        do {
+            let proposal = try await CommitmentAgent.propose(item, meetings: store.meetings, settings: .shared)
+            AgentInbox.add(proposal)
+            proposals = AgentInbox.load()
+            reviewing = proposals.first { $0.id == proposal.id }
+        } catch where error is CancellationError {
+        } catch {
+            note = "Couldn't work out a next step: \(error.localizedDescription)"
+        }
     }
 
     private var header: some View {
@@ -114,6 +179,17 @@ struct CommitmentsView: View {
                 }
                 if let doneNote = item.doneNote {
                     Label(doneNote, systemImage: "checkmark.seal").font(.caption).foregroundStyle(.green)
+                }
+            }
+            Spacer(minLength: 8)
+            if !done {
+                if thinking == item.id {
+                    ProgressView().controlSize(.small).help("Nemotron is choosing a next step…")
+                } else {
+                    Button { Task { await nextStep(item) } } label: { Label("Next step", systemImage: "sparkles") }
+                        .controlSize(.small)
+                        .disabled(thinking != nil)
+                        .help("Nemotron drafts the follow-up email, a reminder or a research brief. You approve it before anything happens.")
                 }
             }
         }

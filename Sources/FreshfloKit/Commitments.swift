@@ -21,6 +21,8 @@ enum Commitments {
         var doneNote: String?
         /// Other meetings the same commitment came up in.
         var alsoIn: [String] = []
+        /// Ids of the parsed items merged into this one (nil: not merged), for the eval.
+        var sourceIDs: [String]? = nil
 
         var isMine: Bool { owner.isEmpty || owner == "You" }
     }
@@ -222,6 +224,7 @@ enum Commitments {
             item.alsoIn = ids.filter { $0 != baseIndex }.map { items[$0].meetingTitle }
                 .filter { $0 != item.meetingTitle }.reduce(into: []) { if !$0.contains($1) { $0.append($1) } }
             if items[baseIndex].doneNote != nil, item.doneNote == nil { item.doneNote = items[baseIndex].doneNote }
+            item.sourceIDs = ids.map { items[$0].id }
             result.append(item)
         }
         guard !result.isEmpty else { return nil }

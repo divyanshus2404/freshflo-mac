@@ -679,6 +679,67 @@ expect(ModelResolver.pick(.chat, replacing: "qwen/gone", from: ["openai/gpt-oss-
 expect(ModelResolver.pick(.chat, replacing: "nvidia/Nemotron-3-Ultra-550b-a55b", from: ["nvidia/Nemotron-3-Ultra-550b-a55b"]), nil, "never 'replaces' a model with itself")
 expect(ModelResolver.pick(.transcription, replacing: "whisper-1", from: ["llama", "whisper-large-v3"]), "whisper-large-v3", "transcription fallback")
 
+section("Hackathon: next step (tool calling)")
+let openAICall: [String: Any] = ["role": "assistant", "content": NSNull(), "tool_calls": [["id": "c1", "type": "function",
+    "function": ["name": "draft_email", "arguments": #"{"to":"dana@acme.com","subject":"Revised quote","body":"Hi Dana,\n\nHere is the revised quote."}"#]]]]
+expect(CommitmentAgent.toolCall(from: openAICall), CommitmentAgent.ToolCall(name: "draft_email", arguments: ["to": "dana@acme.com", "subject": "Revised quote", "body": "Hi Dana,\n\nHere is the revised quote."]), "OpenAI tool_calls")
+let nemotronText: [String: Any] = ["content": #"<think>owed to Acme</think><TOOLCALL>[{"name": "add_reminder", "arguments": {"title": "Book the venue", "due_date": "2026-10-20"}}]</TOOLCALL>"#]
+expect(CommitmentAgent.toolCall(from: nemotronText), CommitmentAgent.ToolCall(name: "add_reminder", arguments: ["title": "Book the venue", "due_date": "2026-10-20"]), "Nemotron's text tool call")
+expect(CommitmentAgent.toolCall(inText: #"{"tool": "research", "parameters": {"query": "SSO pricing", "why": null}}"#), CommitmentAgent.ToolCall(name: "research", arguments: ["query": "SSO pricing"]), "bare JSON call, nulls dropped")
+expect(CommitmentAgent.toolCall(from: ["content": "I suggest emailing Dana."]), nil, "plain prose is not a call")
+expect(CommitmentAgent.arguments(#"{"n": 3, "ok": true}"#), ["n": "3", "ok": "1"], "non-string arguments flattened")
+let ssoItem = parsedItems[2]
+let emailStep = CommitmentAgent.proposal(.init(name: "draft_email", arguments: ["subject": "", "body": "Hi team"]), item: ssoItem, by: "nemotron · Nebius Token Factory")
+expect(emailStep?.kind, .email, "email proposal")
+expect(emailStep?.title, "Scope SSO", "empty subject falls back to the task")
+expect(CommitmentAgent.proposal(.init(name: "draft_email", arguments: ["subject": "x"]), item: ssoItem, by: "m") == nil, true, "email needs a body")
+let pricingItem = parsedItems[0]
+expect(ymd(CommitmentAgent.proposal(.init(name: "add_reminder", arguments: ["title": "Pricing page"]), item: pricingItem, by: "m")?.due), "2026-10-16", "reminder without a date uses the commitment's")
+expect(ymd(CommitmentAgent.proposal(.init(name: "add_reminder", arguments: ["title": "x", "due_date": "2026-10-18"]), item: pricingItem, by: "m")?.due), "2026-10-18", "reminder date from the model")
+expect(CommitmentAgent.proposal(.init(name: "research", arguments: ["query": "Stripe annual plans"]), item: pricingItem, by: "m")?.kind, .research, "research proposal")
+expect(CommitmentAgent.proposal(.init(name: "delete_everything", arguments: [:]), item: pricingItem, by: "m") == nil, true, "unknown tools ignored")
+let toolNamesWithResearch = CommitmentAgent.tools(research: true).compactMap { ($0["function"] as? [String: Any])?["name"] as? String }
+expect(toolNamesWithResearch, ["draft_email", "add_reminder", "research"], "three tools with Tavily")
+expect(CommitmentAgent.tools(research: false).count, 2, "no research tool without a Tavily key")
+expectTrue(CommitmentAgent.prompt(for: pricingItem, meetings: [notesMeeting]).contains("where it was agreed"), "prompt carries the source meeting")
+
+section("Hackathon: Tavily")
+let tavilyReply: [String: Any] = ["answer": " Stripe supports annual prices. ", "results": [
+    ["title": "Prices", "url": "https://docs.stripe.com/prices", "content": "Create a yearly price."], ["title": "", "url": "https://x.dev/a"], ["title": "no url"]]]
+expect(Tavily.parse(tavilyReply), Tavily.Response(answer: "Stripe supports annual prices.", results: [
+    .init(title: "Prices", url: "https://docs.stripe.com/prices", content: "Create a yearly price."), .init(title: "https://x.dev/a", url: "https://x.dev/a", content: "")]), "answer and pages")
+expect(Tavily.parse(["detail": "bad key"]), nil, "error body is not a response")
+expect(Tavily.parse(["answer": "", "results": []])?.answer, nil, "empty answer is no answer")
+
+section("Hackathon: commitments eval")
+let evalItems = Commitments.parse(notesMeeting)
+let evalExpect = CommitmentsEval.Scenario.Expect(groups: [["pricing page", "onboarding video"], ["annual plan"], ["scope sso"]],
+                                                 done: ["annual plan"], open: ["pricing page"], due: ["scope sso": "2026-10-30"])
+var mergedOut = [evalItems[0]]
+mergedOut[0].sourceIDs = [evalItems[0].id, evalItems[3].id]
+mergedOut += [evalItems[1], evalItems[2]]
+let perfect = CommitmentsEval.score(parsed: evalItems, output: mergedOut, expect: evalExpect)
+expect(perfect.mergePrecision, 1, "right merge: precision")
+expect(perfect.mergeRecall, 1, "right merge: recall")
+expect(perfect.doneCorrect, 2, "done and open both right")
+expect(perfect.dueCorrect, 0, "undated item misses its due date")
+expect(perfect.lost, 0, "nothing lost")
+let unmerged = CommitmentsEval.score(parsed: evalItems, output: evalItems, expect: evalExpect)
+expect(unmerged.mergeRecall, 0, "missed merge: recall 0")
+expect(unmerged.mergePrecision, 1, "no merges: nothing wrongly merged")
+var overMerged = [evalItems[0]]
+overMerged[0].sourceIDs = evalItems.map(\.id)
+expect(CommitmentsEval.score(parsed: evalItems, output: overMerged, expect: evalExpect).mergePrecision, 1.0 / 6, "everything merged: precision 1/6")
+expect(CommitmentsEval.score(parsed: evalItems, output: [evalItems[0]], expect: evalExpect).lost, 3, "dropped items counted")
+expect(CommitmentsEval.labels(evalItems, groups: [["stripe"]]), [nil, 0, nil, nil], "labels by phrase")
+let evalFile = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("../../Benchmarks/commitments-eval.json")
+let scenarios = (try? JSONDecoder().decode(CommitmentsEval.File.self, from: Data(contentsOf: evalFile)))?.scenarios ?? []
+expect(scenarios.count, 7, "eval file loads")
+expectTrue(scenarios.allSatisfy { s in
+    let parsed = Commitments.parse(CommitmentsEval.meetings(s))
+    return CommitmentsEval.labels(parsed, groups: s.expect.groups).allSatisfy { $0 != nil } && Set(CommitmentsEval.labels(parsed, groups: s.expect.groups).compactMap { $0 }).count == s.expect.groups.count
+}, "every eval item is labelled and every group has an item")
+
 // MARK: - Result
 
 if failures.isEmpty {

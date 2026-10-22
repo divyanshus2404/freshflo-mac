@@ -7,7 +7,7 @@ import Foundation
 ///   Freshflo --command "make this formal" [--selection "hey whats up"]
 public enum CLI {
     public static var isRequested: Bool {
-        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update", "--grammar-eval", "--ask-meetings", "--render-stats", "--mic-test", "--polish-batch", "--voice-sense", "--render-appearance", "--render-styles", "--diarize", "--mic-info", "--whisper-local", "--seed-demo", "--remove-demo", "--commitments"].contains(where: CommandLine.arguments.contains)
+        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update", "--grammar-eval", "--ask-meetings", "--render-stats", "--mic-test", "--polish-batch", "--voice-sense", "--render-appearance", "--render-styles", "--diarize", "--mic-info", "--whisper-local", "--seed-demo", "--remove-demo", "--commitments", "--next-step", "--research", "--commitments-eval"].contains(where: CommandLine.arguments.contains)
     }
 
     /// Shows the real floating indicator inside a proper app run loop with synthetic speech (performance checks).
@@ -86,6 +86,9 @@ public enum CLI {
         let savedCleanupModel = settings.cleanupModel
         defer { settings.cleanupModel = savedCleanupModel }
         if let model = value("--cleanup-model") { settings.cleanupModel = model }
+        let savedSmartModel = settings.smartModel
+        defer { settings.smartModel = savedSmartModel }
+        if let model = value("--smart-model") { settings.smartModel = model }
         if let lang = value("--write-in") { settings.outputLanguage = lang }
         if let region = value("--region").flatMap(RegionalFormat.init(rawValue:)) { settings.regionalFormat = region }
 
@@ -412,6 +415,41 @@ public enum CLI {
                       + (item.alsoIn.isEmpty ? "" : " also in: \(item.alsoIn.joined(separator: ", "))")
                       + (item.doneNote.map { " ✓ \($0)" } ?? ""))
             }
+            return
+        }
+        if let query = value("--research") {
+            let start = Date()
+            let found = try await Tavily.search(query)
+            print("tavily [\(ms(since: start))]: \(found.answer ?? "(no summary)")")
+            found.results.enumerated().forEach { print("  [\($0.offset + 1)] \($0.element.title) — \($0.element.url)") }
+            return
+        }
+        if let wanted = value("--next-step") {
+            // A commitment id from --commitments, or words from its task ("acme quote").
+            let (items, _) = Commitments.current(meetings)
+            let words = wanted.lowercased().split(separator: " ")
+            guard let item = items.first(where: { $0.id == wanted }) ?? items.first(where: { item in words.allSatisfy { item.task.lowercased().contains($0) } }) else {
+                print("no commitment matches “\(wanted)”. Commitments:")
+                items.forEach { print("  \($0.id)") }
+                return
+            }
+            print("commitment: \(item.task) (\(item.meetingTitle))\nresearch: \(Tavily.isConfigured ? "on (Tavily)" : "off (no TAVILY_API_KEY)")")
+            let start = Date()
+            let proposal = try await CommitmentAgent.propose(item, meetings: meetings, settings: settings)
+            print("next step [\(ms(since: start))] by \(proposal.proposedBy): \(proposal.kind.label)")
+            print("  title: \(proposal.title)" + (proposal.to.isEmpty ? "" : "\n  to: \(proposal.to)")
+                  + (proposal.due.map { "\n  due: \($0.formatted(date: .abbreviated, time: .omitted))" } ?? ""))
+            print(proposal.body.split(separator: "\n", omittingEmptySubsequences: false).map { "  | " + $0 }.joined(separator: "\n"))
+            proposal.sources.enumerated().forEach { print("  [\($0.offset + 1)] \($0.element)") }
+            if CommandLine.arguments.contains("--queue") {
+                AgentInbox.add(proposal)
+                print("queued for approval in Open commitments")
+            }
+            return
+        }
+        if let path = value("--commitments-eval") {
+            try await CommitmentsEval.run(path: path, settings: settings, runs: Int(value("--runs") ?? "") ?? 1,
+                                          verbose: CommandLine.arguments.contains("--verbose"))
             return
         }
         if let question = value("--ask-meetings") {
