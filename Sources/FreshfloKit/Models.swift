@@ -96,14 +96,19 @@ enum HotkeyKey: String, CaseIterable, Identifiable {
 }
 
 enum Provider: String, CaseIterable, Identifiable {
-    case groq, openai, custom, local
+    case nebius, groq, openai, custom, local
 
     var id: String { rawValue }
 
     var isCloud: Bool { self != .local }
 
+    /// Whether this provider does speech-to-text in the cloud. Nebius Token Factory serves LLMs
+    /// (NVIDIA Nemotron) but not audio, so it transcribes on-device and sends only text to the cloud.
+    var transcribesInCloud: Bool { self != .local && self != .nebius }
+
     var label: String {
         switch self {
+        case .nebius: return "Nebius Token Factory (NVIDIA Nemotron)"
         case .groq: return "Groq"
         case .openai: return "OpenAI"
         case .custom: return "Custom (OpenAI-compatible)"
@@ -113,6 +118,7 @@ enum Provider: String, CaseIterable, Identifiable {
 
     var defaultBaseURL: String {
         switch self {
+        case .nebius: return "https://api.tokenfactory.nebius.com/v1"
         case .groq: return "https://api.groq.com/openai/v1"
         case .openai: return "https://api.openai.com/v1"
         case .custom: return "http://localhost:8000/v1"
@@ -122,6 +128,7 @@ enum Provider: String, CaseIterable, Identifiable {
 
     var defaultTranscriptionModel: String {
         switch self {
+        case .nebius: return "" // Token Factory has no audio API; Nebius transcribes on-device.
         case .groq: return "whisper-large-v3-turbo"
         case .openai: return "gpt-4o-mini-transcribe"
         case .custom: return "whisper-1"
@@ -131,6 +138,7 @@ enum Provider: String, CaseIterable, Identifiable {
 
     var defaultCleanupModel: String {
         switch self {
+        case .nebius: return "nvidia/llama-3.1-nemotron-70b-instruct"
         case .groq: return "qwen/qwen3.8-27b"
         case .openai: return "gpt-4.1-mini"
         case .custom: return "gpt-4o-mini"
@@ -141,6 +149,7 @@ enum Provider: String, CaseIterable, Identifiable {
     /// Stronger model for translation, Command and Ask, where quality matters more than ~300 ms.
     var defaultSmartModel: String {
         switch self {
+        case .nebius: return "nvidia/nemotron-3-super-120b-a12b"
         case .groq: return "openai/gpt-oss-120b"
         case .openai: return "gpt-4.1"
         case .custom: return "gpt-4o-mini"
@@ -150,6 +159,7 @@ enum Provider: String, CaseIterable, Identifiable {
 
     var keyURL: URL? {
         switch self {
+        case .nebius: return URL(string: "https://tokenfactory.nebius.com")
         case .groq: return URL(string: "https://console.groq.com/keys")
         case .openai: return URL(string: "https://platform.openai.com/api-keys")
         case .custom, .local: return nil

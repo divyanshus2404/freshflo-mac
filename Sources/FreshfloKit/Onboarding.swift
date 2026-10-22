@@ -172,9 +172,9 @@ struct OnboardingView: View {
     // MARK: Permissions
 
     private var permissionsDone: Bool {
-        permissions.accessibility && permissions.microphone == .authorized && (permissions.speech || settings.provider != .local)
+        permissions.accessibility && permissions.microphone == .authorized && (permissions.speech || settings.provider.transcribesInCloud)
     }
-    private var showsSpeechCard: Bool { settings.provider == .local && LocalSpeech.needsAuthorization || settings.provider == .local && !permissions.speech }
+    private var showsSpeechCard: Bool { !settings.provider.transcribesInCloud && LocalSpeech.needsAuthorization || !settings.provider.transcribesInCloud && !permissions.speech }
 
     private var permissionsStep: some View {
         VStack(alignment: .leading, spacing: 14) {

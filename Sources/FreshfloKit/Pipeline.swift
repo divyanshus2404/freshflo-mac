@@ -20,7 +20,7 @@ enum Pipeline {
     ) async throws -> Transcript {
         // Your own words first, then the people you meet with most (transcription prompts are short).
         let vocabulary = settings.dictionary + extraVocabulary + settings.knownNames.prefix(30)
-        if forceLocal || settings.provider == .local {
+        if forceLocal || !settings.provider.transcribesInCloud {
             OnDeviceWhisper.lastLanguage = nil
             let text = try await LocalSpeech.transcribe(samples, language: settings.language, vocabulary: vocabulary, onStatus: onStatus)
             let detected = LanguageID.detect(text: text, whisperGuess: OnDeviceWhisper.isActive ? OnDeviceWhisper.lastLanguage : (settings.language.isEmpty ? nil : settings.language),

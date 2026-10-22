@@ -194,7 +194,7 @@ enum MeetingProcessor {
     }
 
     private static func segments(_ url: URL, settings: AppSettings) async throws -> [Transcriber.Segment] {
-        if settings.provider == .local || !settings.canUseCloud {
+        if !settings.provider.transcribesInCloud || !settings.canUseCloud {
             return try await LocalSpeech.transcribeSegments(file: url, language: settings.language, vocabulary: settings.dictionary)
         }
         let data = try Data(contentsOf: url)

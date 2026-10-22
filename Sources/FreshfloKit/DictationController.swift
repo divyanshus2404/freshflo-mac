@@ -301,7 +301,7 @@ final class DictationController {
         micCheck = Timer.scheduledTimer(withTimeInterval: 2.5, repeats: false) { [weak self] _ in self?.checkMicIsAlive() }
         chunkCut = 0
         chunkTasks = []
-        if settings.provider.isCloud, settings.canUseCloud {
+        if settings.provider.transcribesInCloud, settings.canUseCloud {
             chunkTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in self?.cutChunkAtPause() }
         }
     }

@@ -29,6 +29,12 @@ enum ModelResolver {
         let available = Set(ids)
         switch kind {
         case .chat:
+            // Prefer an NVIDIA Nemotron model when the provider serves one (e.g. Nebius Token Factory),
+            // so the app stays on an NVIDIA open model. No-op on providers that don't offer one.
+            if let nemotron = ids.first(where: { $0.lowercased().contains("nemotron") })
+                ?? ids.sorted().first(where: { $0.lowercased().hasPrefix("nvidia/") && !notChat.contains(where: $0.lowercased().contains) }) {
+                return nemotron
+            }
             return chatPreferences.first(where: available.contains)
                 ?? ids.sorted().first { id in !notChat.contains(where: id.lowercased().contains) }
         case .transcription:

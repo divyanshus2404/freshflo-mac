@@ -66,6 +66,64 @@ enum Knowledge {
         let sources: [Meeting]
     }
 
+    /// One exchange in a "Chat with your meetings" conversation.
+    struct Turn: Identifiable, Hashable {
+        let id = UUID()
+        let question: String
+        var answer: String
+        var sources: [Meeting]
+        var failed: Bool = false
+    }
+
+    /// Multi-turn chat over your meetings: like `ask`, but the model also sees the conversation so far, so
+    /// follow-ups ("who owns that?", "and when is it due?") resolve against the earlier answers. Cited, local-first.
+    static func converse(history: [Turn], question: String, meetings: [Meeting], settings: AppSettings) async throws -> Answer {
+        // A follow-up may carry no keywords of its own, so retrieve on it plus the previous question.
+        let retrievalQuery = ([question] + history.suffix(1).map(\.question)).joined(separator: " ")
+        var hits = search(retrievalQuery, in: meetings, limit: 4).map(\.meeting)
+        // Keep meetings cited in the last turn in view, so pronoun references still have their source.
+        for m in history.last?.sources ?? [] where !hits.contains(where: { $0.id == m.id }) { hits.append(m) }
+        if hits.isEmpty { hits = Array(meetings.filter { $0.status == .ready }.prefix(3)) }
+        guard !hits.isEmpty else { return Answer(text: "You don't have any processed meeting notes yet.", sources: []) }
+
+        var context = ""
+        for m in hits.prefix(5) {
+            context += "### \(label(m))\n\(m.notes.prefix(3_000))\n"
+            let ex = excerpt(m.transcript, for: retrievalQuery)
+            if !ex.isEmpty { context += "Transcript excerpts:\n\(ex)\n" }
+            context += "\n"
+        }
+
+        let instructions = """
+        You are a chat assistant answering questions about the user's own meetings, using only the notes and transcript \
+        excerpts provided. You are in an ongoing conversation; use the earlier turns to resolve references like "that", \
+        "they" or "it" in the latest question.
+        Be direct and brief: one to four sentences, or a short list when there are several items (decisions, owners, dates).
+        After each fact, name the meeting it came from in brackets, like [Pricing sync (Oct 3, 2026)].
+        "You" in the notes and transcripts is the user, so "my action items" means only the items owned by You (or with no owner).
+        If the answer isn't in the provided meetings, say you couldn't find it in the notes. Never guess or add outside knowledge.
+        Today is \(Date().formatted(date: .complete, time: .omitted)).
+        """
+        var convo = ""
+        for turn in history.suffix(6) {
+            convo += "User: \(turn.question)\nAssistant: \(turn.answer)\n\n"
+        }
+        let prompt = "Meetings:\n\(context)\nConversation so far:\n\(convo)User: \(question)\nAssistant:"
+
+        let reply: String
+        if settings.canUseCloud {
+            reply = try await Cleanup.chat(instructions: instructions, prompt: prompt, endpoint: settings.endpoint.smart, temperature: 0.2)
+        } else if AppleModel.isAvailable {
+            reply = try await AppleModel.respond(instructions: instructions, prompt: prompt)
+        } else {
+            throw KnowledgeError.noModel
+        }
+        let text = Cleanup.stripThinking(reply)
+        let notFound = text.range(of: #"couldn['’]t find|could not find|not in the (?:provided )?notes"#, options: [.regularExpression, .caseInsensitive]) != nil
+        let cited = hits.filter { text.contains($0.title) }
+        return Answer(text: text, sources: notFound ? [] : (cited.isEmpty ? Array(hits.prefix(3)) : cited))
+    }
+
     /// "What did we decide about pricing?" → an answer drawn only from your notes, naming the meetings it came from.
     static func ask(_ question: String, meetings: [Meeting], settings: AppSettings) async throws -> Answer {
         var hits = search(question, in: meetings, limit: 4).map(\.meeting)
