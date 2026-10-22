@@ -34,7 +34,7 @@
 Freshflo's entire intelligence layer runs on **[NVIDIA Nemotron](https://www.nvidia.com/en-us/ai-data-science/foundation-models/nemotron/) served by [Nebius Token Factory](https://tokenfactory.nebius.com)** (OpenAI-compatible, `api.tokenfactory.nebius.com/v1`). Pick the **Nebius Token Factory (NVIDIA Nemotron)** engine in *Settings → General → Transcription*.
 
 - **Nemotron for all reasoning** — meeting notes, Ask, Command, cleanup, and the new **Chat with your meetings**. A resolver queries Token Factory's live `/models` catalog and always prefers a Nemotron model, so the app stays on an NVIDIA model even if ids change.
-- **Token Factory for speed and scale** — streamed server-sent events from `/chat/completions` power token-by-token chat; Super/Nano handle fast everyday calls and the larger Nemotron handles heavier reasoning (cross-meeting commitment tracking).
+- **Token Factory for speed and scale** — streamed server-sent events from `/chat/completions` power token-by-token chat; **Nemotron 3 Super** handles the fast everyday calls (dictation cleanup) and **Nemotron 3 Ultra** handles the serious reasoning (cross-meeting commitment tracking, multi-turn chat).
 - **Private by design** — Token Factory serves LLMs, not audio, so speech is transcribed **on-device** (WhisperKit) and only the few most relevant text excerpts ever reach the cloud.
 - **Shows its work** — every note, chat answer and commitment list carries a *"NVIDIA Nemotron on Nebius Token Factory"* badge with the exact model id.
 

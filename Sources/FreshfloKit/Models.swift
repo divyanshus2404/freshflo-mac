@@ -138,7 +138,8 @@ enum Provider: String, CaseIterable, Identifiable {
 
     var defaultCleanupModel: String {
         switch self {
-        case .nebius: return "nvidia/llama-3.1-nemotron-70b-instruct"
+        // Nemotron 3 Super (MoE, ~12B active) for the fast, everyday calls, per Nebius' tiering guidance.
+        case .nebius: return "nvidia/nemotron-3-super-120b-a12b"
         case .groq: return "qwen/qwen3.8-27b"
         case .openai: return "gpt-4.1-mini"
         case .custom: return "gpt-4o-mini"
@@ -149,7 +150,8 @@ enum Provider: String, CaseIterable, Identifiable {
     /// Stronger model for translation, Command and Ask, where quality matters more than ~300 ms.
     var defaultSmartModel: String {
         switch self {
-        case .nebius: return "nvidia/nemotron-3-super-120b-a12b"
+        // Nemotron 3 Ultra for the serious reasoning (multi-turn meeting chat, cross-meeting commitments).
+        case .nebius: return "nvidia/nemotron-3-ultra-550b-a55b"
         case .groq: return "openai/gpt-oss-120b"
         case .openai: return "gpt-4.1"
         case .custom: return "gpt-4o-mini"

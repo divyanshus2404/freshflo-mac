@@ -39,9 +39,12 @@ shipping your private audio to anyone.
 - **Nebius Token Factory** as an OpenAI-compatible provider — one new case in the
   `Provider` enum wired the whole AI stack (cleanup, notes, Ask, Command, chat) to
   Nebius with zero other call-site changes.
-- **NVIDIA Nemotron** for all reasoning. A resolver queries Token Factory's live
-  `/models` catalog and always prefers a Nemotron model, so the app can't silently
-  drift off an NVIDIA model when ids change.
+- **NVIDIA Nemotron** for all reasoning, tiered the way Nebius recommends: **Nemotron
+  3 Super** handles the fast, everyday calls (dictation cleanup, grammar, tone) and
+  **Nemotron 3 Ultra** handles the serious reasoning (multi-turn meeting chat,
+  cross-meeting commitment merging). A resolver queries Token Factory's live `/models`
+  catalog and always prefers a Nemotron model, so the app can't silently drift off an
+  NVIDIA model when ids change.
 - **On-device Whisper** for speech — Token Factory serves LLMs, not audio, so we keep
   transcription local, which is also a privacy win.
 - **Local RAG** — keyword retrieval + transcript excerpting over meetings stored on

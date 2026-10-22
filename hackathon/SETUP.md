@@ -30,8 +30,12 @@ NVIDIA model at the center of every intelligent feature.
    - Base URL: `https://api.tokenfactory.nebius.com/v1`
      (if your account is pinned to a region, use the URL shown in your dashboard,
      e.g. `https://api.tokenfactory.us-central1.nebius.com/v1`)
-   - Fast model (cleanup): `nvidia/llama-3.1-nemotron-70b-instruct`
-   - Smart model (chat, notes, Ask): `nvidia/nemotron-3-super-120b-a12b`
+   - Fast model (cleanup, everyday dictation): `nvidia/nemotron-3-super-120b-a12b` (Nemotron 3 **Super**)
+   - Smart model (chat, notes, commitments, Ask): `nvidia/nemotron-3-ultra-550b-a55b` (Nemotron 3 **Ultra**)
+
+   This follows Nebius' guidance: **Super** handles the fast, everyday calls and
+   **Ultra** handles the serious reasoning (multi-turn meeting chat, cross-meeting
+   commitment merging). Both are NVIDIA open models on Token Factory.
 
 If a default model id has been retired, Freshflo auto-discovers a replacement from
 Token Factory's live `/models` catalog and **prefers any NVIDIA Nemotron model**, so
