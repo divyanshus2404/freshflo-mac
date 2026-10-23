@@ -222,6 +222,9 @@ final class Updater {
 /// Shown once after an update, so people see what got better.
 enum WhatsNew {
     static let notes: [String: [String]] = [
+        "0.21.2": [
+            "Better Hindi and Hinglish to English: spoken amounts like \"paanch hazaar rupaye\" become ₹5,000, \"pehla, doosra, teesra\" lists come out clean and numbered, and a list's title (\"Shopping list:\") is kept.",
+        ],
         "0.21.1": [
             "Fixed: in long dictations, a short Hindi or Hinglish part could be misheard as another language (like Vietnamese). Every part is now checked, and the whole recording is re-heard if anything sounds off.",
         ],
