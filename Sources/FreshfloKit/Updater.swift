@@ -222,6 +222,12 @@ final class Updater {
 /// Shown once after an update, so people see what got better.
 enum WhatsNew {
     static let notes: [String: [String]] = [
+        "0.22.0": [
+            "Sync with your other devices: your dictionary, snippets and app styles on Mac, Windows and Android with one code. Encrypted on your Mac first, so nobody can read it, including us (Settings → Advanced).",
+            "Microphones switch smoothly: the Mac's mic now works while AirPods or Bluetooth headphones are connected, and switching mics mid-dictation keeps every word.",
+            "Hindi and Hinglish translate faithfully: \"we'll try to resolve it\" stays exactly that, never turned into a to-do list. English you speak is kept as you said it.",
+            "Switch the language you write in from the menu bar, or press ⌃⌥L anywhere.",
+        ],
         "0.21.2": [
             "Better Hindi and Hinglish to English: spoken amounts like \"paanch hazaar rupaye\" become ₹5,000, \"pehla, doosra, teesra\" lists come out clean and numbered, and a list's title (\"Shopping list:\") is kept.",
         ],
