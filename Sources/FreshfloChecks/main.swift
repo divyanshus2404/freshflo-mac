@@ -775,6 +775,14 @@ expectTrue(scenarios.allSatisfy { s in
     return CommitmentsEval.labels(parsed, groups: s.expect.groups).allSatisfy { $0 != nil } && Set(CommitmentsEval.labels(parsed, groups: s.expect.groups).compactMap { $0 }).count == s.expect.groups.count
 }, "every eval item is labelled and every group has an item")
 
+section("Streamed pieces")
+expectTrue(LanguageID.looksForeign("Cái bệnh hình hồi đó", hints: ["en", "hi"]), "Vietnamese from a misheard Hindi piece is caught")
+expect(LanguageID.looksForeign("check karo kya isme sara paste ho raha hai", hints: ["en", "hi"]), false, "Hinglish is yours when you speak Hindi")
+expect(LanguageID.looksForeign("I want you to let me know if it's working", hints: ["en", "hi"]), false, "English is fine")
+expect(LanguageID.looksForeign("कल सुबह मीटिंग है", hints: ["en", "hi"]), false, "Hindi in Devanagari is fine")
+expectTrue(LanguageID.looksForeign("কাল সকালে মিটিং আছে", hints: ["en", "hi"]), "Bengali script when you speak only English and Hindi")
+expect(LanguageID.looksForeign("Cái bệnh hình hồi đó", hints: ["en", "vi"]), false, "Vietnamese is fine if you speak it")
+
 // MARK: - Result
 
 if failures.isEmpty {

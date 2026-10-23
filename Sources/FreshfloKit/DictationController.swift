@@ -642,6 +642,10 @@ final class DictationController {
             var parts: [String] = []
             for task in chunks { parts.append(try await task.value) }
             parts.append(try await tailText)
+            // A streamed piece heard in a language you don't speak (short Hindi heard as Vietnamese, say): fall back to
+            // transcribing the whole recording at once, which checks and retries the language properly.
+            let hints = settings.spokenLanguages
+            if parts.contains(where: { LanguageID.looksForeign($0, hints: hints) }) { return nil }
             let text = parts.map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }.joined(separator: " ")
             return Transcript(text: text, engine: "\(endpoint.transcriptionModel) (×\(chunks.count + 1) streamed)")
         } catch {

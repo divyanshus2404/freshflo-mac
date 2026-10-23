@@ -57,6 +57,24 @@ enum LanguageID {
     }
 
 
+    /// A piece of text that reads as a language you don't speak, or uses letters none of your languages use
+    /// (Vietnamese-only letters from a misheard Hindi clip, say). Used to catch a misrecognised streamed piece.
+    static func looksForeign(_ text: String, hints: [String]) -> Bool {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty, !hints.isEmpty else { return false }
+        if isHinglish(t) { return !hints.contains("hi") }
+        // Letters outside every script your languages use.
+        let allowed = Set(hints.compactMap { Indic.expectedScript($0) } + [.latin])
+        for s in t.unicodeScalars {
+            if let sc = Indic.script(of: s), !allowed.contains(sc) { return true }
+            // Latin letters only Vietnamese uses (ơ ư, and the stacked-accent block).
+            if !hints.contains("vi"), (0x1EA0...0x1EF9).contains(s.value) || [0x01A0, 0x01A1, 0x01AF, 0x01B0].contains(s.value) { return true }
+        }
+        // Long enough to judge, and clearly another language.
+        if t.split(separator: " ").count >= 4, let (code, p) = recognize(t), p > 0.85, !hints.contains(code) { return true }
+        return false
+    }
+
     /// How sure Apple's recognizer is that `text` is in `code` (0…1), with no constraints.
     static func confidence(_ text: String, is code: String) -> Double {
         guard let lang = nlLanguage(code) else { return 0 }
