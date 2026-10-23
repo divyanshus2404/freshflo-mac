@@ -644,6 +644,7 @@
   "tag": "list",
   "raw": "shopping list mein pehla doodh, doosra bread, teesra ande",
   "must": [
+   "shopping list",
    "milk",
    "bread",
    "eggs"
@@ -678,21 +679,24 @@
    "cab"
   ],
   "mustNot": [
-   "hai",
-   "hain",
-   "karo",
-   "kar do",
-   "kal ",
-   "nahi",
+   "first book",
    "toh",
-   "bhi",
    "mujhe",
-   "aur ",
-   "kya ",
-   "yaar",
+   "kar do",
    "wala",
+   "hain",
+   "hai",
+   "bhi",
+   "kya ",
+   "bhej",
+   "yaar",
+   "kal ",
+   "aur ",
    "rakhna",
-   "bhej"
+   "karo",
+   "third arrange",
+   "nahi",
+   "second confirm"
   ]
  },
  {
@@ -777,6 +781,7 @@
   "tag": "money",
   "raw": "usko paanch hazaar rupaye transfer kar do",
   "must": [
+   "₹5,000",
    "transfer"
   ],
   "mustNot": [
@@ -996,6 +1001,35 @@
    "wala",
    "rakhna",
    "bhej"
+  ]
+ },
+ {
+  "tag": "money",
+  "raw": "mujhe do lakh pachaas hazaar rupaye ka invoice chahiye",
+  "must": [
+   "₹2,50,000",
+   "invoice"
+  ],
+  "mustNot": [
+   "hai",
+   "mujhe",
+   "chahiye"
+  ]
+ },
+ {
+  "tag": "list",
+  "raw": "aaj ke kaam: pehla client call, doosra design review, teesra invoice bhejna",
+  "must": [
+   "1.",
+   "client call",
+   "design review",
+   "invoice"
+  ],
+  "mustNot": [
+   "pehla",
+   "doosra",
+   "teesra",
+   "bhejna"
   ]
  }
 ]

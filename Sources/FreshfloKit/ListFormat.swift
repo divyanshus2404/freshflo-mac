@@ -37,13 +37,20 @@ enum ListFormat {
 
     /// Rewrites a spoken list as one item per line. Returns the text unchanged when it isn't a list.
     static func apply(_ text: String, bullet: String = "• ", capitalize: Bool = true) -> String {
-        let parsed = existingList(text) ?? parseMarkers(text) ?? parseCounted(text)
-        guard let parsed, parsed.items.count >= 2 || (parsed.kind == .bulleted && parsed.explicit && parsed.items.count >= 1) else { return text }
+        let found = existingList(text) ?? parseMarkers(text) ?? parseCounted(text)
+        guard var parsed = found, parsed.items.count >= 2 || (parsed.kind == .bulleted && parsed.explicit && parsed.items.count >= 1) else { return text }
         var lines: [String] = []
         let intro = cleanIntro(parsed.intro, capitalize: capitalize)
         if !intro.isEmpty { lines.append(intro) }
         var outro = parsed.outro.trimmingCharacters(in: .whitespacesAndNewlines)
         var number = 0
+        // "1. First book the ticket, 2. Second confirm the hotel": when every item opens with the next order word,
+        // the numbers already say it, so the words go. ("1. First class tickets, 2. Hotel" keeps "First".)
+        if parsed.kind == .numbered, orderedOpeners(parsed.items) {
+            parsed.items = parsed.items.map {
+                $0.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: #"(?i)^(?:first(?:ly)?|second(?:ly)?|third(?:ly)?|fourth(?:ly)?|fifth(?:ly)?|sixth|seventh|eighth|ninth|tenth|next|then|after that|finally|lastly)\b(?:\s+of\s+all)?[,:]?\s+(?=\w)"#, with: "", options: .regularExpression)
+            }
+        }
         for (i, raw) in parsed.items.enumerated() {
             var item = raw
             if i == parsed.items.count - 1, outro.isEmpty {
@@ -227,6 +234,17 @@ enum ListFormat {
         let tail = after.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
         parsed.outro = tail
         return parsed
+    }
+
+    private static func orderedOpeners(_ items: [String]) -> Bool {
+        guard items.count >= 2 else { return false }
+        for (i, item) in items.enumerated() {
+            let w = item.trimmingCharacters(in: .whitespaces).lowercased().split(whereSeparator: { !$0.isLetter }).first.map(String.init) ?? ""
+            let expected = i < ordinals.count ? ordinals[i] : ""
+            let ok = w == expected || w == expected + "ly" || (i > 0 && ["next", "then", "finally", "lastly"].contains(w))
+            if !ok { return false }
+        }
+        return true
     }
 
     // MARK: Cleaning pieces

@@ -789,6 +789,15 @@ expect(LanguageID.matches("Matlab basically has to launch next week.", target: "
 expectTrue(LanguageID.matches("Tomorrow there's a meeting, so please prepare the deck and email the client.", target: "English"), "real English passes")
 expectTrue(LanguageID.matches("Priya and Divyanshu are going to Mumbai next Monday.", target: "English"), "Indian names aren't Hindi words")
 
+section("Rupees, lists")
+expect(Regional.apply("Transfer five thousand rupees to him.", .india), "Transfer ₹5,000 to him.", "rupees in words")
+expect(Regional.apply("Make an invoice for two lakh fifty thousand rupees.", .india), "Make an invoice for ₹2,50,000.", "lakh in words")
+expect(Regional.apply("It costs one hundred and twenty rupees", .india), "It costs ₹120", "hundred and")
+expect(Regional.apply("Not even a rupee left", .india), "Not even a rupee left", "\"a rupee\" stays words")
+expect(Regional.apply("five thousand rupees", .none), "five thousand rupees", "only with Indian formats")
+expect(ListFormat.apply("1. First book the ticket\n2. Second confirm the hotel\n3. Third arrange the cab"), "1. Book the ticket\n2. Confirm the hotel\n3. Arrange the cab", "ordinal words dropped from numbered items")
+expect(ListFormat.apply("1. First class tickets\n2. Hotel"), "1. First class tickets\n2. Hotel", "'First class' keeps 'First'")
+
 // MARK: - Result
 
 if failures.isEmpty {
