@@ -808,6 +808,19 @@ if let k = SyncCrypto.keys("ABCD-EFGH-JKMN-PQRS"), let other = SyncCrypto.keys("
     expectTrue(SyncCrypto.same(SyncCrypto.merge(local: m, remote: p), m), "merging again changes nothing")
 }
 
+section("Faithful translation")
+expectTrue(Cleanup.inventedStructure("Sync Discord and resolve any issues that arise:\n- Perform the sync\n- If any issue occurs, resolve it", raw: "main sync kar raha hoon, koi issue aayega to hum resolve karenge"), "a to-do list nobody dictated is rejected")
+expectTrue(Cleanup.inventedStructure("Check if it works:\n- Let me know\n- Tell me", raw: "Can you just let me know if this is working? Is my voice clear?"), "a question turned into bullets is rejected")
+expectTrue(!Cleanup.inventedStructure("Shopping list:\n- Milk\n- Bread", raw: "shopping list mein doodh aur bread"), "a dictated list is kept")
+expectTrue(!Cleanup.inventedStructure("1. Fix the resolver\n2. Bump Next.js", raw: "first fix the resolver second bump next js"), "spoken first/second is a list")
+expectTrue(!Cleanup.inventedStructure("We'll try to resolve it.", raw: "hum ise resolve karne ki koshish karenge"), "plain sentences pass")
+expectTrue(LanguageID.alreadyIn("Can you just let me know if this speech is actually working?", target: "English"), "English needs no translation")
+expectTrue(!LanguageID.alreadyIn("haan theek hai", target: "English"), "short Hinglish still gets translated")
+expectTrue(!LanguageID.alreadyIn("hum ise resolve karne ki koshish karenge", target: "English"), "Hinglish gets translated")
+expectTrue(!LanguageID.alreadyIn("ہم اسے ریزولو کریں گے", target: "English"), "Urdu letters get translated")
+expectTrue(LanguageID.detect(text: "ہم دیکھتے ہیں کوئی ایشو آئے گا تو اس کو ہم ریزولو کریں گے", whisperGuess: "ur", hints: ["en", "hi"])?.code == "hi", "Urdu guess means Hindi for a Hindi speaker")
+expectTrue(LanguageID.detect(text: "ہم دیکھتے ہیں کوئی ایشو آئے گا تو اس کو ہم ریزولو کریں گے", whisperGuess: "ur", hints: ["en", "ur"])?.code == "ur", "Urdu stays Urdu for an Urdu speaker")
+
 section("Write-in picker")
 expectTrue(Languages.quick(spoken: ["en", "hi"], current: "") == ["", "English", "Hindi", "Hinglish (Hindi in Latin letters)"], "quick list for Hindi speakers")
 expectTrue(Languages.next(after: "", spoken: ["en", "hi"]) == "English", "cycle: same → English")

@@ -57,6 +57,14 @@ enum LanguageID {
 
     /// The spoken language, from Whisper's guess (if any), the text and your languages.
     static func detect(text: String, whisperGuess: String?, hints: [String]) -> Detection? {
+        guard let d = rawDetect(text: text, whisperGuess: whisperGuess, hints: hints) else { return nil }
+        // Spoken Hindi and Urdu are nearly the same, and Whisper often guesses Urdu for Hindi speakers. If you speak
+        // Hindi and not Urdu, it's Hindi (then re-heard in Devanagari, since Urdu letters are the wrong script for it).
+        if d.code == "ur", hints.contains("hi"), !hints.contains("ur") { return Detection(code: "hi", hinglish: d.hinglish) }
+        return d
+    }
+
+    private static func rawDetect(text: String, whisperGuess: String?, hints: [String]) -> Detection? {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !t.isEmpty else { return nil }
         if isHinglish(t) { return Detection(code: "hi", hinglish: true) }
@@ -133,6 +141,19 @@ enum LanguageID {
     ]
 
     /// True when `text` is (mostly) in the requested "Write in" language. Unknown targets pass.
+    /// Whether speech is already in the "Write in" language, so it needs cleanup but no translation.
+    /// Stricter than `matches` on short text: "haan theek hai" is short, but it's Hindi.
+    static func alreadyIn(_ text: String, target: String) -> Bool {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !target.isEmpty, !t.isEmpty else { return true }
+        guard !target.lowercased().hasPrefix("hinglish"), let code = writtenCodes[target] else { return matches(t, target: target) }
+        if code != "hi", isHinglish(t) || hinglishLeftovers(t) > 0 { return false }
+        // Letters from a script the target doesn't use (Devanagari or Urdu letters when writing English).
+        let want = Indic.expectedScript(code) ?? .latin
+        if t.unicodeScalars.contains(where: { Indic.script(of: $0).map { $0 != want } ?? false }) { return false }
+        return matches(t, target: target)
+    }
+
     static func matches(_ text: String, target: String) -> Bool {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard t.split(separator: " ").count >= 3 || t.count >= 12 else { return true }   // too short to judge

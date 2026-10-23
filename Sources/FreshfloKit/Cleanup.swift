@@ -167,7 +167,7 @@ enum Cleanup {
             instructions += "\nSpell these names and terms exactly like this: " + input.vocabulary.prefix(60).joined(separator: ", ")
         }
         if input.translating {
-            instructions += "\nWrite the final text in \(input.outputLanguage). If the speaker used another language or mixed languages, translate it naturally into \(input.outputLanguage); this is the one exception to keeping their exact words. Work in this order: drop fillers (um, matlab, basically, haan toh), apply the speaker's corrections (\"Tuesday, nahi nahi, Wednesday\" → Wednesday), then translate everything, including each list item, so no Hindi or Hinglish word is left. Keep a lead-in like 'shopping list' as its own line ('Shopping list:') before the items. Keep names, brands, numbers, email addresses and code as they are. Translate the meaning naturally, the way a fluent \(input.outputLanguage) speaker would write it, not word for word."
+            instructions += "\nWrite the final text in \(input.outputLanguage). If the speaker used another language or mixed languages, translate it naturally into \(input.outputLanguage); this is the one exception to keeping their exact words. Work in this order: drop fillers (um, matlab, basically, haan toh), apply the speaker's corrections (\"Tuesday, nahi nahi, Wednesday\" → Wednesday), then translate everything, including each list item, so no Hindi or Hinglish word is left. Keep a lead-in like 'shopping list' as its own line ('Shopping list:') before the items. Keep names, brands, numbers, email addresses and code as they are. Translate the meaning naturally, the way a fluent \(input.outputLanguage) speaker would write it, not word for word. Stay faithful: keep who is speaking (\"hum\" is \"we\", \"main\" is \"I\"), the tense, and what they meant (\"hum resolve karne ki koshish karenge\" is \"we'll try to resolve it\", not an instruction). A statement stays a statement and a question stays a question. Never add a title, heading, summary or bullet list the speaker didn't dictate."
         }
         if let regional = input.regional.instruction { instructions += "\n" + regional }
         if input.emailMode { instructions += "\n" + EmailFormat.instruction }
@@ -200,6 +200,8 @@ enum Cleanup {
             text = String(text.dropFirst().dropLast())
         }
         guard !text.isEmpty, text.count <= raw.count * (translating ? 4 : 2) + 40 else { return nil }
+        // A list or heading the speaker never dictated means the model rewrote them (a plan, a prompt) instead of writing what they said.
+        if inventedStructure(text, raw: raw) { return nil }
         // Word-overlap checks can't apply when the output is in another language.
         if translating { return text }
 
@@ -221,6 +223,19 @@ enum Cleanup {
         let outSet = Set(outWords)
         if spoken.count >= 6, Double(spoken.filter(outSet.contains).count) / Double(spoken.count) < 0.5 { return nil }
         return text
+    }
+
+    /// Output with list lines or a "Title:" first line, from speech with no sign of a list.
+    static func inventedStructure(_ text: String, raw: String) -> Bool {
+        let lines = text.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        let listLines = lines.filter { $0.range(of: #"^([-•*–]|\d{1,2}[.)])\s"#, options: .regularExpression) != nil }.count
+        let titled = lines.count > 1 && lines[0].hasSuffix(":")
+        guard listLines >= 2 || titled else { return false }
+        if ListFormat.detect(raw).kind != nil { return false }
+        let r = " " + raw.lowercased() + " "
+        let cues = ["list", "bullet", "point", "step", "first", "second", "pehla", "pehle", "pahla", "doosra", "dusra", "teesra", "tisra",
+                    "पहला", "दूसरा", "तीसरा", "پہلا", "دوسرا", "تیسرا", "लिस्ट", "لسٹ", "dear", "hi ", "hello", "regards", "thanks"]
+        return !cues.contains { r.contains($0) }
     }
 
     private static let numberWords: Set<String> = [

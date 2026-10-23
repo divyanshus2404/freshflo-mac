@@ -83,7 +83,8 @@ enum Pipeline {
             vocabulary: settings.dictionary + extraVocabulary + settings.knownNames,
             keepPhrases: snippets.map(\.trigger).filter { !$0.isEmpty },
             customInstructions: settings.customInstructions,
-            outputLanguage: settings.outputLanguage,
+            // Already in that language (and not Hinglish): normal cleanup, whose checks keep your exact words.
+            outputLanguage: LanguageID.alreadyIn(raw, target: settings.outputLanguage) ? "" : settings.outputLanguage,
             regional: settings.regionalFormat,
             longForm: longForm,
             profanity: settings.profanity,
