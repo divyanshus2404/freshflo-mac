@@ -80,7 +80,7 @@ enum TalkMode: String, CaseIterable, Identifiable {
 
 /// Extra global shortcuts. None are set by default except Cancel (Esc, only while dictating).
 enum ShortcutAction: String, CaseIterable, Identifiable, Codable {
-    case cancel, handsFree, pasteLast, meeting, scratchpad, palette
+    case cancel, handsFree, pasteLast, meeting, scratchpad, palette, writeIn
     var id: String { rawValue }
     var label: String {
         switch self {
@@ -90,12 +90,14 @@ enum ShortcutAction: String, CaseIterable, Identifiable, Codable {
         case .meeting: return "Start or stop meeting notes"
         case .scratchpad: return "Open Scratchpad"
         case .palette: return "Find anything (command palette)"
+        case .writeIn: return "Switch the language you write in"
         }
     }
     var defaultCombo: KeyCombo? {
         switch self {
         case .cancel: return .escape
         case .palette: return KeyCombo(keyCode: 40, modifiers: CGEventFlags.maskControl.rawValue | CGEventFlags.maskAlternate.rawValue, key: "K")
+        case .writeIn: return KeyCombo(keyCode: 37, modifiers: CGEventFlags.maskControl.rawValue | CGEventFlags.maskAlternate.rawValue, key: "L")
         default: return nil
         }
     }

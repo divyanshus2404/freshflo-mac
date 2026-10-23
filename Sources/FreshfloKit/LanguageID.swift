@@ -121,6 +121,8 @@ enum LanguageID {
     // MARK: Written language
 
     /// "Write in" names → the code Apple's recognizer reports.
+    static func writtenCode(_ name: String) -> String? { writtenCodes[name] }
+
     private static let writtenCodes: [String: String] = [
         "English": "en", "Hindi": "hi", "Bengali": "bn", "Marathi": "mr", "Tamil": "ta", "Telugu": "te", "Gujarati": "gu", "Kannada": "kn",
         "Malayalam": "ml", "Punjabi": "pa", "Urdu": "ur", "Nepali": "ne", "Spanish": "es", "French": "fr", "German": "de", "Portuguese": "pt",

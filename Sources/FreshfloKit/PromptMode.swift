@@ -155,6 +155,26 @@ enum Languages {
         ("zu", "Zulu"),
     ]
     /// Output language names, as the model is told them ("" = same as spoken).
+    /// The few you switch between, in order: Same as spoken → English → the other language you speak.
+    static func quick(spoken: [String], current: String) -> [String] {
+        var list = ["", "English"]
+        if spoken.contains("hi") { list += ["Hindi", "Hinglish (Hindi in Latin letters)"] }
+        for code in spoken where code != "en" && code != "hi" {
+            if let name = written.first(where: { LanguageID.writtenCode($0) == code }) { list.append(name) }
+        }
+        if !list.contains(current) { list.append(current) }
+        return list
+    }
+
+    /// The next one in the quick list, for the switch shortcut.
+    static func next(after current: String, spoken: [String]) -> String {
+        let list = quick(spoken: spoken, current: current)
+        let i = list.firstIndex(of: current) ?? 0
+        return list[(i + 1) % list.count]
+    }
+
+    static func label(_ written: String) -> String { written.isEmpty ? "Same as spoken" : written }
+
     static let written: [String] = [
         "",
         "English",

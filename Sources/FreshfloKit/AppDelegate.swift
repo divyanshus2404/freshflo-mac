@@ -258,6 +258,23 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         if let k = settings.shortcut(.palette) { find.title += "  " + k.label }
         menu.addItem(find)
 
+        // The language you write in, one click away.
+        let writeIn = NSMenuItem(title: "Write in: \(Languages.label(settings.outputLanguage))", action: nil, keyEquivalent: "")
+        let w = NSMenu()
+        for lang in Languages.quick(spoken: settings.spokenLanguages, current: settings.outputLanguage) {
+            let mi = item(Languages.label(lang), #selector(pickWriteIn(_:)))
+            mi.representedObject = lang
+            mi.state = lang == settings.outputLanguage ? .on : .off
+            w.addItem(mi)
+        }
+        w.addItem(.separator())
+        let hint = NSMenuItem(title: "Switch anytime: \(settings.shortcut(.writeIn)?.label ?? "set a shortcut in Settings")", action: nil, keyEquivalent: "")
+        hint.isEnabled = false
+        w.addItem(hint)
+        w.addItem(item("More Languages…", #selector(openSettings)))
+        writeIn.submenu = w
+        menu.addItem(writeIn)
+
         // 4. Everything else, one level down.
         menu.addItem(.separator())
         let tools = NSMenuItem(title: "Tools", action: nil, keyEquivalent: "")
@@ -456,8 +473,18 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         case .meeting: toggleMeeting()
         case .scratchpad: openScratchpad()
         case .palette: CommandPalette.shared.toggle()
+        case .writeIn: setWriteIn(Languages.next(after: settings.outputLanguage, spoken: settings.spokenLanguages))
         }
         return true
+    }
+
+    @objc private func pickWriteIn(_ sender: NSMenuItem) {
+        setWriteIn(sender.representedObject as? String ?? "")
+    }
+
+    private func setWriteIn(_ lang: String) {
+        settings.outputLanguage = lang
+        dictation.pill.flash(lang.isEmpty ? "Writing as you speak" : "Writing in \(lang.components(separatedBy: " (").first ?? lang)", seconds: 1.6, isError: false)
     }
 
     @objc private func pasteLast() {

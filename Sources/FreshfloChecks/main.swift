@@ -789,6 +789,13 @@ expect(LanguageID.matches("Matlab basically has to launch next week.", target: "
 expectTrue(LanguageID.matches("Tomorrow there's a meeting, so please prepare the deck and email the client.", target: "English"), "real English passes")
 expectTrue(LanguageID.matches("Priya and Divyanshu are going to Mumbai next Monday.", target: "English"), "Indian names aren't Hindi words")
 
+section("Write-in picker")
+expectTrue(Languages.quick(spoken: ["en", "hi"], current: "") == ["", "English", "Hindi", "Hinglish (Hindi in Latin letters)"], "quick list for Hindi speakers")
+expectTrue(Languages.next(after: "", spoken: ["en", "hi"]) == "English", "cycle: same → English")
+expectTrue(Languages.next(after: "Hinglish (Hindi in Latin letters)", spoken: ["en", "hi"]) == "", "cycle wraps")
+expectTrue(Languages.quick(spoken: ["en", "ta"], current: "French").suffix(2) == ["Tamil", "French"], "spoken + current kept")
+expectTrue(Languages.label("") == "Same as spoken", "label")
+
 section("Rupees, lists")
 expect(Regional.apply("Transfer five thousand rupees to him.", .india), "Transfer ₹5,000 to him.", "rupees in words")
 expect(Regional.apply("Make an invoice for two lakh fifty thousand rupees.", .india), "Make an invoice for ₹2,50,000.", "lakh in words")
