@@ -297,8 +297,10 @@ final class DictationController {
             guard self?.state == .recording else { return }
             self?.finish()
         }
-        // Bluetooth mics can take a couple of seconds to start delivering sound, so only judge after 2.5 s.
-        micCheck = Timer.scheduledTimer(withTimeInterval: 2.5, repeats: false) { [weak self] _ in self?.checkMicIsAlive() }
+        // A working wired or built-in mic delivers sound within ~0.2 s, so a dead one is caught in under a second.
+        // Bluetooth mics can take a couple of seconds to start, so only judge those after 2.5 s.
+        let bluetooth = AudioDevices.deviceID(forUID: recorder.deviceUID).map(AudioDevices.isBluetooth) ?? AudioDevices.defaultInputID().map(AudioDevices.isBluetooth) ?? false
+        micCheck = Timer.scheduledTimer(withTimeInterval: bluetooth ? 2.5 : 0.8, repeats: false) { [weak self] _ in self?.checkMicIsAlive() }
         chunkCut = 0
         chunkTasks = []
         if settings.provider.transcribesInCloud, settings.canUseCloud {

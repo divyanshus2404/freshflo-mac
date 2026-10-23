@@ -29,8 +29,6 @@ final class AudioRecorder {
     var retainSamples = true
     private(set) var isRecording = false
 
-    private var engine: AVAudioEngine?
-    private var converter: AVAudioConverter?
     private var samples: [Float] = []
     private let lock = NSLock()
     private var peak: Float = 0
@@ -48,43 +46,77 @@ final class AudioRecorder {
         lock.lock(); defer { lock.unlock() }
         return peak
     }
-    private static let targetFormat = AVAudioFormat(
-        commonFormat: .pcmFormatFloat32, sampleRate: AudioRecorder.sampleRate, channels: 1, interleaved: false
-    )!
+    /// Recording runs through AVCaptureSession, which opens any mic on its own. (AVAudioEngine ties the mic to the
+    /// current speakers, and with AirPods or Bluetooth headphones as speakers the Mac's own mic delivered nothing at all.)
+    /// The session is reused between recordings of the same mic, so the next dictation starts instantly.
+    private var session: AVCaptureSession?
+    private var sessionUID: String?
+    private let sink = Sink()
+    private let queue = DispatchQueue(label: "app.freshflo.mic", qos: .userInteractive)
+    private var observers: [NSObjectProtocol] = []
 
-    /// Reused between recordings: building a new engine each time added ~100 ms before the mic was live.
-    /// It's thrown away when the device changes (AirPods connect) or the user picks a different mic.
-    private var reusableEngine: AVAudioEngine?
-    private var reusableDeviceUID: String?
-    private var configObserver: NSObjectProtocol?
-
-    private func makeEngine() -> AVAudioEngine {
-        if let engine = reusableEngine, reusableDeviceUID == deviceUID { return engine }
-        let engine = AVAudioEngine()
-        if !deviceUID.isEmpty, let device = AudioDevices.deviceID(forUID: deviceUID), let unit = engine.inputNode.audioUnit {
-            var id = device
-            AudioUnitSetProperty(
-                unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0,
-                &id, UInt32(MemoryLayout<AudioDeviceID>.size)
-            )
+    /// Receives 16 kHz mono Float32 buffers from the capture session.
+    private final class Sink: NSObject, AVCaptureAudioDataOutputSampleBufferDelegate {
+        var onChunk: (([Float]) -> Void)?
+        func captureOutput(_ output: AVCaptureOutput, didOutput buffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+            guard let block = CMSampleBufferGetDataBuffer(buffer) else { return }
+            var length = 0
+            var pointer: UnsafeMutablePointer<CChar>?
+            guard CMBlockBufferGetDataPointer(block, atOffset: 0, lengthAtOffsetOut: nil, totalLengthOut: &length, dataPointerOut: &pointer) == kCMBlockBufferNoErr,
+                  let pointer, length >= 4 else { return }
+            let count = length / MemoryLayout<Float>.size
+            let chunk = pointer.withMemoryRebound(to: Float.self, capacity: count) { Array(UnsafeBufferPointer(start: $0, count: count)) }
+            onChunk?(chunk)
         }
-        if let configObserver { NotificationCenter.default.removeObserver(configObserver) }
-        configObserver = NotificationCenter.default.addObserver(
-            forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main
-        ) { [weak self] note in
+    }
+
+    private func device() -> AVCaptureDevice? {
+        if !deviceUID.isEmpty, let d = AVCaptureDevice(uniqueID: deviceUID) { return d }
+        return AVCaptureDevice.default(for: .audio)
+    }
+
+    private func makeSession() throws -> AVCaptureSession {
+        if let session, sessionUID == deviceUID { return session }
+        teardown()
+        guard let device = device() else { throw RecorderError.noInput }
+        let session = AVCaptureSession()
+        guard let input = try? AVCaptureDeviceInput(device: device), session.canAddInput(input) else { throw RecorderError.noInput }
+        session.addInput(input)
+        let output = AVCaptureAudioDataOutput()
+        output.audioSettings = [
+            AVFormatIDKey: kAudioFormatLinearPCM, AVSampleRateKey: Self.sampleRate, AVNumberOfChannelsKey: 1,
+            AVLinearPCMBitDepthKey: 32, AVLinearPCMIsFloatKey: true, AVLinearPCMIsNonInterleaved: false, AVLinearPCMIsBigEndianKey: false,
+        ]
+        output.setSampleBufferDelegate(sink, queue: queue)
+        guard session.canAddOutput(output) else { throw RecorderError.noInput }
+        session.addOutput(output)
+        sink.onChunk = { [weak self] in self?.process($0) }
+        let center = NotificationCenter.default
+        // The mic was unplugged or the headset turned off: the owner moves to the next best mic.
+        observers.append(center.addObserver(forName: AVCaptureDevice.wasDisconnectedNotification, object: device, queue: .main) { [weak self] _ in
             guard let self else { return }
-            self.reusableEngine = nil
+            self.teardown()
+            if self.isRecording { self.isRecording = false; self.onDeviceLost?() }
+        })
+        // macOS interrupted the session (audio reconfigured): same mic, restart quietly.
+        observers.append(center.addObserver(forName: AVCaptureSession.runtimeErrorNotification, object: session, queue: .main) { [weak self] _ in
+            guard let self else { return }
+            self.teardown()
             guard self.isRecording else { return }
-            // macOS reconfigures audio for many harmless reasons (Voice Isolation turning on, another app changing
-            // the sample rate, a virtual device like Camo or BlackHole waking up). Only a mic that's really gone
-            // means switching; otherwise keep recording from the same mic.
-            if let engine = note.object as? AVAudioEngine, engine.isRunning { return }
-            let stillThere = self.deviceUID.isEmpty || AudioDevices.deviceID(forUID: self.deviceUID) != nil
-            if stillThere { self.onEngineReset?() } else { self.onDeviceLost?() }
-        }
-        reusableEngine = engine
-        reusableDeviceUID = deviceUID
-        return engine
+            self.isRecording = false
+            if AVCaptureDevice(uniqueID: self.deviceUID) != nil || self.deviceUID.isEmpty { self.onEngineReset?() } else { self.onDeviceLost?() }
+        })
+        self.session = session
+        sessionUID = deviceUID
+        return session
+    }
+
+    private func teardown() {
+        observers.forEach(NotificationCenter.default.removeObserver)
+        observers = []
+        if let session, session.isRunning { session.stopRunning() }
+        session = nil
+        sessionUID = nil
     }
 
     /// Number of samples captured so far (for chunked transcription while still recording).
@@ -101,52 +133,30 @@ final class AudioRecorder {
 
     func start() throws {
         lock.lock(); samples.removeAll(keepingCapacity: true); peak = 0; voice = VoiceSense.Tracker(); lock.unlock()
-        let engine = makeEngine()
-        let input = engine.inputNode
-        let format = input.outputFormat(forBus: 0)
-        guard format.sampleRate > 0, format.channelCount > 0 else { throw RecorderError.noInput }
-        converter = AVAudioConverter(from: format, to: Self.targetFormat)
-        input.installTap(onBus: 0, bufferSize: 2048, format: format) { [weak self] buffer, _ in
-            self?.process(buffer)
+        var session = try makeSession()
+        if !session.isRunning { session.startRunning() }
+        if !session.isRunning {
+            // A reused session can go stale after devices change; try once more with a fresh one.
+            teardown()
+            session = try makeSession()
+            session.startRunning()
+            guard session.isRunning else { teardown(); throw RecorderError.noInput }
         }
-        engine.prepare()
-        do {
-            try engine.start()
-        } catch {
-            // A stale reused engine can fail after device changes; retry once with a fresh one.
-            input.removeTap(onBus: 0)
-            reusableEngine = nil
-            let fresh = makeEngine()
-            let freshFormat = fresh.inputNode.outputFormat(forBus: 0)
-            guard freshFormat.sampleRate > 0 else { throw RecorderError.noInput }
-            converter = AVAudioConverter(from: freshFormat, to: Self.targetFormat)
-            fresh.inputNode.installTap(onBus: 0, bufferSize: 2048, format: freshFormat) { [weak self] buffer, _ in
-                self?.process(buffer)
-            }
-            fresh.prepare()
-            try fresh.start()
-            self.engine = fresh
-            isRecording = true
-            return
-        }
-        self.engine = engine
         isRecording = true
     }
 
     /// Stops capture and returns everything recorded since `start()`.
     func stop() -> [Float] {
-        guard isRecording, let engine else { return [] }
-        engine.inputNode.removeTap(onBus: 0)
-        engine.stop()
-        self.engine = nil
+        guard isRecording else { return [] }
         isRecording = false
+        session?.stopRunning()
+        queue.sync {}   // let the last buffers land
         lock.lock(); defer { lock.unlock() }
         return samples
     }
 
-    private func process(_ buffer: AVAudioPCMBuffer) {
-        guard let converter, let chunk = Self.convert(buffer, with: converter) else { return }
-        guard !chunk.isEmpty else { return }
+    private func process(_ chunk: [Float]) {
+        guard isRecording, !chunk.isEmpty else { return }
         var sum: Float = 0
         for s in chunk { sum += s * s }
         let rms = sqrt(sum / Float(chunk.count))
@@ -189,7 +199,10 @@ final class AudioRecorder {
         return SIMD3(norm(e.x, 1), norm(e.y, 1.6), norm(e.z, 4))
     }
 
-    private static func convert(_ buffer: AVAudioPCMBuffer, with converter: AVAudioConverter) -> [Float]? {
+    /// 16 kHz mono Float32, for converting audio files.
+    static let targetFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: AudioRecorder.sampleRate, channels: 1, interleaved: false)!
+
+    static func convert(_ buffer: AVAudioPCMBuffer, with converter: AVAudioConverter) -> [Float]? {
         let ratio = targetFormat.sampleRate / buffer.format.sampleRate
         let capacity = AVAudioFrameCount(Double(buffer.frameLength) * ratio) + 64
         guard let out = AVAudioPCMBuffer(pcmFormat: targetFormat, frameCapacity: capacity) else { return nil }

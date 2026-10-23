@@ -3,8 +3,11 @@ import Security
 
 enum Keychain {
     private static let service = "com.freshflo.app"
+    /// The checks never need secrets, and reading them from an unsigned build makes macOS stop and ask.
+    private static let disabled = ProcessInfo.processInfo.processName == "FreshfloChecks"
 
     static func get(_ account: String) -> String {
+        if disabled { return "" }
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -19,6 +22,7 @@ enum Keychain {
     }
 
     static func set(_ value: String, for account: String) {
+        if disabled { return }
         let base: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,

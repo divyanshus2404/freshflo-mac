@@ -7,7 +7,7 @@ import Foundation
 ///   Freshflo --command "make this formal" [--selection "hey whats up"]
 public enum CLI {
     public static var isRequested: Bool {
-        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update", "--grammar-eval", "--ask-meetings", "--render-stats", "--mic-test", "--polish-batch", "--voice-sense", "--render-appearance", "--render-styles", "--diarize", "--mic-info", "--whisper-local", "--seed-demo", "--remove-demo", "--commitments", "--next-step", "--research", "--commitments-eval", "--render-ui", "--sync-test"].contains(where: CommandLine.arguments.contains)
+        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update", "--grammar-eval", "--ask-meetings", "--render-stats", "--mic-test", "--polish-batch", "--voice-sense", "--render-appearance", "--render-styles", "--diarize", "--mic-info", "--whisper-local", "--seed-demo", "--remove-demo", "--commitments", "--next-step", "--research", "--commitments-eval", "--render-ui", "--sync-test", "--mic-switch-test"].contains(where: CommandLine.arguments.contains)
     }
 
     /// Shows the real floating indicator inside a proper app run loop with synthetic speech (performance checks).
@@ -344,11 +344,29 @@ public enum CLI {
             } catch { print("error: \(error.localizedDescription)") }
             return
         }
+        if CommandLine.arguments.contains("--mic-switch-test") {
+            // Switches mics mid-recording the way a dictation does when headphones connect or disconnect.
+            let rec = AudioRecorder()
+            var carried = 0
+            for (i, d) in (AudioDevices.ranked(preferBuiltIn: false).filter { AudioDevices.kind($0) != .virtual } + AudioDevices.ranked(preferBuiltIn: false).prefix(1)).enumerated() {
+                let t0 = Date()
+                if i > 0 { carried += rec.stop().count }
+                rec.deviceUID = d.uid
+                do { try rec.start() } catch { print("\(d.name): couldn't start: \(error)"); continue }
+                let switchMs = Date().timeIntervalSince(t0) * 1000
+                spinRunLoop(1.5)
+                print(String(format: "%@: switched in %.0f ms · %.1fs of audio · peak %.3f", d.name, switchMs, Double(rec.sampleCount) / 16_000, rec.peakSoFar))
+            }
+            carried += rec.stop().count
+            print(String(format: "kept %.1fs across all mics", Double(carried) / 16_000))
+            return
+        }
         if CommandLine.arguments.contains("--mic-test") {
             // Records a few seconds the way a dictation does and reports what the mic delivered.
             let seconds = Double(value("--mic-test") ?? "") ?? 4
             let rec = AudioRecorder()
             rec.deviceUID = AudioDevices.preferredUID(chosen: AppSettings.shared.inputDeviceUID, preferBuiltIn: AppSettings.shared.preferBuiltInMic)
+            if let want = value("--device")?.lowercased(), let d = AudioDevices.inputs().first(where: { $0.name.lowercased().contains(want) }) { rec.deviceUID = d.uid }
             let mute = CommandLine.arguments.contains("--mute") && !AudioDevices.outputIsHeadphones && AudioDevices.outputMuted == false
             if mute { AudioDevices.outputMuted = true }
             defer { if mute { AudioDevices.outputMuted = false } }
@@ -366,6 +384,9 @@ public enum CLI {
             let rms = sqrt(s.reduce(Float(0)) { $0 + $1 * $1 } / Float(max(1, s.count)))
             print(String(format: "samples %.1fs · peak %.3f · rms %.4f · active sound %.1fs · voice %.1fs · kept %.1fs · engine resets %d · mic lost %d · speakers %@",
                          Double(s.count) / 16_000, peak, rms, active, voiced, Double(trimmed.count) / 16_000, resets, lost, mute ? "muted" : "playing"))
+            if let out = value("--save") { try? AudioRecorder.wav(from: s).write(to: URL(fileURLWithPath: out)) }
+            let firstSound = s.firstIndex { abs($0) > 0.0005 }.map { Double($0) / 16_000 }
+            print(firstSound.map { String(format: "first sound after %.2fs", $0) } ?? "no sound at all")
             print(peak < 0.0001 ? "⚠︎ mic delivered silence (muted, or no permission)" : voiced >= 0.3 ? "✓ heard a voice" : "· no voice heard (that's fine if you stayed quiet)")
             return
         }
