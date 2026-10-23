@@ -7,7 +7,7 @@ import Foundation
 ///   Freshflo --command "make this formal" [--selection "hey whats up"]
 public enum CLI {
     public static var isRequested: Bool {
-        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update", "--grammar-eval", "--ask-meetings", "--render-stats", "--mic-test", "--polish-batch", "--voice-sense", "--render-appearance", "--render-styles", "--diarize", "--mic-info", "--whisper-local", "--seed-demo", "--remove-demo", "--commitments", "--next-step", "--research", "--commitments-eval", "--render-ui"].contains(where: CommandLine.arguments.contains)
+        ["--transcribe", "--command", "--models", "--file", "--preview", "--ask", "--meeting", "--render-pill", "--stream-test", "--render-onboarding", "--render-onboarding-steps", "--benchmark", "--check-update", "--grammar-eval", "--ask-meetings", "--render-stats", "--mic-test", "--polish-batch", "--voice-sense", "--render-appearance", "--render-styles", "--diarize", "--mic-info", "--whisper-local", "--seed-demo", "--remove-demo", "--commitments", "--next-step", "--research", "--commitments-eval", "--render-ui", "--sync-test"].contains(where: CommandLine.arguments.contains)
     }
 
     /// Shows the real floating indicator inside a proper app run loop with synthetic speech (performance checks).
@@ -329,6 +329,19 @@ public enum CLI {
         if let out = value("--render-styles") {
             StyleGallery.render(to: URL(fileURLWithPath: out))
             print("rendered \(out)")
+            return
+        }
+        if CommandLine.arguments.contains("--sync-test") {
+            // Round trip with the live sync server: read what's there for a code, add one word, upload. For cross-platform checks.
+            guard let code = value("--sync-test"), let keys = SyncCrypto.keys(code) else { print("usage: --sync-test CODE [--word W]"); return }
+            do {
+                let remote = try await ShareSync.fetch(keys)
+                print("remote: \(remote.map { "\($0.dictionary) snippets=\($0.snippets.map(\.trigger)) styles=\($0.styles.map(\.app))" } ?? "none")")
+                let mine = SyncCrypto.Payload(dictionary: [value("--word") ?? "FromMac"], styles: [.init(app: "com.apple.mail", name: "Mail", tone: "formal")])
+                let merged = remote.map { SyncCrypto.merge(local: mine, remote: $0) } ?? mine
+                try await ShareSync.upload(keys, merged)
+                print("uploaded: \(merged.dictionary)")
+            } catch { print("error: \(error.localizedDescription)") }
             return
         }
         if CommandLine.arguments.contains("--mic-test") {

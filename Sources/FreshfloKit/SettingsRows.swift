@@ -31,6 +31,71 @@ struct ConnectRow: View {
 }
 
 
+struct ShareSyncRow: View {
+    @ObservedObject private var sync = ShareSync.shared
+    @State private var entering = false
+    @State private var typed = ""
+    @State private var error: String?
+    @State private var revealed = false
+
+    var body: some View {
+        if sync.isOn {
+            LabeledContent("Your code") {
+                HStack {
+                    Text(revealed ? SyncCrypto.pretty(sync.code) : "••••-••••-••••-" + String(sync.code.suffix(4)))
+                        .font(.system(.body, design: .monospaced)).textSelection(.enabled)
+                    Button(revealed ? "Hide" : "Show") { revealed.toggle() }
+                    Button("Copy") {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(SyncCrypto.pretty(sync.code), forType: .string)
+                    }
+                }
+            }
+            LabeledContent("Status") {
+                HStack {
+                    if let e = sync.lastError { Text(e).foregroundStyle(.red).lineLimit(2) }
+                    else if sync.busy { Text("Syncing…").foregroundStyle(.secondary) }
+                    else if let last = sync.lastSynced { Text("Synced \(last.formatted(.relative(presentation: .named)))").foregroundStyle(.secondary) }
+                    else { Text("Waiting…").foregroundStyle(.secondary) }
+                    Button("Sync now") { sync.syncNow() }
+                }
+            }
+            HStack {
+                Text("On another device, open Freshflo's settings, choose “I have a code” and type this code.").font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                Menu("Turn off") {
+                    Button("Turn off on this Mac") { sync.turnOff(erase: false) }
+                    Button("Turn off and delete the synced copy", role: .destructive) { sync.turnOff(erase: true) }
+                }
+                .fixedSize()
+            }
+        } else if entering {
+            LabeledContent("Code from your other device") {
+                HStack {
+                    TextField("XXXX-XXXX-XXXX-XXXX", text: $typed)
+                        .font(.system(.body, design: .monospaced))
+                        .frame(maxWidth: 220)
+                        .onSubmit(connect)
+                    Button("Connect", action: connect).disabled(typed.isEmpty)
+                    Button("Cancel") { entering = false; typed = ""; error = nil }
+                }
+            }
+            if let error { Text(error).font(.caption).foregroundStyle(.red) }
+        } else {
+            HStack {
+                Button("Turn on sync") { sync.turnOn(); revealed = true }
+                Button("I have a code") { entering = true }
+            }
+        }
+    }
+
+    private func connect() {
+        error = sync.turnOn(code: typed)
+        if error == nil { entering = false; typed = "" }
+    }
+}
+
+
 struct SyncRow: View {
     @ObservedObject private var settings = AppSettings.shared
     @ObservedObject private var sync = FolderSync.shared

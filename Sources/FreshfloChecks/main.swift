@@ -789,6 +789,25 @@ expect(LanguageID.matches("Matlab basically has to launch next week.", target: "
 expectTrue(LanguageID.matches("Tomorrow there's a meeting, so please prepare the deck and email the client.", target: "English"), "real English passes")
 expectTrue(LanguageID.matches("Priya and Divyanshu are going to Mumbai next Monday.", target: "English"), "Indian names aren't Hindi words")
 
+section("Sync by code")
+expectTrue(SyncCrypto.normalize("7kq2-9mxd-ab0c-defg") == "7KQ29MXDAB0CDEFG", "codes are normalized")
+expectTrue(SyncCrypto.normalize("ilil 0000 0000 000O") == "1111000000000000", "I, L and O are read as 1 and 0")
+expectTrue(SyncCrypto.normalize("UUUU-0000-0000-0000") == nil, "U isn't in the alphabet")
+expectTrue(SyncCrypto.pretty("7KQ29MXDAB0CDEFG") == "7KQ2-9MXD-AB0C-DEFG", "codes are shown in fours")
+expectTrue(SyncCrypto.normalize(SyncCrypto.newCode()) != nil, "new codes are valid")
+expectTrue(SyncCrypto.keys("ABCD-EFGH-JKMN-PQRS")?.id == "715d28de4f350a0767ab265e153bde6f1b8838f23cc36d2eaaa50760035dc1d5", "same id as Rust and Kotlin")
+if let k = SyncCrypto.keys("ABCD-EFGH-JKMN-PQRS"), let other = SyncCrypto.keys("0000-0000-0000-0000") {
+    let p = SyncCrypto.Payload(dictionary: ["Freshflo"], snippets: [.init(trigger: "addr", text: "Home")], styles: [.init(app: "com.apple.mail", name: "Mail", tone: "formal")])
+    let blob = SyncCrypto.seal(k, p) ?? ""
+    expectTrue(SyncCrypto.open(k, blob) == p, "seal then open")
+    expectTrue(SyncCrypto.open(other, blob) == nil, "another code can't open it")
+    expectTrue(!blob.contains("Freshflo") && Data(base64Encoded: blob).map { !String(decoding: $0, as: UTF8.self).contains("Freshflo") } == true, "nothing readable in the blob")
+    let r = SyncCrypto.Payload(dictionary: ["freshflo", "Groq"], snippets: [.init(trigger: "ADDR", text: "Office")], styles: [.init(app: "slack.exe", name: "Slack", tone: "casual")])
+    let m = SyncCrypto.merge(local: p, remote: r)
+    expectTrue(m.dictionary == ["Freshflo", "Groq"] && m.snippets.count == 1 && m.snippets[0].text == "Home" && m.styles.count == 2, "merge keeps local, adds the rest")
+    expectTrue(SyncCrypto.same(SyncCrypto.merge(local: m, remote: p), m), "merging again changes nothing")
+}
+
 section("Write-in picker")
 expectTrue(Languages.quick(spoken: ["en", "hi"], current: "") == ["", "English", "Hindi", "Hinglish (Hindi in Latin letters)"], "quick list for Hindi speakers")
 expectTrue(Languages.next(after: "", spoken: ["en", "hi"]) == "English", "cycle: same → English")

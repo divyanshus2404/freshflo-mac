@@ -96,9 +96,17 @@ struct AdvancedTab: View {
     var body: some View {
         Form {
             Section {
+                ShareSyncRow()
+            } header: {
+                Text("Sync with your other devices")
+            } footer: {
+                Text("Your dictionary, snippets and app styles on Mac, Windows and Android. Everything is encrypted on this Mac with your code before it's sent, so nobody else can read it, including us. No account needed. Keep the code safe: lose it and the synced copy can't be recovered.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section {
                 SyncRow()
             } header: {
-                Text("Sync and share")
+                Text("Share through a folder")
             } footer: {
                 Text("Your dictionary, snippets and app styles are kept in one file. iCloud Drive keeps your Macs in step; a shared Dropbox, Google Drive or OneDrive folder shares them with your team. New items from anyone are added everywhere.")
                     .font(.caption).foregroundStyle(.secondary)

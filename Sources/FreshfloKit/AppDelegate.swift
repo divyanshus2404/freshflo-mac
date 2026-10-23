@@ -67,6 +67,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate 
         Updater.shared.start()
         Insights.start()
         FolderSync.shared.start()
+        ShareSync.shared.start()
         AudioDevices.watch { NotificationCenter.default.post(name: .audioDevicesChanged, object: nil) }
         MeetingDetector.shared.start()
         OnDeviceWhisper.prewarm()
