@@ -783,6 +783,12 @@ expect(LanguageID.looksForeign("कल सुबह मीटिंग है", 
 expectTrue(LanguageID.looksForeign("কাল সকালে মিটিং আছে", hints: ["en", "hi"]), "Bengali script when you speak only English and Hindi")
 expect(LanguageID.looksForeign("Cái bệnh hình hồi đó", hints: ["en", "vi"]), false, "Vietnamese is fine if you speak it")
 
+section("Translation check")
+expect(LanguageID.matches("1. First ticket book karo\n2. Second hotel confirm karo", target: "English"), false, "Hinglish left in a list isn't English")
+expect(LanguageID.matches("Matlab basically has to launch next week.", target: "English"), false, "a leftover Hindi word isn't English")
+expectTrue(LanguageID.matches("Tomorrow there's a meeting, so please prepare the deck and email the client.", target: "English"), "real English passes")
+expectTrue(LanguageID.matches("Priya and Divyanshu are going to Mumbai next Monday.", target: "English"), "Indian names aren't Hindi words")
+
 // MARK: - Result
 
 if failures.isEmpty {

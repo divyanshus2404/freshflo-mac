@@ -167,7 +167,7 @@ enum Cleanup {
             instructions += "\nSpell these names and terms exactly like this: " + input.vocabulary.prefix(60).joined(separator: ", ")
         }
         if input.translating {
-            instructions += "\nWrite the final text in \(input.outputLanguage). If the speaker used another language or mixed languages, translate it naturally into \(input.outputLanguage); this is the one exception to keeping their exact words."
+            instructions += "\nWrite the final text in \(input.outputLanguage). If the speaker used another language or mixed languages, translate it naturally into \(input.outputLanguage); this is the one exception to keeping their exact words. Work in this order: drop fillers (um, matlab, basically, haan toh), apply the speaker's corrections (\"Tuesday, nahi nahi, Wednesday\" → Wednesday), then translate everything, including each list item, so no Hindi or Hinglish word is left. Keep names, brands, numbers, email addresses and code as they are. Translate the meaning naturally, the way a fluent \(input.outputLanguage) speaker would write it, not word for word."
         }
         if let regional = input.regional.instruction { instructions += "\n" + regional }
         if input.emailMode { instructions += "\n" + EmailFormat.instruction }

@@ -24,6 +24,20 @@ enum LanguageID {
         "wala", "wali", "raha", "rahi", "rahe", "gaya", "gayi", "chalo", "haan", "na", "ji", "ho", "hua", "kaise", "kab", "kahan",
     ]
 
+    /// Romanised Hindi words that never appear in English text (so one is enough to say "not translated").
+    private static let onlyHindi: Set<String> = [
+        "hai", "hain", "nahi", "nahin", "kya", "kyun", "kyunki", "mein", "yaar", "karo", "karna", "karke", "karenge", "karein",
+        "hoga", "hogi", "accha", "acha", "theek", "thik", "matlab", "lekin", "aur", "toh", "abhi", "jaldi", "bahut", "bohot",
+        "kuch", "mujhe", "tujhe", "humein", "hume", "unko", "usko", "wala", "wali", "raha", "rahi", "rahe", "gaya", "gayi",
+        "chalo", "haan", "hua", "kaise", "kab", "kahan", "chahiye", "pehla", "doosra", "teesra", "pehle", "baad", "lena", "dena",
+        "bhej", "bhejo", "rakhna", "batana", "bata", "bolo", "bolna", "sakte", "sakta", "sakti", "tha", "thi", "hoon", "hu",
+    ]
+
+    /// How many words in the text are only ever Hindi (romanised).
+    static func hinglishLeftovers(_ text: String) -> Int {
+        text.lowercased().split(whereSeparator: { !$0.isLetter }).filter { onlyHindi.contains(String($0)) }.count
+    }
+
     static func isHinglish(_ text: String) -> Bool {
         let words = text.lowercased().split(whereSeparator: { !$0.isLetter }).map(String.init)
         guard words.count >= 3, text.unicodeScalars.contains(where: { $0.properties.isAlphabetic && $0.value < 0x250 }) else { return false }
@@ -125,6 +139,9 @@ enum LanguageID {
             return !t.unicodeScalars.contains { (0x0900...0x097F).contains($0.value) } && (isHinglish(t) || t.split(separator: " ").count < 6)
         }
         guard let code = writtenCodes[target] else { return true }
+        // Hinglish is written in English letters, so a recogniser can call it English. Any word that's only ever
+        // Hindi means it wasn't translated.
+        if code != "hi", hinglishLeftovers(t) > 0 { return false }
         guard let (got, p) = recognize(t) else { return true }
         if got == code { return true }
         // Short or name-heavy text can be uncertain; only fail when the recognizer is fairly sure it's something else.

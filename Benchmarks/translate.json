@@ -1,0 +1,1001 @@
+[
+ {
+  "tag": "hinglish",
+  "raw": "kal subah meeting hai toh please deck ready rakhna aur client ko email bhi bhej dena",
+  "must": [
+   "tomorrow",
+   "meeting",
+   "deck",
+   "client",
+   "email"
+  ],
+  "mustNot": [
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "hinglish",
+  "raw": "yaar mujhe aaj thoda late ho jayega, traffic bahut hai",
+  "must": [
+   "late",
+   "traffic"
+  ],
+  "mustNot": [
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "hinglish",
+  "raw": "bhai report kab tak bhej sakte ho? I need it before 5",
+  "must": [
+   "report",
+   "5"
+  ],
+  "mustNot": [
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "hinglish",
+  "raw": "main abhi gym ja raha hoon, baad mein call karta hoon",
+  "must": [
+   "gym",
+   "call"
+  ],
+  "mustNot": [
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "hinglish",
+  "raw": "please check karo ki sara data sahi se upload hua hai ya nahi",
+  "must": [
+   "check",
+   "data",
+   "upload"
+  ],
+  "mustNot": [
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "hinglish",
+  "raw": "mummy ko bolna ki main dinner pe nahi aaunga",
+  "must": [
+   "dinner"
+  ],
+  "mustNot": [
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "hinglish",
+  "raw": "is project ka deadline next friday hai, sab log apna part complete kar lena",
+  "must": [
+   "deadline",
+   "friday"
+  ],
+  "mustNot": [
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "hinglish",
+  "raw": "kya tum kal free ho? let's catch up for coffee",
+  "must": [
+   "tomorrow",
+   "coffee",
+   "?"
+  ],
+  "mustNot": [
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "hinglish",
+  "raw": "payment ho gaya hai, receipt maine mail kar di hai",
+  "must": [
+   "payment",
+   "receipt"
+  ],
+  "mustNot": [
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "hinglish",
+  "raw": "yeh feature abhi kaam nahi kar raha, isko jaldi fix karna padega",
+  "must": [
+   "feature",
+   "fix"
+  ],
+  "mustNot": [
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "hinglish",
+  "raw": "team ko bata do ki standup aaj 11 baje hoga instead of 10",
+  "must": [
+   "standup",
+   "11"
+  ],
+  "mustNot": [
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "hinglish",
+  "raw": "mujhe lagta hai hume pricing thoda kam karna chahiye",
+  "must": [
+   "pricing"
+  ],
+  "mustNot": [
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "hindi",
+  "raw": "कल सुबह 10 बजे मीटिंग है, कृपया रिपोर्ट तैयार रखना",
+  "must": [
+   "tomorrow",
+   "10",
+   "meeting",
+   "report"
+  ],
+  "mustNot": [
+   "कल",
+   "है",
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "hindi",
+  "raw": "मैं आज ऑफिस नहीं आ पाऊंगा, तबीयत ठीक नहीं है",
+  "must": [
+   "office"
+  ],
+  "mustNot": [
+   "है",
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "hindi",
+  "raw": "क्या आप मुझे अपडेटेड डेक भेज सकते हैं",
+  "must": [
+   "deck",
+   "?"
+  ],
+  "mustNot": [
+   "क्या",
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "hindi",
+  "raw": "क्लाइंट को बोलो कि पेमेंट इस हफ्ते तक हो जाएगी",
+  "must": [
+   "client",
+   "payment",
+   "week"
+  ],
+  "mustNot": [
+   "कि",
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "hindi",
+  "raw": "मुझे दो लाख पचास हज़ार रुपये का इनवॉइस बनाना है",
+  "must": [
+   "invoice"
+  ],
+  "mustNot": [
+   "रुपये",
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "hindi",
+  "raw": "शाम को सब लोग मिलते हैं और प्लान फाइनल करते हैं",
+  "must": [
+   "evening",
+   "plan"
+  ],
+  "mustNot": [
+   "हैं",
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "mixed",
+  "raw": "मैं kal office नहीं आऊंगा, please manager को inform कर देना",
+  "must": [
+   "office",
+   "manager",
+   "inform"
+  ],
+  "mustNot": [
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "mixed",
+  "raw": "deck में last slide change करनी है, numbers update करो",
+  "must": [
+   "deck",
+   "slide",
+   "numbers"
+  ],
+  "mustNot": [
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "mixed",
+  "raw": "Rahul को बोलो की meeting postpone हो गई है",
+  "must": [
+   "rahul",
+   "meeting",
+   "postpone"
+  ],
+  "mustNot": [
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "correction",
+  "raw": "um toh meeting tuesday ko rakhte hain, nahi nahi wednesday ko",
+  "must": [
+   "wednesday"
+  ],
+  "mustNot": [
+   "tuesday",
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "correction",
+  "raw": "uh mujhe teen nahi chaar copies chahiye",
+  "must": [
+   "four"
+  ],
+  "mustNot": [
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej",
+   "three copies"
+  ]
+ },
+ {
+  "tag": "filler",
+  "raw": "matlab basically hume yeh launch next week karna hai",
+  "must": [
+   "launch",
+   "next week"
+  ],
+  "mustNot": [
+   "matlab",
+   "basically",
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "filler",
+  "raw": "haan toh like main soch raha tha ki hum design change karein",
+  "must": [
+   "design"
+  ],
+  "mustNot": [
+   "haan toh",
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "list",
+  "raw": "shopping list mein pehla doodh, doosra bread, teesra ande",
+  "must": [
+   "milk",
+   "bread",
+   "eggs"
+  ],
+  "mustNot": [
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "list",
+  "raw": "first ticket book karo, second hotel confirm karo, third cab arrange karo",
+  "must": [
+   "1.",
+   "2.",
+   "3.",
+   "ticket",
+   "hotel",
+   "cab"
+  ],
+  "mustNot": [
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "email",
+  "raw": "hi rahul, kal ki meeting ke notes bhej raha hoon, koi doubt ho toh batana, thanks priya",
+  "must": [
+   "hi rahul",
+   "notes",
+   "thanks",
+   "priya"
+  ],
+  "mustNot": [
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "message",
+  "raw": "happy birthday bhai, bahut saari khushiyan milein tujhe",
+  "must": [
+   "happy birthday"
+  ],
+  "mustNot": [
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "names",
+  "raw": "Divyanshu aur Priya Mumbai jaa rahe hain next monday",
+  "must": [
+   "divyanshu",
+   "priya",
+   "mumbai",
+   "monday"
+  ],
+  "mustNot": [
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "money",
+  "raw": "usko paanch hazaar rupaye transfer kar do",
+  "must": [
+   "transfer"
+  ],
+  "mustNot": [
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "numbers",
+  "raw": "meeting room number 302 mein hai, third floor pe",
+  "must": [
+   "302",
+   "third floor"
+  ],
+  "mustNot": [
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "time",
+  "raw": "train subah 6:30 baje nikalti hai",
+  "must": [
+   "train",
+   "6:30"
+  ],
+  "mustNot": [
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "english",
+  "raw": "can you send me the updated deck before the call tomorrow",
+  "must": [
+   "deck",
+   "call",
+   "tomorrow",
+   "?"
+  ],
+  "mustNot": []
+ },
+ {
+  "tag": "english",
+  "raw": "um so I think we should push the launch to tuesday no wait wednesday",
+  "must": [
+   "wednesday"
+  ],
+  "mustNot": [
+   "tuesday",
+   "um"
+  ]
+ },
+ {
+  "tag": "question",
+  "raw": "kya aapne invoice dekha? usme kuch galti hai shayad",
+  "must": [
+   "invoice",
+   "?"
+  ],
+  "mustNot": [
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "polite",
+  "raw": "sir kya aap please is document ko review kar sakte hain",
+  "must": [
+   "review",
+   "document"
+  ],
+  "mustNot": [
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "tech",
+  "raw": "login page pe bug hai, token expire hone ke baad redirect nahi ho raha",
+  "must": [
+   "login",
+   "token",
+   "redirect"
+  ],
+  "mustNot": [
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "tech",
+  "raw": "production pe deploy karne se pehle staging pe test kar lena",
+  "must": [
+   "production",
+   "staging",
+   "test"
+  ],
+  "mustNot": [
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ },
+ {
+  "tag": "no-answer",
+  "raw": "bharat ki capital kya hai",
+  "must": [
+   "capital",
+   "?"
+  ],
+  "mustNot": [
+   "new delhi",
+   "delhi is",
+   "hai",
+   "hain",
+   "karo",
+   "kar do",
+   "kal ",
+   "nahi",
+   "toh",
+   "bhi",
+   "mujhe",
+   "aur ",
+   "kya ",
+   "yaar",
+   "wala",
+   "rakhna",
+   "bhej"
+  ]
+ }
+]
