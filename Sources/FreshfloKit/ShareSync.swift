@@ -1,3 +1,4 @@
+import AppKit
 import Combine
 import CommonCrypto
 import CryptoKit
@@ -115,7 +116,13 @@ final class ShareSync: ObservableObject {
             .debounce(for: .seconds(3), scheduler: RunLoop.main)
             .sink { [weak self] in self?.syncNow() }
             .store(in: &watchers)
-        timer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in self?.syncNow() }
+        // Edits sync within seconds (above); this only picks up other devices' changes, so every 30 minutes and on wake
+        // is plenty. Every read costs a storage list on the server, so polling faster burns the monthly allowance.
+        timer = Timer.scheduledTimer(withTimeInterval: 1800, repeats: true) { [weak self] _ in self?.syncNow() }
+        NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didWakeNotification)
+            .delay(for: .seconds(10), scheduler: RunLoop.main)
+            .sink { [weak self] _ in self?.syncNow() }
+            .store(in: &watchers)
         DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in self?.syncNow() }
     }
 
@@ -181,7 +188,10 @@ final class ShareSync: ObservableObject {
         let code = self.code
         Task.detached(priority: .utility) { [weak self] in
             guard let self else { return }
-            guard let keys = await MainActor.run(body: { self.currentKeys() }) else { return }
+            guard let keys = await MainActor.run(body: { self.currentKeys() }) else {
+                await MainActor.run { self.lastError = "Sync code is invalid."; self.busy = false }
+                return
+            }
             do {
                 let remote = try await Self.fetch(keys)
                 let local = await MainActor.run { self.local }
