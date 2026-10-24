@@ -46,6 +46,8 @@ enum SpokenEnglish {
         (#"\bthere\s+going\s+(?!to\s+be\b)"#, "they're going "),
         (#"\b(faster|slower|bigger|smaller|better|worse|cheaper|easier|harder|higher|lower|longer|shorter|older|younger|more|less|rather|larger|quicker|greater|smarter|stronger|cleaner|simpler|safer|nicer)\s+then\b"#, "$1 than"),
         (#"\bloose\s+(your|my|his|her|their|our|the|it|weight|money|time|track|touch|sleep)\b"#, "lose $1"),
+        // "send me the dock": a document, unless boats are involved.
+        (#"\b(send|share|forward|check|review|open|update|edit|read|attach|sign)(\s+(?:me|us|him|her|them))?\s+the\s+dock\b"#, "$1$2 the doc"),
         (#"\b(will|would|can|could|may|might|does|did|won't|doesn't|didn't)\s+effect\s+(?!change)"#, "$1 affect "),
         (#"\b(grab|grabbing|eat|ate|eating)\s+launch\b"#, "$1 lunch"),
         (#"\blaunch\s+break\b"#, "lunch break"),

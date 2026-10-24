@@ -66,7 +66,9 @@ enum Cleanup {
                     if debug { print("debug api error: \(error)") }
                     output = nil
                 }
-            case "apple" where AppleModel.isAvailable:
+            case "apple" where AppleModel.isAvailable && (!input.translating || AppleModel.canTranslate(input.raw)):
+                // Apple's model writes fluent but invented English from languages it doesn't know ("Today is
+                // October 10th" from a Tamil sentence about a meeting); typing the words as spoken is better.
                 output = try? await AppleModel.respond(instructions: instructions, prompt: prompt)
             default:
                 output = nil
@@ -123,8 +125,8 @@ enum Cleanup {
         var instructions = """
         You are a transcript editor, not an assistant. You receive a raw speech-to-text transcript and return the same message, written the way the speaker would have typed it.
         Rules:
-        - Remove filler words (um, uh, like, you know), stutters ("th- the", "I I") and accidentally repeated words or phrases ("I think I think" → "I think").
-        - When the speaker corrects themselves ("no wait", "actually", "I mean", "scratch that"), keep only the corrected version.
+        - Remove filler words (um, uh, like, you know), stutters ("th- the", "I I") and accidentally repeated words or phrases ("I think I think" → "I think"), including a leading "you know", "I mean" or "basically" that carries no meaning.
+        - When the speaker corrects themselves, keep only the corrected version: the new word or phrase replaces the earlier one of the same kind (a name, number, day, time, place, file), and the cue words go too. Cues: "no wait", "wait", "actually", "sorry", "I mean", "or rather", "scratch that", "no, make it", "make that", a bare "no". Examples: "send it to Rahul actually send it to Priya" → "Send it to Priya."; "the budget is 5 lakh sorry 6 lakh" → "The budget is 6 lakh."; "book a table for six no make it eight" → "Book a table for 8."; "it's in the marketing folder sorry the sales folder" → "It's in the sales folder."; "the file is report v2 no v3" → "The file is report v3."; "the deadline is Friday or rather Monday" → "The deadline is Monday." Only when something of the same kind follows the cue: "I actually liked it" and "sorry I'm late" are not corrections.
         - Fix punctuation and capitalization. \(input.fixGrammar ? "Make it grammatically correct written English: subject–verb agreement, tense, articles, plurals, double negatives and word order. Keep the speaker's own words and voice wherever they are already correct; don't make it more formal than the tone asks." : "Fix only obvious grammar slips.")
         - \(input.fixGrammar ? "Turn spoken and Indian-English patterns into standard written English, keeping the speaker's words: \"I am having two brothers\" → \"I have two brothers\", \"he is knowing\" → \"he knows\", \"since two days\" → \"for two days\", \"today morning\" → \"this morning\", \"discuss about it\" → \"discuss it\", \"Where you are going?\" → \"Where are you going?\", \"Me and him went\" → \"He and I went\", \"Myself Rahul\" → \"I'm Rahul\", \"good in maths\" → \"good at maths\". Keep Hindi and Hinglish words exactly as spoken." : "Keep the speaker's phrasing even when it is informal.")
         - If a word is clearly a speech-recognition mistake for a similar-sounding word that fits the context (there/their, for/four, "launch" when they mean lunch), fix it. Names in the spelling list below always win.
@@ -283,7 +285,7 @@ enum Cleanup {
         let reply: String?
         if settings.canUseCloud {
             reply = try? await chat(instructions: instructions, prompt: prompt, endpoint: settings.endpoint.smart, temperature: 0)
-        } else if AppleModel.isAvailable {
+        } else if AppleModel.isAvailable, AppleModel.canTranslate(original) {
             reply = try? await AppleModel.respond(instructions: instructions, prompt: prompt)
         } else { reply = nil }
         guard let out = reply.map(stripThinking), !out.isEmpty, LanguageID.matches(out, target: language) else { return nil }
@@ -291,7 +293,9 @@ enum Cleanup {
     }
 
     /// Groq's free tier limits tokens per minute *per model*, so a burst of dictations can exhaust one model while others are free.
-    private static let rateLimitFallbacks = ["openai/gpt-oss-20b", "openai/gpt-oss-120b"]
+    /// Groq limits each model separately (per minute and per day), so a busy day on one still leaves the others.
+    /// Llama 3.3 70B is last: a different family with its own quota, and good at Indian languages.
+    private static let rateLimitFallbacks = ["openai/gpt-oss-20b", "openai/gpt-oss-120b", "llama-3.3-70b-versatile"]
     private static let limitLock = NSLock()
     nonisolated(unsafe) private static var limitedUntil: [String: Date] = [:]
 
@@ -541,6 +545,18 @@ enum Command {
 }
 
 enum AppleModel {
+    /// Whether Apple's on-device model can translate this text: it handles Latin-script languages, Chinese,
+    /// Japanese and Korean, but not Indian scripts, Urdu or Arabic, Cyrillic, or romanised Hinglish.
+    static func canTranslate(_ text: String) -> Bool {
+        if LanguageID.isHinglish(text) || LanguageID.hinglishLeftovers(text) > 0 { return false }
+        return !text.unicodeScalars.contains { s in
+            guard s.properties.isAlphabetic else { return false }
+            if let script = Indic.script(of: s) { return script != .latin }
+            // Cyrillic, Greek, Hebrew, Thai and the like.
+            return (0x0370...0x0FFF).contains(s.value)
+        }
+    }
+
     static var isAvailable: Bool {
         #if canImport(FoundationModels)
         if #available(macOS 26.0, *) {

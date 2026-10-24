@@ -32,17 +32,21 @@ enum Pipeline {
             var text = Transcriber.stripHallucinations(try await Transcriber.transcribe(samples: samples, endpoint: settings.endpoint, vocabulary: vocabulary))
             let hints = settings.spokenLanguages
             var detected = LanguageID.detect(text: text, whisperGuess: Transcriber.lastLanguage, hints: hints)
+            if Cleanup.debug { print("debug heard [\(settings.endpoint.transcriptionModel), \(Transcriber.lastLanguage ?? "?")→\(detected?.code ?? "?")]: \(text)") }
             // Whisper's language guess looks wrong (common on short or accented clips): try your other language and keep
             // whichever reads more like its language.
             if settings.language.isEmpty, LanguageID.shouldRetry(text: text, detected: detected?.code, hints: hints),
                let yours = LanguageID.alternative(text: text, detected: detected?.code, hints: hints) {
-                var forced = settings.endpoint
+                var forced = Self.carefulEndpoint(settings.endpoint)
                 forced.language = yours
                 if let again = try? await Transcriber.transcribe(samples: samples, endpoint: forced, vocabulary: vocabulary), !again.isEmpty {
                     let candidate = Transcriber.stripHallucinations(again)
                     let before = LanguageID.confidence(text, is: detected?.code ?? "en")
                     let after = max(LanguageID.confidence(candidate, is: yours), yours == "hi" && LanguageID.isHinglish(candidate) ? 1 : 0)
-                    if after >= before {
+                    // Heard as a language you don't speak: a solid result in yours wins even if the first reads "surer".
+                    let outsider = detected.map { !hints.contains($0.code) && LanguageID.indianNeighbours($0.code, hints) } ?? false
+                    if Cleanup.debug { print("debug re-heard as \(yours) [\(forced.transcriptionModel)] before \(before) after \(after): \(candidate)") }
+                    if after >= before || (outsider && after >= 0.5) {
                         text = candidate
                         detected = LanguageID.Detection(code: yours, hinglish: yours == "hi" && LanguageID.isHinglish(text))
                     }
@@ -51,10 +55,11 @@ enum Pipeline {
             // Right language, wrong script (Hindi in Urdu letters, say): transcribe again with the language named,
             // which also gives Whisper a sample sentence in the right script.
             if let code = detected?.code, detected?.hinglish != true, Indic.wrongScript(text, lang: code) {
-                var forced = settings.endpoint
+                var forced = Self.carefulEndpoint(settings.endpoint)
                 forced.language = code
                 if let again = try? await Transcriber.transcribe(samples: samples, endpoint: forced, vocabulary: vocabulary),
                    !again.isEmpty, !Indic.wrongScript(again, lang: code) {
+                    if Cleanup.debug { print("debug script fix as \(code): \(again)") }
                     text = Transcriber.stripHallucinations(again)
                 }
             }
@@ -68,6 +73,14 @@ enum Pipeline {
             let text = try await LocalSpeech.transcribe(samples, language: settings.language, vocabulary: vocabulary, onStatus: onStatus)
             return Transcript(text: text, engine: "apple-speech (offline fallback)")
         }
+    }
+
+    /// For a second listen: Groq's full Whisper model instead of turbo. A little slower, and much better at
+    /// Bengali, Telugu, Kannada and other languages turbo tends to mistake for Hindi or Tamil.
+    nonisolated static func carefulEndpoint(_ endpoint: ProviderEndpoint) -> ProviderEndpoint {
+        var e = endpoint
+        if e.transcriptionModel == "whisper-large-v3-turbo" { e.transcriptionModel = "whisper-large-v3" }
+        return e
     }
 
     static func polish(raw: String, context: FocusContext, settings: AppSettings,

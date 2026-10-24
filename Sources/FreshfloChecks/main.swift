@@ -441,6 +441,9 @@ expect(LanguageID.detect(text: "मुझे कल सुबह मीटिं
 expectTrue(LanguageID.shouldRetry(text: "Hot TK.", detected: "en", hints: ["en", "hi"]), "short nonsense English is retried in Hindi")
 expect(LanguageID.shouldRetry(text: "Sounds good to me", detected: "en", hints: ["en", "hi"]), false, "real short English is kept")
 expect(LanguageID.shouldRetry(text: "Hola equipo, mañana la reunión empieza a las diez", detected: "es", hints: ["en", "hi"]), false, "clear Spanish is kept even if not in your list")
+expectTrue(LanguageID.shouldRetry(text: "आगामी काल सकाल दस टाय मीटिंग आछे", detected: "hi", hints: ["bn", "en"]), "Bengali heard as Hindi is re-heard in Bengali")
+expectTrue(LanguageID.shouldRetry(text: "ரேபு உதையம் பதி கண்டலக்கு", detected: "ta", hints: ["te", "en"]), "Telugu heard as Tamil is re-heard in Telugu")
+expectTrue(Pipeline.carefulEndpoint(ProviderEndpoint(baseURL: "https://api.groq.com/openai/v1", apiKey: "", transcriptionModel: "whisper-large-v3-turbo", cleanupModel: "", language: "")).transcriptionModel == "whisper-large-v3", "second listens use the full model")
 expectTrue(LanguageID.matches("क्या आप मुझे कल कॉल से पहले अपडेटेड डेक भेज सकते हैं?", target: "Hindi"), "Hindi output matches Hindi")
 expect(LanguageID.matches("Can you send me the updated deck before the call tomorrow?", target: "Hindi"), false, "English output doesn't match Hindi")
 expectTrue(LanguageID.matches("Kya aap mujhe updated deck kal ke call se pehle bhej sakte ho?", target: "Hinglish (Hindi in Latin letters)"), "Hinglish output")
@@ -835,10 +838,13 @@ expectTrue(!LanguageID.matches("कल मिलते हैं", target: "Span
 section("Numbers as digits")
 for (said, want) in [("I'm fifteen minutes late.", "I'm 15 minutes late."), ("We have a meeting tomorrow at ten.", "We have a meeting tomorrow at 10."),
                      ("Tomorrow at ten o'clock we have a meeting.", "Tomorrow at 10 we have a meeting."), ("At seven thirty pm", "At seven thirty pm"),
-                     ("It takes twenty-five minutes.", "It takes 25 minutes."), ("We need three people.", "We need 3 people."),
+                     ("It takes twenty-five minutes.", "It takes 25 minutes."), ("We need three people.", "We need three people."), ("He has two meetings today.", "He has two meetings today."),
                      ("One day I'll visit.", "One day I'll visit."), ("At one point it broke.", "At one point it broke."),
                      ("Call me at five tomorrow.", "Call me at 5 tomorrow."), ("Give me one minute.", "Give me one minute."),
-                     ("I have two ideas.", "I have two ideas.")] {
+                     ("I have two ideas.", "I have two ideas."), ("We grew forty‑five percent.", "We grew 45%."),
+                     ("We grew forty five percent this quarter.", "We grew 45% this quarter."), ("It takes ten to fifteen minutes.", "It takes 10 to 15 minutes."),
+                     ("A pilot with fifty users.", "A pilot with 50 users."), ("Signups went up 12 percent.", "Signups went up 12%."),
+                     ("Two or three days.", "2 or 3 days."), ("Twenty-five people joined.", "25 people joined.")] {
     expectTrue(Regional.digitsForAmounts(said) == want, "“\(said)” → “\(want)” (got “\(Regional.digitsForAmounts(said))”)")
 }
 expectTrue(Cleanup.scriptRule("Hindi").contains("Devanagari"), "Hindi is asked for in Devanagari")
@@ -866,6 +872,25 @@ do {
     expectTrue(MeetingTurns.speechRegions(quiet(5)).isEmpty, "silence is no turn at all")
 }
 expectTrue(Regional.apply("Budget: 2 lakh rupees. Launch on Monday, 27 October 2026.", .india) == "Budget: ₹2 lakh. Launch on Monday, 27 October 2026.", "notes get ₹ but keep years (got \(Regional.apply("Budget: 2 lakh rupees. Launch on Monday, 27 October 2026.", .india)))")
+
+section("Crore, lakh, titles")
+expectTrue(Regional.apply("Five crore rupees is the target.", .india) == "₹5 crore is the target.", "five crore rupees → ₹5 crore (got \(Regional.apply("Five crore rupees is the target.", .india)))")
+expectTrue(Regional.apply("The invoice is two lakh fifty thousand rupees.", .india) == "The invoice is ₹2,50,000.", "two lakh fifty thousand stays exact")
+expectTrue(Regional.apply("Two lakh rupees.", .india) == "₹2 lakh.", "two lakh rupees → ₹2 lakh")
+expectTrue(EmailFormat.apply("Hello Mr. Gupta, thank you for your time today. Best regards, Meera").hasPrefix("Hello Mr. Gupta,\n\n"), "“Mr.” stays with the name (got \(EmailFormat.apply("Hello Mr. Gupta, thank you for your time today. Best regards, Meera").debugDescription))")
+
+section("Small fixes")
+expectTrue(SpokenEnglish.fix("Can you send me the dock before the call?") == "Can you send me the doc before the call?", "dock → doc when it's a document")
+expectTrue(SpokenEnglish.fix("The boat is at the dock.") == "The boat is at the dock.", "a real dock stays")
+
+section("No invented translations")
+for (text, lang) in [("நாளை காலை 10 மணிக்கு கூட்டம் இருக்கிறது", "Tamil"), ("पेमेंट पांच हजार रुपये का है", "Hindi"),
+                     ("kal meeting hai, deck ready rakhna", "Hinglish"), ("Завтра встреча", "Russian"), ("کل میٹنگ ہے", "Urdu")] {
+    expectTrue(!AppleModel.canTranslate(text), "Apple's model doesn't translate \(lang) (it invents)")
+}
+for text in ["Mañana tenemos una reunión", "明日の午前十時に会議があります", "Nous avons une réunion demain"] {
+    expectTrue(AppleModel.canTranslate(text), "Apple's model may translate “\(text)”")
+}
 
 section("Write-in picker")
 expectTrue(Languages.quick(spoken: ["en", "hi"], current: "") == ["", "English", "Hindi", "Hinglish (Hindi in Latin letters)"], "quick list for Hindi speakers")

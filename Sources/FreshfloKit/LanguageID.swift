@@ -111,6 +111,11 @@ enum LanguageID {
     static func shouldRetry(text: String, detected: String?, hints: [String]) -> Bool {
         guard let detected, !hints.isEmpty else { return false }
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Heard as an Indian language you don't speak while you do speak another one: listen again in yours.
+        // Whisper often writes Bengali or Kannada in Hindi letters (or Telugu as Tamil), which then reads
+        // confidently as Hindi, so confidence can't be the test. A clear sentence in an unrelated language
+        // (Spanish for an English + Hindi speaker) is still kept.
+        if !hints.contains(detected), indianNeighbours(detected, hints) { return true }
         if !hints.contains(detected) { return confidence(t, is: detected) < 0.8 }
         let words = t.split(separator: " ").count
         if detected == "en", hints.count > 1, words <= 5, !isHinglish(t) { return confidence(t, is: "en") < 0.5 }
@@ -118,6 +123,13 @@ enum LanguageID {
     }
 
     /// The language to try instead: the best of yours other than the one Whisper picked.
+    static let indian: Set<String> = ["hi", "ur", "bn", "mr", "ne", "ta", "te", "kn", "ml", "gu", "pa", "as", "or"]
+
+    /// Whisper mistook one Indian language for another you speak.
+    static func indianNeighbours(_ detected: String, _ hints: [String]) -> Bool {
+        indian.contains(detected) && hints.contains(where: { indian.contains($0) && $0 != detected })
+    }
+
     static func alternative(text: String, detected: String?, hints: [String]) -> String? {
         let others = hints.filter { $0 != detected }
         guard !others.isEmpty else { return nil }

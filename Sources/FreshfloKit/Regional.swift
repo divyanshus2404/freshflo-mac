@@ -14,29 +14,54 @@ enum Regional {
         return groupIndian(t)
     }
 
-    private static let smallNumber = #"(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[- ](?:one|two|three|four|five|six|seven|eight|nine))?"#
+    private static let smallNumber = #"(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[-‑– ](?:one|two|three|four|five|six|seven|eight|nine))?"#
+    /// Things people count in dictation. A number word in front of one of these becomes digits.
+    /// Time and percentages: always digits ("5 minutes", "45%").
+    private static let measures = #"(minutes?|hours?|days?|weeks?|months?|years?|seconds?|percent|per cent)"#
+    /// Things people count: digits from 10 up ("50 users"); one to nine stay words ("two meetings"), as in most style guides.
+    private static let countable = #"(people|persons|members|times|users|customers|clients|employees|items|pages|files|tickets|orders|slides|tasks|emails|calls|meetings)"#
 
-    /// Durations, counts and clock times as digits, the way Freshflo writes English ("fifteen minutes" → "15 minutes",
-    /// "at ten o'clock" → "at 10"). Narrow on purpose: "one day I'll…" and "at one point" stay words.
+    /// Durations, counts, percentages and clock times as digits, the way Freshflo writes English ("fifteen minutes"
+    /// → "15 minutes", "forty five percent" → "45%", "at ten o'clock" → "at 10", "ten to fifteen minutes" →
+    /// "10 to 15 minutes"). Narrow on purpose: "one day I'll…" and "at one point" stay words.
     static func digitsForAmounts(_ text: String) -> String {
         func digits(_ phrase: String) -> String? {
-            Regional.number(fromWords: phrase.lowercased().split(whereSeparator: { $0 == " " || $0 == "-" }).map(String.init)).map(String.init)
+            Regional.number(fromWords: phrase.lowercased().split(whereSeparator: { " -‑–".contains($0) }).map(String.init)).map(String.init)
+        }
+        func replace(_ pattern: String, in t: inout String, _ build: (NSTextCheckingResult, String) -> String?) {
+            guard let re = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { return }
+            for m in re.matches(in: t, range: NSRange(t.startIndex..., in: t)).reversed() {
+                guard let whole = Range(m.range, in: t), let new = build(m, t) else { continue }
+                t.replaceSubrange(whole, with: new)
+            }
+        }
+        func group(_ m: NSTextCheckingResult, _ i: Int, _ t: String) -> String? {
+            Range(m.range(at: i), in: t).map { String(t[$0]) }
         }
         var t = text
-        let units = #"(minutes?|hours?|days?|weeks?|months?|years?|seconds?|people|persons|percent|members|times)"#
-        if let re = try? NSRegularExpression(pattern: #"\b(?!one\b)("# + smallNumber + #")\s+"# + units + #"\b"#, options: [.caseInsensitive]) {
-            for m in re.matches(in: t, range: NSRange(t.startIndex..., in: t)).reversed() {
-                guard let r = Range(m.range(at: 1), in: t), let n = digits(String(t[r])) else { continue }
-                t.replaceSubrange(r, with: n)
-            }
+        let start = #"(?<![\w\-‑–])"#
+        // "ten to fifteen minutes", "two or three days"
+        replace(start + "(" + smallNumber + #")\s+(to|or)\s+("# + smallNumber + #")\s+"# + measures + #"\b"#, in: &t) { m, t in
+            guard let a = group(m, 1, t).flatMap(digits), let b = group(m, 3, t).flatMap(digits), let joiner = group(m, 2, t), let unit = group(m, 4, t) else { return nil }
+            return "\(a) \(joiner) \(b) \(unit)"
         }
-        let after = #"(?=\s*(?:[.,;!?]|$|a\.?m\b|p\.?m\b|in the (?:morning|afternoon|evening|night)|tonight|tomorrow|today|sharp))"#
+        // "fifteen minutes", "forty five percent"; not a lone "one" ("one day", "one minute").
+        replace(start + #"(?!one\b)("# + smallNumber + #")\s+"# + measures + #"\b"#, in: &t) { m, t in
+            guard let n = group(m, 1, t).flatMap(digits), let unit = group(m, 2, t) else { return nil }
+            return unit.lowercased().hasPrefix("per") ? "\(n)%" : "\(n) \(unit)"
+        }
+        // "fifty users", "twelve tickets"; "two meetings" stays words.
+        replace(start + "(" + smallNumber + #")\s+"# + countable + #"\b"#, in: &t) { m, t in
+            guard let n = group(m, 1, t).flatMap(digits).flatMap(Int.init), n >= 10, let unit = group(m, 2, t) else { return nil }
+            return "\(n) \(unit)"
+        }
+        // Digits already: "12 percent" → "12%".
+        replace(#"\b(\d+(?:\.\d+)?)\s+(?:percent|per cent)\b"#, in: &t) { m, t in group(m, 1, t).map { "\($0)%" } }
         // "at ten o'clock" is always a time; a bare "at ten" only when what follows says so.
-        if let re = try? NSRegularExpression(pattern: #"\bat ("# + smallNumber + #")(?: o['’]clock\b|"# + after + ")", options: [.caseInsensitive]) {
-            for m in re.matches(in: t, range: NSRange(t.startIndex..., in: t)).reversed() {
-                guard let whole = Range(m.range, in: t), let r = Range(m.range(at: 1), in: t), let n = digits(String(t[r])) else { continue }
-                t.replaceSubrange(whole, with: (t[whole].hasPrefix("A") ? "At " : "at ") + n)
-            }
+        let after = #"(?=\s*(?:[.,;!?]|$|a\.?m\b|p\.?m\b|in the (?:morning|afternoon|evening|night)|tonight|tomorrow|today|sharp))"#
+        replace(#"\bat ("# + smallNumber + #")(?: o['’]clock\b|"# + after + ")", in: &t) { m, t in
+            guard let n = group(m, 1, t).flatMap(digits) else { return nil }
+            return (t[Range(m.range, in: t)!].hasPrefix("A") ? "At " : "at ") + n
         }
         return t
     }
@@ -121,6 +146,13 @@ enum Regional {
             // Don't turn "a rupee" or a bare "and" into a number.
             guard words.contains(where: { units[$0.lowercased()] != nil && $0.lowercased() != "a" || scales[$0.lowercased()] != nil || Int($0.replacingOccurrences(of: ",", with: "")) != nil }),
                   let n = number(fromWords: words), n > 0 else { continue }
+            // A round "five crore" / "two lakh" reads better as ₹5 crore / ₹2 lakh than as ₹5,00,00,000.
+            let lower = words.map { $0.lowercased() }
+            if let last = lower.last, ["crore", "crores", "lakh", "lakhs"].contains(last), lower.count >= 2,
+               !lower.dropLast().contains(where: { scales[$0] != nil }), let small = number(fromWords: Array(words.dropLast())) {
+                out.replaceSubrange(whole, with: "₹\(small) \(last.hasPrefix("crore") ? "crore" : "lakh")")
+                continue
+            }
             out.replaceSubrange(whole, with: "₹" + indianGrouping(n))
         }
         return out

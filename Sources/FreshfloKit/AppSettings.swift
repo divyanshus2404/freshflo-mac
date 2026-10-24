@@ -272,10 +272,14 @@ final class AppSettings: ObservableObject {
     }
 
     var endpoint: ProviderEndpoint {
-        ProviderEndpoint(
+        let model = transcriptionModel.trimmingCharacters(in: .whitespaces)
+        // Speakers of an Indian language get Groq's full Whisper model by default: about 80 ms slower than turbo,
+        // and far better at Bengali, Telugu, Kannada and the like (turbo mistakes them for Hindi or Tamil).
+        let indian = spokenLanguages.contains { LanguageID.indian.contains($0) }
+        return ProviderEndpoint(
             baseURL: baseURL.trimmingCharacters(in: .whitespaces).trimmingCharacters(in: CharacterSet(charactersIn: "/")),
             apiKey: apiKey.trimmingCharacters(in: .whitespacesAndNewlines),
-            transcriptionModel: transcriptionModel.trimmingCharacters(in: .whitespaces),
+            transcriptionModel: indian && model == "whisper-large-v3-turbo" ? "whisper-large-v3" : model,
             cleanupModel: cleanupModel.trimmingCharacters(in: .whitespaces),
             smartModel: smartModel.trimmingCharacters(in: .whitespaces),
             language: language.trimmingCharacters(in: .whitespaces).lowercased()

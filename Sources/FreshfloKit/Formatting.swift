@@ -14,10 +14,10 @@ enum EmailFormat {
         return mailTabs.firstMatch(in: windowTitle, range: NSRange(windowTitle.startIndex..., in: windowTitle)) != nil
     }
 
-    static let instruction = "This is an email. Put the greeting (\"Hi Marcus,\") on its own line followed by a blank line, split the body into short paragraphs, and put a sign-off (\"Thanks,\" / \"Best,\") and the name on their own lines at the end. Don't add a greeting or sign-off the speaker didn't say."
+    static let instruction = "This is an email. Put the greeting (\"Hi Marcus,\") on its own line followed by a blank line, split the body into short paragraphs, and put a sign-off (\"Thanks,\" / \"Best,\") and the name on their own lines at the end. Don't add a greeting or sign-off the speaker didn't say, and keep the ones they chose (\"Hello\" stays \"Hello\", \"Best regards\" stays \"Best regards\"). Titles take a period: \"Mr. Gupta\", \"Dr. Rao\"."
 
     private static let greeting = try! NSRegularExpression(pattern: #"""
-        ^(Hi|Hey|Hello|Dear|Good\s+(?:morning|afternoon|evening))((?:\s+(?:sir|ma'am|madam|team|all|everyone|there|guys|folks|[A-Z][\w'’-]*)){0,2})\s*[,!.:—-]?\s+(?=\S)
+        ^(Hi|Hey|Hello|Dear|Good\s+(?:morning|afternoon|evening))((?:\s+(?:sir|ma'am|madam|team|all|everyone|there|guys|folks|(?:Mr|Mrs|Ms|Dr|Prof)\.?(?=\s+[A-Z])|[A-Z][\w'’-]*)){0,3})\s*[,!.:—-]?\s+(?=\S)
         """#, options: [.allowCommentsAndWhitespace])
     private static let signOff = try! NSRegularExpression(pattern: #"""
         (?:^|(?<=[.!?])\s+|\n+)((?:Many\s+)?Thanks(?:\s+(?:so\s+much|a\s+lot|again))?|Thank\s+you(?:\s+so\s+much)?|Best(?:\s+regards)?|Kind\s+regards|Warm\s+regards|Regards|Cheers|Sincerely|Talk\s+soon)

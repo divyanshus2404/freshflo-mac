@@ -33,11 +33,18 @@ enum GrammarEval {
             engines[result.engine, default: 0] += 1
             // Compare code units, not whole characters: "संध्याकाळ" is inside "संध्याकाळी" even though the last letter
             // and its vowel sign form one character.
-            let out = result.text.lowercased() as NSString
+            // Non-breaking spaces (between a number and its unit) count as spaces.
+            let out = result.text.lowercased().replacingOccurrences(of: "\u{00A0}", with: " ").replacingOccurrences(of: "\u{202F}", with: " ") as NSString
             let has = { (needle: String) in out.range(of: needle.lowercased(), options: .literal).location != NSNotFound }
             // "late|delayed": either one is right.
             let missing = (c.must ?? []).filter { !$0.split(separator: "|").contains { has(String($0)) } }
-            let present = (c.mustNot ?? []).filter { has($0) }
+            // Forbidden words match whole words only ("ise" isn't inside "arises"); other text matches anywhere.
+            let present = (c.mustNot ?? []).filter { needle in
+                let word = needle.trimmingCharacters(in: .whitespaces)
+                guard !word.isEmpty, word.allSatisfy({ $0.isLetter }) else { return has(needle) }
+                let pattern = "(?<![\\p{L}\\p{M}])" + NSRegularExpression.escapedPattern(for: word.lowercased()) + "(?![\\p{L}\\p{M}])"
+                return out.range(of: pattern, options: .regularExpression).location != NSNotFound
+            }
             // "Write in" cases must really come out in that language (English: no Hinglish or other-script words left).
             let target = c.writeIn ?? ""
             let wrongLanguage = !target.isEmpty && !(target == "English" ? LanguageID.alreadyIn(result.text, target: target) : LanguageID.matches(result.text, target: target))

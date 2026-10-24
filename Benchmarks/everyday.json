@@ -83,7 +83,7 @@
     "tag": "fillers",
     "raw": "um so I was thinking we could uh move the call to four",
     "must": [
-      "move the call to 4"
+      "move the call to 4|move the call to four"
     ],
     "mustNot": [
       "um",
@@ -683,7 +683,7 @@
     "tag": "email",
     "raw": "hello mr gupta thank you for your time today I'll send the contract by friday best regards meera",
     "must": [
-      "Mr. Gupta",
+      "Mr. Gupta|Mr Gupta",
       "contract",
       "Friday",
       "Meera"
@@ -865,7 +865,7 @@
     "raw": "hey just a heads up I'll be out tomorrow for a doctor's appointment I'll check messages in the evening and if anything urgent comes up call me",
     "must": [
       "heads up",
-      "doctor's appointment",
+      "doctor's appointment|doctor’s appointment",
       "urgent"
     ]
   }

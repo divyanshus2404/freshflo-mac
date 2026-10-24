@@ -223,7 +223,7 @@
     "tag": "indian",
     "raw": "He is having fever since two days.",
     "must": [
-      "for two days"
+      "for two days|for 2 days"
     ],
     "mustNot": [
       "since two days"
