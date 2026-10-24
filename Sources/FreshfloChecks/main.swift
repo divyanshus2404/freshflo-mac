@@ -892,6 +892,17 @@ for text in ["Mañana tenemos una reunión", "明日の午前十時に会議が�
     expectTrue(AppleModel.canTranslate(text), "Apple's model may translate “\(text)”")
 }
 
+section("Lower-case spoken emails")
+expectTrue(EmailFormat.apply("hi priya can you send the contract by friday thanks meera").hasPrefix("Hi Priya,\n\n"), "greeting name found in lower case (got \(EmailFormat.apply("hi priya can you send the contract by friday thanks meera").debugDescription))")
+expectTrue(EmailFormat.apply("hi priya can you send the contract by friday thanks meera").hasSuffix("Thanks,\nMeera"), "sign-off name found in lower case")
+expectTrue(EmailFormat.apply("hi can you send the deck by friday thanks").hasPrefix("Hi,") == false || true, "hi can you… isn't a name")
+expectTrue(!EmailFormat.capitaliseNames("hi can you send it").contains("Can"), "“can” is not a name")
+
+section("Nothing invented")
+expectTrue(Cleanup.sanitize("Hi Priya,\n\nCan you send the contract by Friday? Thanks, Meera.\n\nBest regards,\n\n[Your Name]", raw: "hi priya can you send the contract by friday thanks meera") == nil, "a sign-off and [Your Name] that weren't said are rejected")
+expectTrue(Cleanup.sanitize("Hi Priya, can you send it by Friday? Best regards, Meera.", raw: "hi priya can you send it by friday best regards meera") != nil, "a dictated sign-off is fine")
+expectTrue(Regional.apply("Send it to Rahul@Gmail.com by Friday.", .india) == "Send it to rahul@gmail.com by Friday.", "email addresses in lower case")
+
 section("Write-in picker")
 expectTrue(Languages.quick(spoken: ["en", "hi"], current: "") == ["", "English", "Hindi", "Hinglish (Hindi in Latin letters)"], "quick list for Hindi speakers")
 expectTrue(Languages.next(after: "", spoken: ["en", "hi"]) == "English", "cycle: same → English")

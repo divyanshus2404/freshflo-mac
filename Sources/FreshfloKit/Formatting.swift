@@ -16,8 +16,33 @@ enum EmailFormat {
 
     static let instruction = "This is an email. Put the greeting (\"Hi Marcus,\") on its own line followed by a blank line, split the body into short paragraphs, and put a sign-off (\"Thanks,\" / \"Best,\") and the name on their own lines at the end. Don't add a greeting or sign-off the speaker didn't say, and keep the ones they chose (\"Hello\" stays \"Hello\", \"Best regards\" stays \"Best regards\"). Titles take a period: \"Mr. Gupta\", \"Dr. Rao\"."
 
+    /// Words that can follow "hi" or "thanks" without being a name ("hi can you…", "thanks again"). Mirrors email.rs.
+    private static let notNames: Set<String> = ["can", "could", "would", "will", "just", "i", "we", "so", "there", "all", "everyone", "team", "guys", "folks", "again",
+        "a", "for", "much", "the", "you", "to", "and", "please", "it", "is", "this", "that", "my", "our", "sir", "madam", "in", "advance", "both", "everybody",
+        "how", "what", "hope", "quick", "regarding"]
+
+    /// Spoken emails arrive in lower case: "hi priya … thanks meera". A word after the greeting or the sign-off that isn't an
+    /// ordinary word is a name, so it's capitalised and the greeting and sign-off rules can find it.
+    static func capitaliseNames(_ text: String) -> String {
+        var s = text
+        for pattern in [#"(?i)^(hi|hey|hello|dear)\s+([a-z][\w'’-]*)\b"#, #"(?i)\b(thanks|thank you|regards|best regards|kind regards|cheers)[,.]?\s+([a-z][\w'’-]*)[.!]?\s*$"#] {
+            guard let re = try? NSRegularExpression(pattern: pattern), let m = re.firstMatch(in: s, range: NSRange(s.startIndex..., in: s)),
+                  let r = Range(m.range(at: 2), in: s), !notNames.contains(s[r].lowercased()) else { continue }
+            s.replaceSubrange(r, with: s[r].prefix(1).uppercased() + s[r].dropFirst())
+            if let k = Range(m.range(at: 1), in: s) {
+                s.replaceSubrange(k, with: s[k].prefix(1).uppercased() + s[k].dropFirst())
+                // "…cc rahul Thanks Meera": end the sentence before a sign-off, so it reads as one.
+                if pattern.contains("thanks"), let before = s[..<k.lowerBound].last(where: { !$0.isWhitespace }), before.isLetter || before.isNumber {
+                    let end = s[..<k.lowerBound].lastIndex(where: { !$0.isWhitespace })!
+                    s.insert(".", at: s.index(after: end))
+                }
+            }
+        }
+        return s
+    }
+
     private static let greeting = try! NSRegularExpression(pattern: #"""
-        ^(Hi|Hey|Hello|Dear|Good\s+(?:morning|afternoon|evening))((?:\s+(?:sir|ma'am|madam|team|all|everyone|there|guys|folks|(?:Mr|Mrs|Ms|Dr|Prof)\.?(?=\s+[A-Z])|[A-Z][\w'’-]*)){0,3})\s*[,!.:—-]?\s+(?=\S)
+        ^(Hi|Hey|Hello|Dear|Good\s+(?:morning|afternoon|evening))((?:\s+(?:(?i:sir|ma'am|madam|team|all|everyone|there|guys|folks)\b|(?:Mr|Mrs|Ms|Dr|Prof)\.?(?=\s+[A-Z])|(?!(?i:can|could|would|will|just|i|we|so|again|a|for|much|the|you|to|and|please|it|is|this|that|my|our|in|how|what|hope|quick|regarding)\b)[A-Z][\w'’-]*)){0,3})\s*[,!.:—-]?\s+(?=\S)
         """#, options: [.allowCommentsAndWhitespace])
     private static let signOff = try! NSRegularExpression(pattern: #"""
         (?:^|(?<=[.!?])\s+|\n+)((?:Many\s+)?Thanks(?:\s+(?:so\s+much|a\s+lot|again))?|Thank\s+you(?:\s+so\s+much)?|Best(?:\s+regards)?|Kind\s+regards|Warm\s+regards|Regards|Cheers|Sincerely|Talk\s+soon)
@@ -25,7 +50,7 @@ enum EmailFormat {
         """#, options: [.allowCommentsAndWhitespace])
 
     static func apply(_ text: String) -> String {
-        var s = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        var s = capitaliseNames(text.trimmingCharacters(in: .whitespacesAndNewlines))
         guard !s.isEmpty else { return text }
         // Sign-off first, from the end: "…tomorrow. Thanks, Divyanshu." → "…tomorrow.\n\nThanks,\nDivyanshu"
         var closing = ""

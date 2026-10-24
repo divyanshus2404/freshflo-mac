@@ -204,6 +204,9 @@ enum Cleanup {
         guard !text.isEmpty, text.count <= raw.count * (translating ? 4 : 2) + 40 else { return nil }
         // A list or heading the speaker never dictated means the model rewrote them (a plan, a prompt) instead of writing what they said.
         if inventedStructure(text, raw: raw) { return nil }
+        // Template placeholders ("[Your Name]") and sign-offs the speaker never said are the model writing, not editing.
+        if text.range(of: #"\[[A-Z][^\]\n]{0,40}\]"#, options: .regularExpression) != nil, raw.range(of: "[") == nil { return nil }
+        if inventedSignOff(text, raw: raw) { return nil }
         // Word-overlap checks can't apply when the output is in another language.
         if translating { return text }
 
@@ -225,6 +228,15 @@ enum Cleanup {
         let outSet = Set(outWords)
         if spoken.count >= 6, Double(spoken.filter(outSet.contains).count) / Double(spoken.count) < 0.5 { return nil }
         return text
+    }
+
+    /// A closing like "Best regards," that wasn't dictated (dictating "thanks" doesn't license adding "Best regards").
+    static func inventedSignOff(_ text: String, raw: String) -> Bool {
+        let r = raw.lowercased()
+        for closing in ["best regards", "kind regards", "warm regards", "sincerely", "yours truly", "best wishes"] {
+            if text.lowercased().contains(closing), !r.contains(closing) { return true }
+        }
+        return false
     }
 
     /// Output with list lines or a "Title:" first line, from speech with no sign of a list.

@@ -3,7 +3,7 @@ import Foundation
 /// Deterministic regional formatting applied after cleanup, so it doesn't depend on the model following instructions.
 enum Regional {
     static func apply(_ text: String, _ format: RegionalFormat) -> String {
-        var t = digitsForAmounts(spokenEmails(text))
+        var t = lowercaseEmails(digitsForAmounts(spokenEmails(text)))
         guard format == .india else { return t }
         t = rupeesInWords(t)
         let number = #"(\d[\d,]*(?:\.\d+)?)"#
@@ -67,6 +67,16 @@ enum Regional {
     }
 
     /// "rahul at the rate gmail dot com" / "rahul at gmail dot com" → rahul@gmail.com
+    /// Email addresses are written in lower case: a model starting a sentence with one shouldn't give "Rahul@gmail.com".
+    static func lowercaseEmails(_ s: String) -> String {
+        guard let re = try? NSRegularExpression(pattern: #"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"#) else { return s }
+        var out = s
+        for m in re.matches(in: s, range: NSRange(s.startIndex..., in: s)).reversed() {
+            if let r = Range(m.range, in: out) { out.replaceSubrange(r, with: out[r].lowercased()) }
+        }
+        return out
+    }
+
     static func spokenEmails(_ s: String) -> String {
         let tld = #"(com|in|org|net|co|io|ai|edu|gov|dev|app|co\.in|co\.uk)"#
         return replace(s, #"\b([a-z0-9][a-z0-9._+-]*)\s+(?:at the rate(?: of)?|at)\s+([a-z0-9-]+)\s*(?:dot|\.)\s*"# + tld + #"\b"#, "$1@$2.$3")

@@ -12,7 +12,7 @@ trap 'rm -rf "$OUT"' EXIT
 for suite in everyday grammar translate multilang; do
   echo "→ $suite…"
   "$APP" --grammar-eval "Benchmarks/$suite.json" --pace 2000 --verbose > "$OUT/$suite.txt" 2>&1 || true
-  grep -E "^GRAMMAR" "$OUT/$suite.txt" || echo "  (no result)"
+  grep -E "^GRAMMAR|^engines" "$OUT/$suite.txt" || echo "  (no result)"
 done
 echo "→ audio…"
 "$APP" --benchmark Benchmarks > "$OUT/audio.txt" 2>&1 || true
