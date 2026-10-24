@@ -31,6 +31,8 @@
 
 ## Built on NVIDIA Nemotron + Nebius Token Factory
 
+> **Try it in 2 minutes.** [Download the latest DMG](https://github.com/divyanshus2404/freshflo-mac/releases/latest), drag Freshflo to Applications, then right-click it → **Open** (the build isn't notarized). Pick **Nebius Token Factory (NVIDIA Nemotron)** in *Settings → General → Transcription*, paste a [Token Factory key](https://tokenfactory.nebius.com) and press **Test**. Then open **Meeting Notes → Try it with sample meetings**, ask the chat a question, and press **Next step** on a commitment. Demo video: [youtube.com/watch?v=LEuuPPqadXY](https://www.youtube.com/watch?v=LEuuPPqadXY) · Page: [freshflo.vercel.app/nemotron](https://freshflo.vercel.app/nemotron)
+
 Freshflo's entire intelligence layer runs on **[NVIDIA Nemotron](https://www.nvidia.com/en-us/ai-data-science/foundation-models/nemotron/) served by [Nebius Token Factory](https://tokenfactory.nebius.com)** (OpenAI-compatible, `api.tokenfactory.nebius.com/v1`). Pick the **Nebius Token Factory (NVIDIA Nemotron)** engine in *Settings → General → Transcription*.
 
 - **Nemotron for all reasoning** — meeting notes, Ask, Command, cleanup, and the new **Chat with your meetings**. A resolver queries Token Factory's live `/models` catalog and always prefers a Nemotron model, so the app stays on an NVIDIA model even if ids change.

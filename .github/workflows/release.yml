@@ -1,0 +1,72 @@
+name: Release build
+
+# Builds a universal Freshflo.app, packages it as a DMG and publishes it as a GitHub release,
+# so anyone can try the app without building it from source.
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/hopeful-einstein-4xsal8]
+    paths: [".github/workflows/release.yml"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish the DMG
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use the newest Xcode (the app uses macOS 26 APIs)
+        run: |
+          XCODE="$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+          echo "Using $XCODE"
+          sudo xcode-select -s "$XCODE"
+          swift --version
+
+      - name: Checks
+        run: swift run FreshfloChecks
+
+      - name: Build Freshflo.app (universal, ad-hoc signed)
+        run: SKIP_CHECKS=1 SIGN_IDENTITY="-" ./scripts/build-app.sh
+
+      - name: Package the DMG
+        run: SIGN_IDENTITY="-" ./scripts/make-dmg.sh
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" build/Freshflo.app/Contents/Info.plist)
+          TAG="v$VERSION-nemotron"
+          DMG="build/Freshflo-$VERSION.dmg"
+          cat > notes.md <<EOF
+          Freshflo $VERSION with NVIDIA Nemotron on Nebius Token Factory: meeting notes, chat with your meetings, open commitments and Next step.
+
+          ### Install
+          1. Download **Freshflo-$VERSION.dmg** below, open it and drag **Freshflo** to **Applications**.
+          2. This build isn't notarized by Apple, so the first time: **right-click Freshflo → Open → Open**.
+             If macOS still refuses, go to **System Settings → Privacy & Security** and click **Open Anyway**.
+
+          ### Try the Nemotron features
+          1. Get an API key at [tokenfactory.nebius.com](https://tokenfactory.nebius.com).
+          2. **Settings → General → Transcription → Engine → Nebius Token Factory (NVIDIA Nemotron)**, paste the key, press **Test**.
+          3. Open **Meeting Notes → Try it with sample meetings**, then ask the chat a question, open **Open commitments** and press **Next step**.
+
+          Full guide: [hackathon/SETUP.md](https://github.com/${{ github.repository }}/blob/main/hackathon/SETUP.md)
+
+          SHA-256: \`$(shasum -a 256 "$DMG" | cut -d' ' -f1)\`
+          EOF
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$DMG" --clobber
+            gh release edit "$TAG" --notes-file notes.md
+          else
+            gh release create "$TAG" "$DMG" --target "$GITHUB_SHA" --title "Freshflo $VERSION (NVIDIA Nemotron)" --notes-file notes.md --latest
+          fi
+          echo "Published https://github.com/${{ github.repository }}/releases/tag/$TAG"
