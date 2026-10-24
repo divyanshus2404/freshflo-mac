@@ -1,31 +1,613 @@
 [
-  {"id": "fillers", "voice": "Samantha", "speak": "Um, so I was thinking we could, uh, meet tomorrow morning.",
-   "reference": "So I was thinking we could meet tomorrow morning.", "mustNotContain": ["um", "uh"]},
-  {"id": "self-correction", "voice": "Samantha", "speak": "Let's meet at 5 pm, no wait, 6 pm at the office.",
-   "reference": "Let's meet at 6 pm at the office.", "mustContain": ["6"], "mustNotContain": ["no wait", "5 pm"]},
-  {"id": "names", "voice": "Rishi", "speak": "Please send the contract to Divyanshu and Priyanka from Zerodha.",
-   "reference": "Please send the contract to Divyanshu and Priyanka from Zerodha.", "vocab": ["Divyanshu", "Priyanka", "Zerodha"],
-   "mustContain": ["Divyanshu", "Priyanka", "Zerodha"]},
-  {"id": "jargon", "voice": "Samantha", "speak": "We deployed the Kubernetes cluster and fixed the GraphQL resolver in the Next.js app.",
-   "reference": "We deployed the Kubernetes cluster and fixed the GraphQL resolver in the Next.js app.",
-   "mustContain": ["Kubernetes", "GraphQL"]},
-  {"id": "rupees", "voice": "Rishi", "speak": "The invoice is for two lakh fifty thousand rupees, due on the fifteenth.",
-   "reference": "The invoice is for ₹2,50,000, due on the 15th.", "region": "india", "mustContain": ["₹"]},
-  {"id": "email", "voice": "Rishi", "speak": "My email is rahul dot sharma at gmail dot com.",
-   "reference": "My email is rahul.sharma@gmail.com.", "mustContain": ["rahul.sharma@gmail.com"]},
-  {"id": "question", "voice": "Samantha", "speak": "Can you review the pull request before lunch",
-   "reference": "Can you review the pull request before lunch?", "mustEndWith": "?"},
-  {"id": "list", "voice": "Samantha", "speak": "For the trip I need to pack three things: a charger, my passport, and sunscreen.",
-   "reference": "For the trip I need to pack three things: a charger, my passport, and sunscreen.",
-   "mustContain": ["charger", "passport", "sunscreen"]},
-  {"id": "casual-chat", "voice": "Samantha", "speak": "Haha yeah, sounds good, see you there.", "app": "com.apple.MobileSMS",
-   "reference": "haha yeah, sounds good, see you there", "mustNotEndWith": "."},
-  {"id": "hindi-to-english", "voice": "Lekha", "speak": "कल सुबह दस बजे मीटिंग है, कृपया रिपोर्ट तैयार रखना",
-   "reference": "There is a meeting at 10 a.m. tomorrow morning, please keep the report ready.", "writeIn": "English",
-   "mustContain": ["meeting", "report"]},
-  {"id": "long-form", "voice": "Samantha",
-   "speak": "Hi team, here is the weekly update. On the product side, we shipped the new onboarding flow and the pricing page is finally live. Conversion on the signup page went up by about twelve percent, which is great news. On engineering, we fixed the payment bugs and reduced the crash rate on iOS. Next week we will focus on the referral program and the Android beta. Please send me your blockers by Thursday so we can plan the sprint.",
-   "reference": "Hi team, here is the weekly update. On the product side, we shipped the new onboarding flow and the pricing page is finally live. Conversion on the signup page went up by about 12%, which is great news. On engineering, we fixed the payment bugs and reduced the crash rate on iOS. Next week we will focus on the referral program and the Android beta. Please send me your blockers by Thursday so we can plan the sprint."},
-  {"id": "command-formal", "command": "make this more formal", "selection": "hey can u send me the report asap, thx",
-   "reference": "Could you please send me the report as soon as possible? Thank you.", "mustNotContain": ["asap", "thx", " u "]}
+  {
+    "id": "fillers",
+    "voice": "Samantha",
+    "speak": "Um, so I was thinking we could, uh, meet tomorrow morning.",
+    "reference": "So I was thinking we could meet tomorrow morning.",
+    "mustNotContain": [
+      "um",
+      "uh"
+    ]
+  },
+  {
+    "id": "self-correction",
+    "voice": "Samantha",
+    "speak": "Let's meet at 5 pm, no wait, 6 pm at the office.",
+    "reference": "Let's meet at 6 pm at the office.",
+    "mustContain": [
+      "6"
+    ],
+    "mustNotContain": [
+      "no wait",
+      "5 pm"
+    ]
+  },
+  {
+    "id": "names",
+    "voice": "Rishi",
+    "speak": "Please send the contract to Divyanshu and Priyanka from Zerodha.",
+    "reference": "Please send the contract to Divyanshu and Priyanka from Zerodha.",
+    "vocab": [
+      "Divyanshu",
+      "Priyanka",
+      "Zerodha"
+    ],
+    "mustContain": [
+      "Divyanshu",
+      "Priyanka",
+      "Zerodha"
+    ]
+  },
+  {
+    "id": "jargon",
+    "voice": "Samantha",
+    "speak": "We deployed the Kubernetes cluster and fixed the GraphQL resolver in the Next.js app.",
+    "reference": "We deployed the Kubernetes cluster and fixed the GraphQL resolver in the Next.js app.",
+    "mustContain": [
+      "Kubernetes",
+      "GraphQL"
+    ]
+  },
+  {
+    "id": "rupees",
+    "voice": "Rishi",
+    "speak": "The invoice is for two lakh fifty thousand rupees, due on the fifteenth.",
+    "reference": "The invoice is for ₹2,50,000, due on the 15th.",
+    "region": "india",
+    "mustContain": [
+      "₹"
+    ]
+  },
+  {
+    "id": "email",
+    "voice": "Rishi",
+    "speak": "My email is rahul dot sharma at gmail dot com.",
+    "reference": "My email is rahul.sharma@gmail.com.",
+    "mustContain": [
+      "rahul.sharma@gmail.com"
+    ]
+  },
+  {
+    "id": "question",
+    "voice": "Samantha",
+    "speak": "Can you review the pull request before lunch",
+    "reference": "Can you review the pull request before lunch?",
+    "mustEndWith": "?"
+  },
+  {
+    "id": "list",
+    "voice": "Samantha",
+    "speak": "For the trip I need to pack three things: a charger, my passport, and sunscreen.",
+    "reference": "For the trip I need to pack three things: a charger, my passport, and sunscreen.",
+    "mustContain": [
+      "charger",
+      "passport",
+      "sunscreen"
+    ]
+  },
+  {
+    "id": "casual-chat",
+    "voice": "Samantha",
+    "speak": "Haha yeah, sounds good, see you there.",
+    "app": "com.apple.MobileSMS",
+    "reference": "haha yeah, sounds good, see you there",
+    "mustNotEndWith": "."
+  },
+  {
+    "id": "hindi-to-english",
+    "voice": "Lekha",
+    "speak": "कल सुबह दस बजे मीटिंग है, कृपया रिपोर्ट तैयार रखना",
+    "reference": "There is a meeting at 10 a.m. tomorrow morning, please keep the report ready.",
+    "writeIn": "English",
+    "mustContain": [
+      "meeting",
+      "report"
+    ]
+  },
+  {
+    "id": "long-form",
+    "voice": "Samantha",
+    "speak": "Hi team, here is the weekly update. On the product side, we shipped the new onboarding flow and the pricing page is finally live. Conversion on the signup page went up by about twelve percent, which is great news. On engineering, we fixed the payment bugs and reduced the crash rate on iOS. Next week we will focus on the referral program and the Android beta. Please send me your blockers by Thursday so we can plan the sprint.",
+    "reference": "Hi team, here is the weekly update. On the product side, we shipped the new onboarding flow and the pricing page is finally live. Conversion on the signup page went up by about 12%, which is great news. On engineering, we fixed the payment bugs and reduced the crash rate on iOS. Next week we will focus on the referral program and the Android beta. Please send me your blockers by Thursday so we can plan the sprint."
+  },
+  {
+    "id": "command-formal",
+    "command": "make this more formal",
+    "selection": "hey can u send me the report asap, thx",
+    "reference": "Could you please send me the report as soon as possible? Thank you.",
+    "mustNotContain": [
+      "asap",
+      "thx",
+      " u "
+    ]
+  },
+  {
+    "id": "in-chat",
+    "voice": "Aman",
+    "speak": "Okay, I am reaching in ten minutes, please wait at the gate.",
+    "reference": "Okay, I'm reaching in 10 minutes, please wait at the gate.",
+    "mustContain": [
+      "10 minutes",
+      "gate"
+    ]
+  },
+  {
+    "id": "in-meeting",
+    "voice": "Tara",
+    "speak": "Can we prepone the meeting to Monday morning? Please revert by today evening.",
+    "reference": "Can we prepone the meeting to Monday morning? Please revert by this evening.",
+    "mustContain": [
+      "prepone",
+      "Monday",
+      "?"
+    ]
+  },
+  {
+    "id": "in-names",
+    "voice": "Rishi",
+    "speak": "Please loop in Aishwarya, Karthik and Siddharth from the Hyderabad office.",
+    "reference": "Please loop in Aishwarya, Karthik and Siddharth from the Hyderabad office.",
+    "mustContain": [
+      "Aishwarya",
+      "Karthik",
+      "Siddharth",
+      "Hyderabad"
+    ]
+  },
+  {
+    "id": "in-money",
+    "voice": "Aman",
+    "speak": "The total comes to one lakh twenty thousand rupees including GST.",
+    "reference": "The total comes to ₹1,20,000 including GST.",
+    "region": "india",
+    "mustContain": [
+      "₹1,20,000",
+      "GST"
+    ]
+  },
+  {
+    "id": "in-correction",
+    "voice": "Tara",
+    "speak": "Book the cab for seven, no wait, make it seven thirty.",
+    "reference": "Book the cab for 7:30.",
+    "mustContain": [
+      "7:30"
+    ],
+    "mustNotContain": [
+      "no wait"
+    ]
+  },
+  {
+    "id": "in-fillers",
+    "voice": "Rishi",
+    "speak": "So basically, um, the deployment failed because, uh, the config was wrong.",
+    "reference": "The deployment failed because the config was wrong.",
+    "mustContain": [
+      "deployment failed",
+      "config was wrong"
+    ],
+    "mustNotContain": [
+      "um",
+      "uh"
+    ]
+  },
+  {
+    "id": "in-tech",
+    "voice": "Aman",
+    "speak": "Push the changes to GitHub and trigger the Jenkins pipeline.",
+    "reference": "Push the changes to GitHub and trigger the Jenkins pipeline.",
+    "mustContain": [
+      "GitHub",
+      "Jenkins"
+    ]
+  },
+  {
+    "id": "in-question",
+    "voice": "Tara",
+    "speak": "Have you shared the minutes of meeting with the client?",
+    "reference": "Have you shared the minutes of the meeting with the client?",
+    "mustContain": [
+      "minutes",
+      "client",
+      "?"
+    ]
+  },
+  {
+    "id": "in-email",
+    "voice": "Rishi",
+    "speak": "Hi Anjali, please find the revised quotation attached. Thanks and regards, Mohit.",
+    "reference": "Hi Anjali,\n\nPlease find the revised quotation attached.\n\nThanks and regards,\nMohit",
+    "app": "com.apple.mail",
+    "mustContain": [
+      "Anjali",
+      "quotation",
+      "Mohit"
+    ]
+  },
+  {
+    "id": "in-list",
+    "voice": "Aman",
+    "speak": "For tomorrow, first call the vendor, second update the sheet, third send the invoice.",
+    "reference": "For tomorrow:\n1. Call the vendor\n2. Update the sheet\n3. Send the invoice",
+    "mustContain": [
+      "vendor",
+      "sheet",
+      "invoice"
+    ]
+  },
+  {
+    "id": "hi-meeting",
+    "voice": "Lekha",
+    "speak": "कल की मीटिंग पोस्टपोन हो गई है, क्लाइंट को बता देना",
+    "reference": "Tomorrow's meeting has been postponed, please let the client know.",
+    "writeIn": "English",
+    "mustContain": [
+      "meeting",
+      "postponed",
+      "client"
+    ]
+  },
+  {
+    "id": "hi-report",
+    "voice": "Lekha",
+    "speak": "रिपोर्ट शाम तक भेज दूंगा, थोड़ा सा काम बाकी है",
+    "reference": "I'll send the report by evening, a little work is left.",
+    "writeIn": "English",
+    "mustContain": [
+      "report",
+      "evening"
+    ]
+  },
+  {
+    "id": "hi-question",
+    "voice": "Lekha",
+    "speak": "क्या तुमने वो फाइल भेज दी जो मैंने कल मांगी थी",
+    "reference": "Did you send the file I asked for yesterday?",
+    "writeIn": "English",
+    "mustContain": [
+      "file",
+      "yesterday",
+      "?"
+    ]
+  },
+  {
+    "id": "hi-resolve",
+    "voice": "Lekha",
+    "speak": "हम इसे रिज़ॉल्व करने की कोशिश करेंगे",
+    "reference": "We will try to resolve this.",
+    "writeIn": "English",
+    "mustContain": [
+      "we",
+      "try",
+      "resolve"
+    ]
+  },
+  {
+    "id": "hi-money",
+    "voice": "Lekha",
+    "speak": "पेमेंट पांच हज़ार रुपये का है",
+    "reference": "The payment is ₹5,000.",
+    "writeIn": "English",
+    "region": "india",
+    "mustContain": [
+      "payment",
+      "₹5,000"
+    ]
+  },
+  {
+    "id": "hi-devanagari",
+    "voice": "Lekha",
+    "speak": "आज बहुत अच्छा दिन था, सबने मिलकर काम किया",
+    "reference": "आज बहुत अच्छा दिन था, सबने मिलकर काम किया।",
+    "mustContain": [
+      "आज",
+      "काम"
+    ]
+  },
+  {
+    "id": "us-fast",
+    "voice": "Samantha",
+    "speak": "Hey can you grab coffee on your way in, I'm stuck in back to back calls till noon.",
+    "reference": "Hey, can you grab coffee on your way in? I'm stuck in back-to-back calls till noon.",
+    "mustContain": [
+      "coffee",
+      "calls",
+      "noon"
+    ]
+  },
+  {
+    "id": "uk-formal",
+    "voice": "Daniel",
+    "speak": "I'd like to schedule a review of the quarterly figures for next Thursday afternoon.",
+    "reference": "I'd like to schedule a review of the quarterly figures for next Thursday afternoon.",
+    "mustContain": [
+      "quarterly figures",
+      "Thursday"
+    ]
+  },
+  {
+    "id": "prompt-claude",
+    "voice": "Rishi",
+    "speak": "Okay so I need you to write a SQL query that finds the top ten customers by revenue last month.",
+    "reference": "Write a SQL query that finds the top 10 customers by revenue last month.",
+    "app": "com.anthropic.claudefordesktop",
+    "mustContain": [
+      "SQL",
+      "customers",
+      "revenue"
+    ]
+  },
+  {
+    "id": "time-date",
+    "voice": "Tara",
+    "speak": "The webinar is on the twenty fourth of November at four thirty PM.",
+    "reference": "The webinar is on the 24th of November at 4:30 PM.",
+    "mustContain": [
+      "24",
+      "November",
+      "4:30"
+    ]
+  },
+  {
+    "id": "ml-bn",
+    "voice": "Piya",
+    "speak": "আগামীকাল সকাল দশটায় মিটিং আছে, রিপোর্ট তৈরি রাখবেন",
+    "reference": "",
+    "writeIn": "English",
+    "speaks": [
+      "bn",
+      "en"
+    ],
+    "mustContain": [
+      "tomorrow",
+      "meeting",
+      "report"
+    ]
+  },
+  {
+    "id": "ml-ta",
+    "voice": "Vani",
+    "speak": "நாளை காலை பத்து மணிக்கு கூட்டம் இருக்கிறது",
+    "reference": "",
+    "writeIn": "English",
+    "speaks": [
+      "ta",
+      "en"
+    ],
+    "mustContain": [
+      "tomorrow",
+      "meeting"
+    ]
+  },
+  {
+    "id": "ml-te",
+    "voice": "Geeta",
+    "speak": "రేపు ఉదయం పది గంటలకు మీటింగ్ ఉంది",
+    "reference": "",
+    "writeIn": "English",
+    "speaks": [
+      "te",
+      "en"
+    ],
+    "mustContain": [
+      "tomorrow",
+      "meeting"
+    ]
+  },
+  {
+    "id": "ml-kn",
+    "voice": "Soumya",
+    "speak": "ನಾಳೆ ಬೆಳಿಗ್ಗೆ ಹತ್ತು ಗಂಟೆಗೆ ಮೀಟಿಂಗ್ ಇದೆ",
+    "reference": "",
+    "writeIn": "English",
+    "speaks": [
+      "kn",
+      "en"
+    ],
+    "mustContain": [
+      "tomorrow",
+      "meeting"
+    ]
+  },
+  {
+    "id": "ml-hi2",
+    "voice": "Lekha",
+    "speak": "मैं आज घर से काम कर रहा हूँ, शाम को कॉल करता हूँ",
+    "reference": "",
+    "writeIn": "English",
+    "speaks": [
+      "hi",
+      "en"
+    ],
+    "mustContain": [
+      "home",
+      "evening",
+      "call"
+    ]
+  },
+  {
+    "id": "ml-es",
+    "voice": "Mónica",
+    "speak": "Mañana tenemos una reunión con el cliente a las diez",
+    "reference": "",
+    "writeIn": "English",
+    "speaks": [
+      "es",
+      "en"
+    ],
+    "mustContain": [
+      "tomorrow",
+      "meeting",
+      "client"
+    ]
+  },
+  {
+    "id": "ml-es-mx",
+    "voice": "Paulina",
+    "speak": "¿Puedes enviarme el informe antes del viernes?",
+    "reference": "",
+    "writeIn": "English",
+    "speaks": [
+      "es",
+      "en"
+    ],
+    "mustContain": [
+      "report",
+      "Friday",
+      "?"
+    ]
+  },
+  {
+    "id": "ml-fr",
+    "voice": "Thomas",
+    "speak": "Nous avons une réunion demain à dix heures avec l'équipe",
+    "reference": "",
+    "writeIn": "English",
+    "speaks": [
+      "fr",
+      "en"
+    ],
+    "mustContain": [
+      "meeting",
+      "tomorrow",
+      "team"
+    ]
+  },
+  {
+    "id": "ml-de",
+    "voice": "Anna",
+    "speak": "Kannst du mir den Bericht bis Freitag schicken?",
+    "reference": "",
+    "writeIn": "English",
+    "speaks": [
+      "de",
+      "en"
+    ],
+    "mustContain": [
+      "report",
+      "Friday",
+      "?"
+    ]
+  },
+  {
+    "id": "ml-pt",
+    "voice": "Luciana",
+    "speak": "Amanhã temos uma reunião às dez horas",
+    "reference": "",
+    "writeIn": "English",
+    "speaks": [
+      "pt",
+      "en"
+    ],
+    "mustContain": [
+      "tomorrow",
+      "meeting"
+    ]
+  },
+  {
+    "id": "ml-it",
+    "voice": "Alice",
+    "speak": "Puoi mandarmi il rapporto entro venerdì?",
+    "reference": "",
+    "writeIn": "English",
+    "speaks": [
+      "it",
+      "en"
+    ],
+    "mustContain": [
+      "Friday",
+      "?"
+    ]
+  },
+  {
+    "id": "ml-ja",
+    "voice": "Kyoko",
+    "speak": "明日の午前十時に会議があります",
+    "reference": "",
+    "writeIn": "English",
+    "speaks": [
+      "ja",
+      "en"
+    ],
+    "mustContain": [
+      "tomorrow",
+      "meeting"
+    ]
+  },
+  {
+    "id": "ml-zh",
+    "voice": "Tingting",
+    "speak": "我们明天上午十点开会",
+    "reference": "",
+    "writeIn": "English",
+    "speaks": [
+      "zh",
+      "en"
+    ],
+    "mustContain": [
+      "tomorrow",
+      "meeting"
+    ]
+  },
+  {
+    "id": "ml-ko",
+    "voice": "Yuna",
+    "speak": "내일 오전 열 시에 회의가 있습니다",
+    "reference": "",
+    "writeIn": "English",
+    "speaks": [
+      "ko",
+      "en"
+    ],
+    "mustContain": [
+      "tomorrow",
+      "meeting"
+    ]
+  },
+  {
+    "id": "ml-ru",
+    "voice": "Milena",
+    "speak": "Завтра в десять у нас встреча с клиентом",
+    "reference": "",
+    "writeIn": "English",
+    "speaks": [
+      "ru",
+      "en"
+    ],
+    "mustContain": [
+      "tomorrow",
+      "meeting",
+      "client"
+    ]
+  },
+  {
+    "id": "ml-tr",
+    "voice": "Yelda",
+    "speak": "Yarın saat onda müşteriyle toplantımız var",
+    "reference": "",
+    "writeIn": "English",
+    "speaks": [
+      "tr",
+      "en"
+    ],
+    "mustContain": [
+      "tomorrow",
+      "meeting"
+    ]
+  },
+  {
+    "id": "ml-nl",
+    "voice": "Xander",
+    "speak": "Morgen om tien uur hebben we een vergadering",
+    "reference": "",
+    "writeIn": "English",
+    "speaks": [
+      "nl",
+      "en"
+    ],
+    "mustContain": [
+      "tomorrow",
+      "meeting"
+    ]
+  }
 ]

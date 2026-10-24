@@ -821,6 +821,52 @@ expectTrue(!LanguageID.alreadyIn("ہم اسے ریزولو کریں گے", targe
 expectTrue(LanguageID.detect(text: "ہم دیکھتے ہیں کوئی ایشو آئے گا تو اس کو ہم ریزولو کریں گے", whisperGuess: "ur", hints: ["en", "hi"])?.code == "hi", "Urdu guess means Hindi for a Hindi speaker")
 expectTrue(LanguageID.detect(text: "ہم دیکھتے ہیں کوئی ایشو آئے گا تو اس کو ہم ریزولو کریں گے", whisperGuess: "ur", hints: ["en", "ur"])?.code == "ur", "Urdu stays Urdu for an Urdu speaker")
 
+section("Every script")
+for (text, lang) in [("我们明天上午十点开会", "Chinese"), ("明日の午前十時に会議があります", "Japanese"), ("내일 회의가 있습니다", "Korean"),
+                     ("Завтра встреча", "Russian"), ("কাল মিটিং আছে", "Bengali"), ("நாளை கூட்டம்", "Tamil"), ("اجتماع غدا", "Arabic")] {
+    expectTrue(!LanguageID.alreadyIn(text, target: "English"), "\(lang) is translated, not taken for English")
+    expectTrue(!LanguageID.matches(text, target: "English"), "\(lang) left untranslated is caught, even when short")
+}
+expectTrue(LanguageID.alreadyIn("See you at the café.", target: "English"), "accented Latin letters are still English")
+expectTrue(LanguageID.matches("Okay, done.", target: "English"), "short English still passes")
+expectTrue(LanguageID.matches("Nos vemos mañana.", target: "Spanish"), "Spanish passes as Spanish")
+expectTrue(!LanguageID.matches("कल मिलते हैं", target: "Spanish"), "Hindi letters aren't Spanish")
+
+section("Numbers as digits")
+for (said, want) in [("I'm fifteen minutes late.", "I'm 15 minutes late."), ("We have a meeting tomorrow at ten.", "We have a meeting tomorrow at 10."),
+                     ("Tomorrow at ten o'clock we have a meeting.", "Tomorrow at 10 we have a meeting."), ("At seven thirty pm", "At seven thirty pm"),
+                     ("It takes twenty-five minutes.", "It takes 25 minutes."), ("We need three people.", "We need 3 people."),
+                     ("One day I'll visit.", "One day I'll visit."), ("At one point it broke.", "At one point it broke."),
+                     ("Call me at five tomorrow.", "Call me at 5 tomorrow."), ("Give me one minute.", "Give me one minute."),
+                     ("I have two ideas.", "I have two ideas.")] {
+    expectTrue(Regional.digitsForAmounts(said) == want, "“\(said)” → “\(want)” (got “\(Regional.digitsForAmounts(said))”)")
+}
+expectTrue(Cleanup.scriptRule("Hindi").contains("Devanagari"), "Hindi is asked for in Devanagari")
+expectTrue(Cleanup.scriptRule("Tamil").contains("Tamil script"), "Tamil in Tamil script")
+expectTrue(Cleanup.scriptRule("English").isEmpty && Cleanup.scriptRule("Hinglish (Hindi in Latin letters)").isEmpty, "no script rule for Latin-letter targets")
+
+section("Meeting turns")
+do {
+    let tone = { (secs: Double) in (0..<Int(secs * 16_000)).map { Float(0.2 * sin(Double($0) * 0.05)) } }
+    let quiet = { (secs: Double) in [Float](repeating: 0, count: Int(secs * 16_000)) }
+    // Them: speaks 0–3 s, silent 3–10 s (you talk), speaks 10–12 s.
+    let track = tone(3) + quiet(7) + tone(2) + quiet(1)
+    let regions = MeetingTurns.speechRegions(track)
+    expectTrue(regions.count == 2, "two turns found (got \(regions.count))")
+    let (audio, spans) = MeetingTurns.squeeze(track, regions: regions)
+    expectTrue(Double(audio.count) / 16_000 < 7, "silence squeezed out (\(Double(audio.count) / 16_000) s left of 13)")
+    expectTrue(spans.count == 2 && abs(spans[1].originalStart - 9.85) < 0.1, "second turn keeps its real start (\(spans.map(\.originalStart)))")
+    // One Whisper segment that glued both turns together is split back by word times.
+    let second = spans[1].squeezedStart + 0.3
+    let segs = [Transcriber.TimedSegment(start: 0.1, end: second + 1, text: "Hi, this is Priya. Friday is risky.")]
+    let words = [0.1, 0.4, 0.7, 1.0, second, second + 0.3, second + 0.6].map { Transcriber.Word(start: $0, word: "w") }
+    let turns = MeetingTurns.turns(segments: segs, words: words, spans: spans)
+    expectTrue(turns.map(\.text) == ["Hi, this is Priya.", "Friday is risky."], "glued turns split apart (got \(turns.map(\.text)))")
+    expectTrue(turns.count == 2 && turns[1].start > 9, "each at its real time")
+    expectTrue(MeetingTurns.speechRegions(quiet(5)).isEmpty, "silence is no turn at all")
+}
+expectTrue(Regional.apply("Budget: 2 lakh rupees. Launch on Monday, 27 October 2026.", .india) == "Budget: ₹2 lakh. Launch on Monday, 27 October 2026.", "notes get ₹ but keep years (got \(Regional.apply("Budget: 2 lakh rupees. Launch on Monday, 27 October 2026.", .india)))")
+
 section("Write-in picker")
 expectTrue(Languages.quick(spoken: ["en", "hi"], current: "") == ["", "English", "Hindi", "Hinglish (Hindi in Latin letters)"], "quick list for Hindi speakers")
 expectTrue(Languages.next(after: "", spoken: ["en", "hi"]) == "English", "cycle: same → English")

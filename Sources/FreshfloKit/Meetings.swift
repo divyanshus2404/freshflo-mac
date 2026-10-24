@@ -138,7 +138,7 @@ enum MeetingProcessor {
                 var names = segs.map { _ in speaker }
                 // Tell the other people apart by voice: "Speaker 1", "Speaker 2"… (named below when the call makes it clear).
                 if speaker == "Them", segs.count >= 2, let samples,
-                   let ids = Diarization.speakers(samples: samples, starts: segs.map(\.start)) {
+                   let ids = Diarization.speakers(samples: samples, starts: segs.map(\.start), ends: segs.allSatisfy { $0.end != nil } ? segs.map { $0.end! } : nil) {
                     names = ids.map { "Speaker \($0 + 1)" }
                     labelled = Array(Set(names)).sorted()
                 }
@@ -148,6 +148,8 @@ enum MeetingProcessor {
             guard !lines.isEmpty else { throw MeetingError.nothingHeard }
 
             meeting.transcript = format(lines)
+            // One other person on the call is just "Them"; they get a name too when they say it ("नमस्ते, मैं नेहा").
+            if labelled.isEmpty, lines.contains(where: { $0.speaker == "Them" }) { labelled = ["Them"] }
             if !labelled.isEmpty {
                 let names = await SpeakerNames.resolve(transcript: meeting.transcript, labels: labelled, settings: settings)
                 if !names.isEmpty {
@@ -184,6 +186,8 @@ enum MeetingProcessor {
             text: transcript,
             chunkInstructions: "Extract the key points, decisions, action items (with owners) and open questions from this part of a meeting transcript. Be factual and concise."
         ))
+        // Same formats as dictation (₹2,00,000, digits for amounts and times).
+        notes = Regional.apply(notes, settings.regionalFormat)
         var title: String?
         if let firstLine = notes.components(separatedBy: "\n").first, firstLine.hasPrefix("# ") {
             title = String(firstLine.dropFirst(2)).trimmingCharacters(in: .whitespaces)
@@ -207,10 +211,17 @@ enum MeetingProcessor {
         if !settings.provider.transcribesInCloud || !settings.canUseCloud {
             return try await LocalSpeech.transcribeSegments(file: url, language: settings.language, vocabulary: settings.dictionary)
         }
-        let data = try Data(contentsOf: url)
+        // Only the speech is sent, with long silences squeezed out; word times put each turn back where it was said.
+        let samples = try AudioRecorder.load(url: url)
+        let regions = MeetingTurns.speechRegions(samples)
+        guard !regions.isEmpty else { return [] }
+        let (audio, spans) = MeetingTurns.squeeze(samples, regions: regions)
+        let data = try AudioRecorder.m4a(from: audio)
         guard data.count <= 24 * 1024 * 1024 else { throw FileTranscriptionError.tooLarge }
-        return try await Transcriber.transcribeSegments(data: data, filename: url.lastPathComponent,
-                                                        endpoint: settings.endpoint, vocabulary: settings.dictionary)
+        let timed = try await Transcriber.transcribeTimed(data: data, filename: "speech.m4a", endpoint: settings.endpoint, vocabulary: settings.dictionary)
+        return MeetingTurns.turns(segments: timed.segments, words: timed.words, spans: spans)
+            .map { Transcriber.Segment(start: $0.start, text: Transcriber.stripHallucinations($0.text), end: $0.end) }
+            .filter { !$0.text.isEmpty }
     }
 
     /// Without headphones the mic also hears the other side; drop "You" lines that duplicate a nearby "Them" line.
@@ -414,9 +425,14 @@ enum MeetingTools {
             batches[batches.count - 1].append(line)
             size += line.count
         }
+        let target = settings.outputLanguage.trimmingCharacters(in: .whitespaces)
+        // You write in another language (Hinglish speaker, English notes): the readable copy is in that language too.
+        let language = target.isEmpty
+            ? "Keep the meaning, the speaker's own words and any Hindi or other non-English words."
+            : "Write every line in \(target), translating anything said in another language faithfully (keep who is speaking, the tense and the meaning; numbers as digits)." + Cleanup.scriptRule(target)
         let instructions = """
         You clean up a meeting transcript. Each input line looks like "[mm:ss] Speaker: words".
-        For every line, keep the "[mm:ss] Speaker:" prefix exactly, and rewrite only the words: remove filler words (um, uh, like, you know), stutters and accidental repeats, apply self-corrections, and fix grammar and punctuation so it reads as clear written English. Keep the meaning, the speaker's own words and any Hindi or other non-English words.
+        For every line, keep the "[mm:ss] Speaker:" prefix exactly, and rewrite only the words: remove filler words (um, uh, like, you know), stutters and accidental repeats, apply self-corrections, and fix grammar and punctuation so it reads clearly. \(language)
         Output exactly the same number of lines, in the same order, one output line per input line, and nothing else.
         """
         var out: [String] = []

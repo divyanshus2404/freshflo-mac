@@ -1,0 +1,872 @@
+[
+  {
+    "tag": "chat",
+    "raw": "haha yeah sounds good see you there",
+    "must": [
+      "sounds good",
+      "see you there"
+    ]
+  },
+  {
+    "tag": "chat",
+    "raw": "on my way be there in 10",
+    "must": [
+      "on my way",
+      "10"
+    ]
+  },
+  {
+    "tag": "chat",
+    "raw": "can you send me the link when you get a chance",
+    "must": [
+      "send me the link",
+      "?"
+    ]
+  },
+  {
+    "tag": "chat",
+    "raw": "lol that's hilarious I can't believe he actually did that",
+    "must": [
+      "hilarious",
+      "actually did that"
+    ]
+  },
+  {
+    "tag": "chat",
+    "raw": "sure thing I'll take a look after lunch",
+    "must": [
+      "take a look after lunch"
+    ]
+  },
+  {
+    "tag": "chat",
+    "raw": "thanks so much for the help yesterday really appreciate it",
+    "must": [
+      "thanks so much",
+      "appreciate it"
+    ]
+  },
+  {
+    "tag": "chat",
+    "raw": "running 5 minutes late start without me",
+    "must": [
+      "5 minutes late",
+      "start without me"
+    ]
+  },
+  {
+    "tag": "chat",
+    "raw": "did you get a chance to look at the doc",
+    "must": [
+      "look at the doc",
+      "?"
+    ]
+  },
+  {
+    "tag": "chat",
+    "raw": "happy birthday hope you have an amazing day",
+    "must": [
+      "happy birthday",
+      "amazing day"
+    ],
+    "app": "net.whatsapp.WhatsApp"
+  },
+  {
+    "tag": "chat",
+    "raw": "nope not yet will update you by evening",
+    "must": [
+      "not yet",
+      "by evening"
+    ]
+  },
+  {
+    "tag": "fillers",
+    "raw": "um so I was thinking we could uh move the call to four",
+    "must": [
+      "move the call to 4"
+    ],
+    "mustNot": [
+      "um",
+      "uh"
+    ]
+  },
+  {
+    "tag": "fillers",
+    "raw": "so like basically the build is failing on main",
+    "must": [
+      "the build is failing on main"
+    ],
+    "mustNot": [
+      "like basically"
+    ]
+  },
+  {
+    "tag": "fillers",
+    "raw": "you know I think we should just ship it",
+    "must": [
+      "we should just ship it"
+    ],
+    "mustNot": [
+      "you know"
+    ]
+  },
+  {
+    "tag": "fillers",
+    "raw": "uh hmm let me check and get back to you",
+    "must": [
+      "let me check and get back to you"
+    ],
+    "mustNot": [
+      "uh",
+      "hmm"
+    ]
+  },
+  {
+    "tag": "fillers",
+    "raw": "so um the client wants uh three more revisions",
+    "must": [
+      "the client wants three more revisions"
+    ],
+    "mustNot": [
+      "um",
+      "uh"
+    ]
+  },
+  {
+    "tag": "fillers",
+    "raw": "I mean honestly the design looks great",
+    "must": [
+      "the design looks great"
+    ]
+  },
+  {
+    "tag": "fillers",
+    "raw": "okay so um first we need to fix the login",
+    "must": [
+      "fix the login"
+    ],
+    "mustNot": [
+      " um"
+    ]
+  },
+  {
+    "tag": "fillers",
+    "raw": "er the meeting is at uh 3 pm",
+    "must": [
+      "the meeting is at 3"
+    ],
+    "mustNot": [
+      "er ",
+      "uh"
+    ]
+  },
+  {
+    "tag": "fillers",
+    "raw": "like I said um we need more time",
+    "must": [
+      "we need more time"
+    ],
+    "mustNot": [
+      "um"
+    ]
+  },
+  {
+    "tag": "fillers",
+    "raw": "so yeah um that's basically it from my side",
+    "must": [
+      "that's",
+      "from my side"
+    ],
+    "mustNot": [
+      "um"
+    ]
+  },
+  {
+    "tag": "correction",
+    "raw": "let's meet on tuesday no wait wednesday",
+    "must": [
+      "wednesday"
+    ],
+    "mustNot": [
+      "tuesday",
+      "no wait"
+    ]
+  },
+  {
+    "tag": "correction",
+    "raw": "send it to rahul actually send it to priya",
+    "must": [
+      "priya"
+    ],
+    "mustNot": [
+      "rahul",
+      "actually send"
+    ]
+  },
+  {
+    "tag": "correction",
+    "raw": "the budget is 5 lakh sorry 6 lakh",
+    "must": [
+      "6 lakh"
+    ],
+    "mustNot": [
+      "5 lakh",
+      "sorry"
+    ]
+  },
+  {
+    "tag": "correction",
+    "raw": "call me at 4 I mean 5 pm",
+    "must": [
+      "5"
+    ],
+    "mustNot": [
+      "4 i mean",
+      "i mean"
+    ]
+  },
+  {
+    "tag": "correction",
+    "raw": "we need 3 designers scratch that 2 designers",
+    "must": [
+      "2 designers"
+    ],
+    "mustNot": [
+      "3 designers",
+      "scratch that"
+    ]
+  },
+  {
+    "tag": "correction",
+    "raw": "the deadline is friday or rather monday",
+    "must": [
+      "monday"
+    ],
+    "mustNot": [
+      "friday",
+      "or rather"
+    ]
+  },
+  {
+    "tag": "correction",
+    "raw": "book a table for six no make it eight",
+    "must": [
+      "8"
+    ],
+    "mustNot": [
+      "six",
+      "make it"
+    ]
+  },
+  {
+    "tag": "correction",
+    "raw": "it's in the marketing folder sorry the sales folder",
+    "must": [
+      "sales folder"
+    ],
+    "mustNot": [
+      "marketing folder"
+    ]
+  },
+  {
+    "tag": "correction",
+    "raw": "meet at the cafe actually let's do the office",
+    "must": [
+      "office"
+    ],
+    "mustNot": [
+      "cafe"
+    ]
+  },
+  {
+    "tag": "correction",
+    "raw": "the file is called report v2 no v3",
+    "must": [
+      "v3"
+    ],
+    "mustNot": [
+      "v2"
+    ]
+  },
+  {
+    "tag": "numbers",
+    "raw": "the meeting is at three thirty pm tomorrow",
+    "must": [
+      "3:30"
+    ]
+  },
+  {
+    "tag": "numbers",
+    "raw": "we grew forty five percent this quarter",
+    "must": [
+      "45%"
+    ]
+  },
+  {
+    "tag": "numbers",
+    "raw": "my number is nine eight seven six five four three two one zero",
+    "must": [
+      "9876543210"
+    ],
+    "region": "india"
+  },
+  {
+    "tag": "numbers",
+    "raw": "the price is twenty five dollars",
+    "must": [
+      "$25"
+    ]
+  },
+  {
+    "tag": "numbers",
+    "raw": "the invoice is two lakh fifty thousand rupees",
+    "must": [
+      "₹2,50,000"
+    ],
+    "region": "india"
+  },
+  {
+    "tag": "numbers",
+    "raw": "deliver it by the twenty first of march",
+    "must": [
+      "21"
+    ]
+  },
+  {
+    "tag": "numbers",
+    "raw": "we have about one point five million users",
+    "must": [
+      "1.5 million"
+    ]
+  },
+  {
+    "tag": "numbers",
+    "raw": "it takes ten to fifteen minutes",
+    "must": [
+      "10",
+      "15 minutes"
+    ]
+  },
+  {
+    "tag": "numbers",
+    "raw": "order number is a b c one two three",
+    "must": [
+      "123"
+    ]
+  },
+  {
+    "tag": "numbers",
+    "raw": "the flight is at seven forty five in the morning",
+    "must": [
+      "7:45"
+    ]
+  },
+  {
+    "tag": "numbers",
+    "raw": "five crore rupees is the target",
+    "must": [
+      "₹5 crore"
+    ],
+    "region": "india"
+  },
+  {
+    "tag": "numbers",
+    "raw": "this is the third time it happened",
+    "must": [
+      "third time"
+    ]
+  },
+  {
+    "tag": "names",
+    "raw": "ask divyanshu to review the pr",
+    "must": [
+      "Divyanshu"
+    ]
+  },
+  {
+    "tag": "names",
+    "raw": "priyanka and arjun will join from bangalore",
+    "must": [
+      "Priyanka",
+      "Arjun",
+      "Bangalore"
+    ]
+  },
+  {
+    "tag": "names",
+    "raw": "the call with zerodha is at noon",
+    "must": [
+      "Zerodha"
+    ]
+  },
+  {
+    "tag": "names",
+    "raw": "forward this to sneha from the hr team",
+    "must": [
+      "Sneha",
+      "HR"
+    ]
+  },
+  {
+    "tag": "names",
+    "raw": "rohit sharma scored a century",
+    "must": [
+      "Rohit Sharma"
+    ]
+  },
+  {
+    "tag": "names",
+    "raw": "we're meeting at the taj in mumbai",
+    "must": [
+      "Taj",
+      "Mumbai"
+    ]
+  },
+  {
+    "tag": "names",
+    "raw": "tell vikram the swiggy order is here",
+    "must": [
+      "Vikram",
+      "Swiggy"
+    ]
+  },
+  {
+    "tag": "names",
+    "raw": "ananya's presentation went really well",
+    "must": [
+      "Ananya"
+    ]
+  },
+  {
+    "tag": "tech",
+    "raw": "we migrated from next js to remix",
+    "must": [
+      "Next.js",
+      "Remix"
+    ]
+  },
+  {
+    "tag": "tech",
+    "raw": "the graph ql endpoint is timing out",
+    "must": [
+      "GraphQL"
+    ]
+  },
+  {
+    "tag": "tech",
+    "raw": "push it to git hub and open a pr",
+    "must": [
+      "GitHub",
+      "PR"
+    ]
+  },
+  {
+    "tag": "tech",
+    "raw": "run npm install and then npm run dev",
+    "must": [
+      "npm install",
+      "npm run dev"
+    ]
+  },
+  {
+    "tag": "tech",
+    "raw": "the api returns a four oh four",
+    "must": [
+      "API",
+      "404"
+    ]
+  },
+  {
+    "tag": "tech",
+    "raw": "store it in postgres not mongo db",
+    "must": [
+      "Postgres",
+      "MongoDB"
+    ]
+  },
+  {
+    "tag": "tech",
+    "raw": "the kubernetes pod keeps crashing",
+    "must": [
+      "Kubernetes"
+    ]
+  },
+  {
+    "tag": "tech",
+    "raw": "use type script for the new service",
+    "must": [
+      "TypeScript"
+    ]
+  },
+  {
+    "tag": "tech",
+    "raw": "the j son file is malformed",
+    "must": [
+      "JSON"
+    ]
+  },
+  {
+    "tag": "tech",
+    "raw": "deploy it on vercel with the env variables",
+    "must": [
+      "Vercel"
+    ]
+  },
+  {
+    "tag": "question",
+    "raw": "what time is the standup tomorrow",
+    "must": [
+      "standup",
+      "?"
+    ]
+  },
+  {
+    "tag": "question",
+    "raw": "can you explain how the caching works",
+    "must": [
+      "how the caching works",
+      "?"
+    ],
+    "mustNot": [
+      "The caching works by"
+    ]
+  },
+  {
+    "tag": "question",
+    "raw": "is the build green on main",
+    "must": [
+      "?"
+    ]
+  },
+  {
+    "tag": "question",
+    "raw": "why is the dashboard so slow today",
+    "must": [
+      "dashboard",
+      "?"
+    ]
+  },
+  {
+    "tag": "question",
+    "raw": "how much does the pro plan cost",
+    "must": [
+      "?"
+    ],
+    "mustNot": [
+      "costs $",
+      "costs ₹"
+    ]
+  },
+  {
+    "tag": "question",
+    "raw": "do we have a backup of the database",
+    "must": [
+      "backup",
+      "?"
+    ]
+  },
+  {
+    "tag": "question",
+    "raw": "where did you put the design files",
+    "must": [
+      "design files",
+      "?"
+    ]
+  },
+  {
+    "tag": "question",
+    "raw": "should we postpone the launch",
+    "must": [
+      "postpone",
+      "?"
+    ]
+  },
+  {
+    "tag": "list",
+    "raw": "for the trip I need three things a charger my passport and sunscreen",
+    "must": [
+      "charger",
+      "passport",
+      "sunscreen"
+    ]
+  },
+  {
+    "tag": "list",
+    "raw": "first update the readme second bump the version third tag the release",
+    "must": [
+      "1.",
+      "2.",
+      "3.",
+      "readme",
+      "version",
+      "release"
+    ],
+    "mustNot": [
+      "first update",
+      "second bump"
+    ]
+  },
+  {
+    "tag": "list",
+    "raw": "groceries milk eggs bread and coffee",
+    "must": [
+      "milk",
+      "eggs",
+      "bread",
+      "coffee"
+    ]
+  },
+  {
+    "tag": "list",
+    "raw": "bullet point fix the header next point update the footer",
+    "must": [
+      "header",
+      "footer"
+    ],
+    "mustNot": [
+      "bullet point",
+      "next point"
+    ]
+  },
+  {
+    "tag": "list",
+    "raw": "two things today the client call and the design review",
+    "must": [
+      "client call",
+      "design review"
+    ]
+  },
+  {
+    "tag": "list",
+    "raw": "step one open settings step two click privacy step three turn on the mic",
+    "must": [
+      "settings",
+      "privacy",
+      "mic"
+    ],
+    "mustNot": [
+      "step one"
+    ]
+  },
+  {
+    "tag": "email",
+    "raw": "hi rahul just wanted to follow up on the proposal let me know your thoughts thanks priya",
+    "must": [
+      "Hi Rahul",
+      "proposal",
+      "Thanks",
+      "Priya"
+    ],
+    "app": "com.apple.mail"
+  },
+  {
+    "tag": "email",
+    "raw": "dear team please find the q3 report attached regards ankit",
+    "must": [
+      "Dear team",
+      "Q3",
+      "Regards",
+      "Ankit"
+    ],
+    "app": "com.apple.mail"
+  },
+  {
+    "tag": "email",
+    "raw": "hey sarah can we move our meeting to thursday thanks",
+    "must": [
+      "Sarah",
+      "Thursday"
+    ],
+    "app": "com.apple.mail"
+  },
+  {
+    "tag": "email",
+    "raw": "hello mr gupta thank you for your time today I'll send the contract by friday best regards meera",
+    "must": [
+      "Mr. Gupta",
+      "contract",
+      "Friday",
+      "Meera"
+    ],
+    "app": "com.apple.mail"
+  },
+  {
+    "tag": "email",
+    "raw": "hi all the office will be closed on monday for diwali enjoy the break",
+    "must": [
+      "Monday",
+      "Diwali"
+    ],
+    "app": "com.apple.mail"
+  },
+  {
+    "tag": "email",
+    "raw": "hi neha attaching the invoice for october please confirm receipt thanks",
+    "must": [
+      "Neha",
+      "invoice",
+      "October"
+    ],
+    "app": "com.apple.mail"
+  },
+  {
+    "tag": "prompt",
+    "raw": "okay so um I need you to write a python function that removes duplicates from a list and keeps the order",
+    "must": [
+      "Python",
+      "duplicates",
+      "order"
+    ],
+    "mustNot": [
+      "um"
+    ],
+    "app": "com.anthropic.claudefordesktop"
+  },
+  {
+    "tag": "prompt",
+    "raw": "can you summarize this article in three bullet points",
+    "must": [
+      "summarize",
+      "three"
+    ],
+    "app": "com.anthropic.claudefordesktop"
+  },
+  {
+    "tag": "prompt",
+    "raw": "fix the bug in the login form it crashes when the password is empty",
+    "must": [
+      "login",
+      "password",
+      "empty"
+    ],
+    "app": "com.anthropic.claudefordesktop"
+  },
+  {
+    "tag": "prompt",
+    "raw": "explain react hooks like I'm five",
+    "must": [
+      "React",
+      "hooks"
+    ],
+    "app": "com.anthropic.claudefordesktop"
+  },
+  {
+    "tag": "prompt",
+    "raw": "translate this to french and keep it formal",
+    "must": [
+      "French",
+      "formal"
+    ],
+    "app": "com.anthropic.claudefordesktop"
+  },
+  {
+    "tag": "prompt",
+    "raw": "write a polite reply declining the meeting invite",
+    "must": [
+      "polite",
+      "declin"
+    ],
+    "app": "com.anthropic.claudefordesktop"
+  },
+  {
+    "tag": "keep",
+    "raw": "The quarterly numbers look strong.",
+    "must": [
+      "The quarterly numbers look strong."
+    ]
+  },
+  {
+    "tag": "keep",
+    "raw": "Let's catch up on Monday at 10.",
+    "must": [
+      "Monday",
+      "10"
+    ]
+  },
+  {
+    "tag": "keep",
+    "raw": "I'll send the deck tonight.",
+    "must": [
+      "I'll send the deck tonight."
+    ]
+  },
+  {
+    "tag": "keep",
+    "raw": "Great work on the launch, everyone!",
+    "must": [
+      "Great work on the launch"
+    ]
+  },
+  {
+    "tag": "keep",
+    "raw": "Please review PR #482 before merging.",
+    "must": [
+      "#482"
+    ]
+  },
+  {
+    "tag": "keep",
+    "raw": "Our NPS went from 32 to 41.",
+    "must": [
+      "32",
+      "41"
+    ]
+  },
+  {
+    "tag": "keep",
+    "raw": "Can we push this to next sprint?",
+    "must": [
+      "next sprint?"
+    ]
+  },
+  {
+    "tag": "keep",
+    "raw": "Thanks, that works for me.",
+    "must": [
+      "that works for me"
+    ]
+  },
+  {
+    "tag": "long",
+    "raw": "so the update for this week is that we shipped the new onboarding flow and the signup rate went up by about twelve percent we also fixed the payment bug that was affecting some users in india and next week we're going to focus on the mobile app",
+    "must": [
+      "onboarding",
+      "12%",
+      "payment",
+      "India",
+      "mobile app"
+    ],
+    "mustNot": [
+      "so the update"
+    ]
+  },
+  {
+    "tag": "long",
+    "raw": "I wanted to share some feedback on the design overall it looks really clean but the font size on mobile is a bit small and the buttons could use more contrast otherwise great job",
+    "must": [
+      "feedback",
+      "font size",
+      "contrast",
+      "great job"
+    ]
+  },
+  {
+    "tag": "long",
+    "raw": "quick recap from the call they liked the demo they want a pilot with fifty users starting next month and they asked for the pricing by friday",
+    "must": [
+      "demo",
+      "pilot",
+      "50 users",
+      "Friday"
+    ]
+  },
+  {
+    "tag": "long",
+    "raw": "hey just a heads up I'll be out tomorrow for a doctor's appointment I'll check messages in the evening and if anything urgent comes up call me",
+    "must": [
+      "heads up",
+      "doctor's appointment",
+      "urgent"
+    ]
+  }
+]

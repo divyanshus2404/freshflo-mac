@@ -148,14 +148,39 @@ enum LanguageID {
         guard !target.isEmpty, !t.isEmpty else { return true }
         guard !target.lowercased().hasPrefix("hinglish"), let code = writtenCodes[target] else { return matches(t, target: target) }
         if code != "hi", isHinglish(t) || hinglishLeftovers(t) > 0 { return false }
-        // Letters from a script the target doesn't use (Devanagari or Urdu letters when writing English).
+        // Letters from a script the target doesn't use (Devanagari or Urdu letters when writing English,
+        // or Chinese, Japanese, Korean, Cyrillic… when writing a language in Latin letters).
         let want = Indic.expectedScript(code) ?? .latin
-        if t.unicodeScalars.contains(where: { Indic.script(of: $0).map { $0 != want } ?? false }) { return false }
+        if t.unicodeScalars.contains(where: { foreignLetter($0, want: want, latinTarget: latinTargets.contains(code)) }) { return false }
         return matches(t, target: target)
+    }
+
+    /// Languages written in Latin letters: any other script in their text means it isn't them yet.
+    private static let latinTargets: Set<String> = ["en", "es", "fr", "de", "pt", "it", "nl", "sv", "no", "da", "fi", "pl", "cs", "ro", "hu", "tr", "vi", "id", "ms"]
+
+    private static func foreignLetter(_ s: Unicode.Scalar, want: Indic.Script, latinTarget: Bool) -> Bool {
+        guard s.properties.isAlphabetic else { return false }
+        if let script = Indic.script(of: s) { return script != want }
+        // Not a script Indic knows (CJK, Hangul, Cyrillic, Greek, Thai…): foreign for a Latin-letter language.
+        return latinTarget
+    }
+
+    /// Most of the letters are in a script the target language isn't written in. Works on short text too,
+    /// where a word count can't tell (a Chinese sentence is often ten characters with no spaces).
+    static func mostlyForeignScript(_ text: String, target: String) -> Bool {
+        guard let code = writtenCodes[target] else { return false }
+        let want = Indic.expectedScript(code) ?? .latin
+        let latin = latinTargets.contains(code)
+        guard latin || Indic.expectedScript(code) != nil else { return false }
+        let letters = text.unicodeScalars.filter { $0.properties.isAlphabetic }
+        guard !letters.isEmpty else { return false }
+        let foreign = letters.filter { foreignLetter($0, want: want, latinTarget: latin) }.count
+        return Double(foreign) / Double(letters.count) > 0.5
     }
 
     static func matches(_ text: String, target: String) -> Bool {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if mostlyForeignScript(t, target: target) { return false }
         guard t.split(separator: " ").count >= 3 || t.count >= 12 else { return true }   // too short to judge
         if target.lowercased().hasPrefix("hinglish") {
             // Hindi in Latin letters: no Devanagari, and recognisably Hindi words.

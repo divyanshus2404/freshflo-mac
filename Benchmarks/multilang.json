@@ -1,0 +1,1495 @@
+[
+  {
+    "tag": "hi-hinglish",
+    "raw": "bhai kal ka plan cancel ho gaya hai, office mein urgent kaam aa gaya",
+    "must": [
+      "tomorrow",
+      "cancel",
+      "office",
+      "urgent"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "hai",
+      "hain",
+      "karna",
+      "kar ",
+      "nahi",
+      "mujhe",
+      "aur ",
+      "bhi",
+      "kya ",
+      "raha",
+      "rahi",
+      "dena",
+      "lena",
+      "tha ",
+      "thi "
+    ]
+  },
+  {
+    "tag": "hi-hinglish",
+    "raw": "mummy ko bol dena main dinner ke liye late aaunga",
+    "must": [
+      "mom",
+      "dinner",
+      "late"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "hai",
+      "hain",
+      "karna",
+      "kar ",
+      "nahi",
+      "mujhe",
+      "aur ",
+      "bhi",
+      "kya ",
+      "raha",
+      "rahi",
+      "dena",
+      "lena",
+      "tha ",
+      "thi "
+    ]
+  },
+  {
+    "tag": "hi-hinglish",
+    "raw": "yaar woh presentation wali file mujhe whatsapp kar de",
+    "must": [
+      "presentation",
+      "file",
+      "WhatsApp"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "hai",
+      "hain",
+      "karna",
+      "kar ",
+      "nahi",
+      "mujhe",
+      "aur ",
+      "bhi",
+      "kya ",
+      "raha",
+      "rahi",
+      "dena",
+      "lena",
+      "tha ",
+      "thi "
+    ]
+  },
+  {
+    "tag": "hi-hinglish",
+    "raw": "client ne bola hai ki payment next week tak aa jayegi",
+    "must": [
+      "client",
+      "payment",
+      "next week"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "hai",
+      "hain",
+      "karna",
+      "kar ",
+      "nahi",
+      "mujhe",
+      "aur ",
+      "bhi",
+      "kya ",
+      "raha",
+      "rahi",
+      "dena",
+      "lena",
+      "tha ",
+      "thi "
+    ]
+  },
+  {
+    "tag": "hi-hinglish",
+    "raw": "mera internet bahut slow chal raha hai, call pe thoda late join karunga",
+    "must": [
+      "internet",
+      "slow",
+      "call",
+      "late"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "hai",
+      "hain",
+      "karna",
+      "kar ",
+      "nahi",
+      "mujhe",
+      "aur ",
+      "bhi",
+      "kya ",
+      "raha",
+      "rahi",
+      "dena",
+      "lena",
+      "tha ",
+      "thi "
+    ]
+  },
+  {
+    "tag": "hi-hinglish",
+    "raw": "aaj gym nahi ja paunga, kal pakka chalenge",
+    "must": [
+      "gym",
+      "tomorrow"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "hai",
+      "hain",
+      "karna",
+      "kar ",
+      "nahi",
+      "mujhe",
+      "aur ",
+      "bhi",
+      "kya ",
+      "raha",
+      "rahi",
+      "dena",
+      "lena",
+      "tha ",
+      "thi "
+    ]
+  },
+  {
+    "tag": "hi-hinglish",
+    "raw": "doctor ne bola hai do din rest karna hai",
+    "must": [
+      "doctor",
+      "2 days|two days",
+      "rest"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "hai",
+      "hain",
+      "karna",
+      "kar ",
+      "nahi",
+      "mujhe",
+      "aur ",
+      "bhi",
+      "kya ",
+      "raha",
+      "rahi",
+      "dena",
+      "lena",
+      "tha ",
+      "thi "
+    ]
+  },
+  {
+    "tag": "hi-hinglish",
+    "raw": "kya tum shaam ko free ho? ek quick call karte hain",
+    "must": [
+      "evening",
+      "free",
+      "call",
+      "?"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "hai",
+      "hain",
+      "karna",
+      "kar ",
+      "nahi",
+      "mujhe",
+      "aur ",
+      "bhi",
+      "kya ",
+      "raha",
+      "rahi",
+      "dena",
+      "lena",
+      "tha ",
+      "thi "
+    ]
+  },
+  {
+    "tag": "hi-hinglish",
+    "raw": "bill split kar lete hain, har ek ka paanch sau aaya hai",
+    "must": [
+      "split",
+      "₹500"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "hai",
+      "hain",
+      "karna",
+      "kar ",
+      "nahi",
+      "mujhe",
+      "aur ",
+      "bhi",
+      "kya ",
+      "raha",
+      "rahi",
+      "dena",
+      "lena",
+      "tha ",
+      "thi "
+    ]
+  },
+  {
+    "tag": "hi-hinglish",
+    "raw": "naya laptop order kar diya hai, parso tak deliver ho jayega",
+    "must": [
+      "laptop",
+      "ordered",
+      "day after tomorrow"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "hai",
+      "hain",
+      "karna",
+      "kar ",
+      "nahi",
+      "mujhe",
+      "aur ",
+      "bhi",
+      "kya ",
+      "raha",
+      "rahi",
+      "dena",
+      "lena",
+      "tha ",
+      "thi "
+    ]
+  },
+  {
+    "tag": "hi-hinglish",
+    "raw": "sorry yaar kal reply nahi kar paya, bahut busy tha",
+    "must": [
+      "sorry",
+      "reply",
+      "busy"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "hai",
+      "hain",
+      "karna",
+      "kar ",
+      "nahi",
+      "mujhe",
+      "aur ",
+      "bhi",
+      "kya ",
+      "raha",
+      "rahi",
+      "dena",
+      "lena",
+      "tha ",
+      "thi "
+    ]
+  },
+  {
+    "tag": "hi-hinglish",
+    "raw": "team ko bata do ki standup das minute baad shuru hoga",
+    "must": [
+      "team",
+      "standup",
+      "10 minutes"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "hai",
+      "hain",
+      "karna",
+      "kar ",
+      "nahi",
+      "mujhe",
+      "aur ",
+      "bhi",
+      "kya ",
+      "raha",
+      "rahi",
+      "dena",
+      "lena",
+      "tha ",
+      "thi "
+    ]
+  },
+  {
+    "tag": "hi-hinglish",
+    "raw": "flight delay ho gayi hai, main raat gyarah baje tak pahunchunga",
+    "must": [
+      "flight",
+      "delayed",
+      "11"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "hai",
+      "hain",
+      "karna",
+      "kar ",
+      "nahi",
+      "mujhe",
+      "aur ",
+      "bhi",
+      "kya ",
+      "raha",
+      "rahi",
+      "dena",
+      "lena",
+      "tha ",
+      "thi "
+    ]
+  },
+  {
+    "tag": "hi-hinglish",
+    "raw": "is baar ki salary thodi late aayegi, HR ne mail kiya hai",
+    "must": [
+      "salary",
+      "late|delay",
+      "HR"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "hai",
+      "hain",
+      "karna",
+      "kar ",
+      "nahi",
+      "mujhe",
+      "aur ",
+      "bhi",
+      "kya ",
+      "raha",
+      "rahi",
+      "dena",
+      "lena",
+      "tha ",
+      "thi "
+    ]
+  },
+  {
+    "tag": "hi-hinglish",
+    "raw": "mujhe nahi lagta ki yeh design client ko pasand aayega",
+    "must": [
+      "don't think",
+      "design",
+      "client"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "hai",
+      "hain",
+      "karna",
+      "kar ",
+      "nahi",
+      "mujhe",
+      "aur ",
+      "bhi",
+      "kya ",
+      "raha",
+      "rahi",
+      "dena",
+      "lena",
+      "tha ",
+      "thi "
+    ]
+  },
+  {
+    "tag": "hi-devanagari",
+    "raw": "कल सुबह दस बजे क्लाइंट के साथ मीटिंग है",
+    "must": [
+      "tomorrow",
+      "10",
+      "client",
+      "meeting"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "hai",
+      "hain",
+      "karna",
+      "kar ",
+      "nahi",
+      "mujhe",
+      "aur ",
+      "bhi",
+      "kya ",
+      "raha",
+      "rahi",
+      "dena",
+      "lena",
+      "tha ",
+      "thi "
+    ]
+  },
+  {
+    "tag": "hi-devanagari",
+    "raw": "मैं आज घर से काम कर रहा हूँ",
+    "must": [
+      "working from home",
+      "today"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "hai",
+      "hain",
+      "karna",
+      "kar ",
+      "nahi",
+      "mujhe",
+      "aur ",
+      "bhi",
+      "kya ",
+      "raha",
+      "rahi",
+      "dena",
+      "lena",
+      "tha ",
+      "thi "
+    ]
+  },
+  {
+    "tag": "hi-devanagari",
+    "raw": "कृपया रिपोर्ट शाम तक भेज दीजिए",
+    "must": [
+      "report",
+      "evening"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "hai",
+      "hain",
+      "karna",
+      "kar ",
+      "nahi",
+      "mujhe",
+      "aur ",
+      "bhi",
+      "kya ",
+      "raha",
+      "rahi",
+      "dena",
+      "lena",
+      "tha ",
+      "thi "
+    ]
+  },
+  {
+    "tag": "hi-devanagari",
+    "raw": "बारिश की वजह से ट्रैफिक बहुत ज़्यादा है",
+    "must": [
+      "rain",
+      "traffic"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "hai",
+      "hain",
+      "karna",
+      "kar ",
+      "nahi",
+      "mujhe",
+      "aur ",
+      "bhi",
+      "kya ",
+      "raha",
+      "rahi",
+      "dena",
+      "lena",
+      "tha ",
+      "thi "
+    ]
+  },
+  {
+    "tag": "hi-devanagari",
+    "raw": "क्या आपने नया अपडेट इंस्टॉल किया?",
+    "must": [
+      "update",
+      "install",
+      "?"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "hai",
+      "hain",
+      "karna",
+      "kar ",
+      "nahi",
+      "mujhe",
+      "aur ",
+      "bhi",
+      "kya ",
+      "raha",
+      "rahi",
+      "dena",
+      "lena",
+      "tha ",
+      "thi "
+    ]
+  },
+  {
+    "tag": "hi-devanagari",
+    "raw": "हमें इस प्रोजेक्ट के लिए दो और लोगों की ज़रूरत है",
+    "must": [
+      "two more",
+      "project"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "hai",
+      "hain",
+      "karna",
+      "kar ",
+      "nahi",
+      "mujhe",
+      "aur ",
+      "bhi",
+      "kya ",
+      "raha",
+      "rahi",
+      "dena",
+      "lena",
+      "tha ",
+      "thi "
+    ]
+  },
+  {
+    "tag": "hi-devanagari",
+    "raw": "मुझे यह आइडिया बहुत पसंद आया",
+    "must": [
+      "idea"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "hai",
+      "hain",
+      "karna",
+      "kar ",
+      "nahi",
+      "mujhe",
+      "aur ",
+      "bhi",
+      "kya ",
+      "raha",
+      "rahi",
+      "dena",
+      "lena",
+      "tha ",
+      "thi "
+    ]
+  },
+  {
+    "tag": "hi-devanagari",
+    "raw": "अगले हफ्ते से नई टीम ज्वाइन करेगी",
+    "must": [
+      "next week",
+      "team"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "hai",
+      "hain",
+      "karna",
+      "kar ",
+      "nahi",
+      "mujhe",
+      "aur ",
+      "bhi",
+      "kya ",
+      "raha",
+      "rahi",
+      "dena",
+      "lena",
+      "tha ",
+      "thi "
+    ]
+  },
+  {
+    "tag": "hi-mixed",
+    "raw": "main next week Bangalore jaa raha hoon for the product launch",
+    "must": [
+      "next week",
+      "Bangalore",
+      "launch"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "hai",
+      "hain",
+      "karna",
+      "kar ",
+      "nahi",
+      "mujhe",
+      "aur ",
+      "bhi",
+      "kya ",
+      "raha",
+      "rahi",
+      "dena",
+      "lena",
+      "tha ",
+      "thi "
+    ]
+  },
+  {
+    "tag": "hi-mixed",
+    "raw": "please ek baar check kar lena ki sab files upload ho gayi hain",
+    "must": [
+      "check",
+      "files",
+      "uploaded"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "hai",
+      "hain",
+      "karna",
+      "kar ",
+      "nahi",
+      "mujhe",
+      "aur ",
+      "bhi",
+      "kya ",
+      "raha",
+      "rahi",
+      "dena",
+      "lena",
+      "tha ",
+      "thi "
+    ]
+  },
+  {
+    "tag": "bn",
+    "raw": "আগামীকাল সকাল দশটায় মিটিং আছে",
+    "must": [
+      "tomorrow",
+      "10",
+      "meeting"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "আগামীকাল"
+    ]
+  },
+  {
+    "tag": "bn",
+    "raw": "আমি আজ বাড়ি থেকে কাজ করছি",
+    "must": [
+      "today",
+      "from home"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "আমি"
+    ]
+  },
+  {
+    "tag": "bn",
+    "raw": "রিপোর্টটা সন্ধ্যার মধ্যে পাঠিয়ে দিও",
+    "must": [
+      "report",
+      "evening"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "রিপোর্ট"
+    ]
+  },
+  {
+    "tag": "mr",
+    "raw": "उद्या सकाळी दहा वाजता मीटिंग आहे",
+    "must": [
+      "tomorrow",
+      "10",
+      "meeting"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "उद्या"
+    ]
+  },
+  {
+    "tag": "mr",
+    "raw": "मी आज घरून काम करत आहे",
+    "must": [
+      "today",
+      "from home"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "आज"
+    ]
+  },
+  {
+    "tag": "mr",
+    "raw": "कृपया संध्याकाळपर्यंत रिपोर्ट पाठवा",
+    "must": [
+      "report",
+      "evening"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "कृपया"
+    ]
+  },
+  {
+    "tag": "ta",
+    "raw": "நாளை காலை பத்து மணிக்கு கூட்டம் இருக்கிறது",
+    "must": [
+      "tomorrow",
+      "10",
+      "meeting"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "நாளை"
+    ]
+  },
+  {
+    "tag": "ta",
+    "raw": "நான் இன்று வீட்டிலிருந்து வேலை செய்கிறேன்",
+    "must": [
+      "today",
+      "from home"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "நான்"
+    ]
+  },
+  {
+    "tag": "ta",
+    "raw": "தயவுசெய்து மாலைக்குள் அறிக்கையை அனுப்புங்கள்",
+    "must": [
+      "report",
+      "evening"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "தயவுசெய்து"
+    ]
+  },
+  {
+    "tag": "te",
+    "raw": "రేపు ఉదయం పది గంటలకు మీటింగ్ ఉంది",
+    "must": [
+      "tomorrow",
+      "10",
+      "meeting"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "రేపు"
+    ]
+  },
+  {
+    "tag": "te",
+    "raw": "నేను ఈ రోజు ఇంటి నుండి పని చేస్తున్నాను",
+    "must": [
+      "today",
+      "from home"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "నేను"
+    ]
+  },
+  {
+    "tag": "te",
+    "raw": "దయచేసి సాయంత్రం లోపు రిపోర్ట్ పంపండి",
+    "must": [
+      "report",
+      "evening"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "దయచేసి"
+    ]
+  },
+  {
+    "tag": "gu",
+    "raw": "કાલે સવારે દસ વાગ્યે મીટિંગ છે",
+    "must": [
+      "tomorrow",
+      "10",
+      "meeting"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "કાલે"
+    ]
+  },
+  {
+    "tag": "gu",
+    "raw": "હું આજે ઘરેથી કામ કરું છું",
+    "must": [
+      "today",
+      "from home"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "આજે"
+    ]
+  },
+  {
+    "tag": "kn",
+    "raw": "ನಾಳೆ ಬೆಳಿಗ್ಗೆ ಹತ್ತು ಗಂಟೆಗೆ ಮೀಟಿಂಗ್ ಇದೆ",
+    "must": [
+      "tomorrow",
+      "10",
+      "meeting"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "ನಾಳೆ"
+    ]
+  },
+  {
+    "tag": "kn",
+    "raw": "ನಾನು ಇಂದು ಮನೆಯಿಂದ ಕೆಲಸ ಮಾಡುತ್ತಿದ್ದೇನೆ",
+    "must": [
+      "today",
+      "from home"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "ನಾನು"
+    ]
+  },
+  {
+    "tag": "ml",
+    "raw": "നാളെ രാവിലെ പത്ത് മണിക്ക് മീറ്റിംഗ് ഉണ്ട്",
+    "must": [
+      "tomorrow",
+      "10",
+      "meeting"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "നാളെ"
+    ]
+  },
+  {
+    "tag": "ml",
+    "raw": "ഞാൻ ഇന്ന് വീട്ടിൽ നിന്ന് ജോലി ചെയ്യുന്നു",
+    "must": [
+      "today",
+      "from home"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "ഞാൻ"
+    ]
+  },
+  {
+    "tag": "pa",
+    "raw": "ਕੱਲ੍ਹ ਸਵੇਰੇ ਦਸ ਵਜੇ ਮੀਟਿੰਗ ਹੈ",
+    "must": [
+      "tomorrow",
+      "10",
+      "meeting"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "ਮੀਟਿੰਗ"
+    ]
+  },
+  {
+    "tag": "pa",
+    "raw": "ਮੈਂ ਅੱਜ ਘਰੋਂ ਕੰਮ ਕਰ ਰਿਹਾ ਹਾਂ",
+    "must": [
+      "today",
+      "from home"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "ਅੱਜ"
+    ]
+  },
+  {
+    "tag": "ur",
+    "raw": "کل صبح دس بجے میٹنگ ہے",
+    "must": [
+      "tomorrow",
+      "10",
+      "meeting"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "میٹنگ"
+    ]
+  },
+  {
+    "tag": "ur",
+    "raw": "میں آج گھر سے کام کر رہا ہوں",
+    "must": [
+      "today",
+      "from home"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "آج"
+    ]
+  },
+  {
+    "tag": "es",
+    "raw": "Mañana tenemos una reunión con el cliente a las diez",
+    "must": [
+      "tomorrow",
+      "meeting",
+      "client",
+      "10"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "mañana",
+      "reunión"
+    ]
+  },
+  {
+    "tag": "es",
+    "raw": "¿Puedes enviarme el informe antes del viernes?",
+    "must": [
+      "send",
+      "report",
+      "Friday",
+      "?"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "informe",
+      "viernes"
+    ]
+  },
+  {
+    "tag": "es",
+    "raw": "Lo siento, llego quince minutos tarde por el tráfico",
+    "must": [
+      "sorry",
+      "15 minutes",
+      "late",
+      "traffic"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "tarde",
+      "tráfico"
+    ]
+  },
+  {
+    "tag": "fr",
+    "raw": "Nous avons une réunion demain à dix heures",
+    "must": [
+      "meeting",
+      "tomorrow",
+      "10"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "réunion",
+      "demain"
+    ]
+  },
+  {
+    "tag": "fr",
+    "raw": "Peux-tu m'envoyer le rapport avant vendredi ?",
+    "must": [
+      "send",
+      "report",
+      "Friday",
+      "?"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "rapport",
+      "vendredi"
+    ]
+  },
+  {
+    "tag": "fr",
+    "raw": "Je travaille de chez moi aujourd'hui",
+    "must": [
+      "working from home",
+      "today"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "aujourd'hui"
+    ]
+  },
+  {
+    "tag": "de",
+    "raw": "Wir haben morgen um zehn Uhr ein Meeting mit dem Kunden",
+    "must": [
+      "tomorrow",
+      "10",
+      "meeting",
+      "client"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "morgen",
+      "Kunden"
+    ]
+  },
+  {
+    "tag": "de",
+    "raw": "Kannst du mir den Bericht bis Freitag schicken?",
+    "must": [
+      "report",
+      "Friday",
+      "?"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "Bericht",
+      "Freitag"
+    ]
+  },
+  {
+    "tag": "de",
+    "raw": "Ich arbeite heute von zu Hause",
+    "must": [
+      "working from home",
+      "today"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "heute",
+      "Hause"
+    ]
+  },
+  {
+    "tag": "pt",
+    "raw": "Amanhã temos uma reunião às dez horas",
+    "must": [
+      "tomorrow",
+      "meeting",
+      "10"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "amanhã",
+      "reunião"
+    ]
+  },
+  {
+    "tag": "pt",
+    "raw": "Você pode me mandar o relatório até sexta?",
+    "must": [
+      "report",
+      "Friday",
+      "?"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "relatório",
+      "sexta"
+    ]
+  },
+  {
+    "tag": "it",
+    "raw": "Domani abbiamo una riunione alle dieci",
+    "must": [
+      "tomorrow",
+      "meeting",
+      "10"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "domani",
+      "riunione"
+    ]
+  },
+  {
+    "tag": "it",
+    "raw": "Puoi mandarmi il rapporto entro venerdì?",
+    "must": [
+      "report",
+      "Friday",
+      "?"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "venerdì"
+    ]
+  },
+  {
+    "tag": "ar",
+    "raw": "لدينا اجتماع غدا في الساعة العاشرة",
+    "must": [
+      "meeting",
+      "tomorrow",
+      "10"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "اجتماع"
+    ]
+  },
+  {
+    "tag": "ar",
+    "raw": "هل يمكنك إرسال التقرير قبل يوم الجمعة؟",
+    "must": [
+      "report",
+      "Friday",
+      "?"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "التقرير"
+    ]
+  },
+  {
+    "tag": "zh",
+    "raw": "我们明天上午十点开会",
+    "must": [
+      "tomorrow",
+      "10",
+      "meeting"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "明天"
+    ]
+  },
+  {
+    "tag": "zh",
+    "raw": "你能在周五之前把报告发给我吗？",
+    "must": [
+      "report",
+      "Friday",
+      "?"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "报告"
+    ]
+  },
+  {
+    "tag": "ja",
+    "raw": "明日の午前十時に会議があります",
+    "must": [
+      "tomorrow",
+      "10",
+      "meeting"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "明日"
+    ]
+  },
+  {
+    "tag": "ja",
+    "raw": "金曜日までに報告書を送ってもらえますか？",
+    "must": [
+      "report",
+      "Friday",
+      "?"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "報告書"
+    ]
+  },
+  {
+    "tag": "ko",
+    "raw": "내일 오전 열 시에 회의가 있습니다",
+    "must": [
+      "tomorrow",
+      "10",
+      "meeting"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "회의"
+    ]
+  },
+  {
+    "tag": "ko",
+    "raw": "금요일까지 보고서를 보내 줄 수 있어요?",
+    "must": [
+      "report",
+      "Friday",
+      "?"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "보고서"
+    ]
+  },
+  {
+    "tag": "ru",
+    "raw": "Завтра в десять у нас встреча с клиентом",
+    "must": [
+      "tomorrow",
+      "10",
+      "meeting",
+      "client"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "Завтра"
+    ]
+  },
+  {
+    "tag": "ru",
+    "raw": "Можешь прислать отчёт до пятницы?",
+    "must": [
+      "report",
+      "Friday",
+      "?"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "отчёт"
+    ]
+  },
+  {
+    "tag": "tr",
+    "raw": "Yarın saat onda müşteriyle toplantımız var",
+    "must": [
+      "tomorrow",
+      "10",
+      "meeting",
+      "client"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "Yarın"
+    ]
+  },
+  {
+    "tag": "nl",
+    "raw": "Morgen om tien uur hebben we een vergadering",
+    "must": [
+      "tomorrow",
+      "10",
+      "meeting"
+    ],
+    "writeIn": "English",
+    "region": "india",
+    "mustNot": [
+      "vergadering"
+    ]
+  },
+  {
+    "tag": "en>hi",
+    "raw": "There's a meeting tomorrow at ten, please keep the report ready",
+    "must": [
+      "मीटिंग",
+      "रिपोर्ट"
+    ],
+    "writeIn": "Hindi",
+    "region": "india",
+    "mustNot": [
+      "meeting",
+      "report"
+    ]
+  },
+  {
+    "tag": "en>hi",
+    "raw": "I'll call you back in the evening",
+    "must": [
+      "शाम"
+    ],
+    "writeIn": "Hindi",
+    "region": "india",
+    "mustNot": [
+      "evening",
+      "call you"
+    ]
+  },
+  {
+    "tag": "en>hinglish",
+    "raw": "There's a meeting tomorrow at ten, please keep the report ready",
+    "must": [
+      "meeting",
+      "report",
+      "kal"
+    ],
+    "writeIn": "Hinglish (Hindi in Latin letters)",
+    "region": "india",
+    "mustNot": [
+      "कल",
+      "मीटिंग"
+    ]
+  },
+  {
+    "tag": "en>es",
+    "raw": "Can you send me the report before Friday?",
+    "must": [
+      "informe",
+      "viernes",
+      "?"
+    ],
+    "writeIn": "Spanish",
+    "region": "india",
+    "mustNot": [
+      "report",
+      "Friday"
+    ]
+  },
+  {
+    "tag": "en>fr",
+    "raw": "We have a meeting tomorrow at ten",
+    "must": [
+      "réunion",
+      "demain"
+    ],
+    "writeIn": "French",
+    "region": "india",
+    "mustNot": [
+      "meeting",
+      "tomorrow"
+    ]
+  },
+  {
+    "tag": "en>de",
+    "raw": "I'm working from home today",
+    "must": [
+      "heute",
+      "Hause"
+    ],
+    "writeIn": "German",
+    "region": "india",
+    "mustNot": [
+      "working",
+      "today"
+    ]
+  },
+  {
+    "tag": "en>ja",
+    "raw": "Can you send me the report by Friday?",
+    "must": [
+      "金曜"
+    ],
+    "writeIn": "Japanese",
+    "region": "india",
+    "mustNot": [
+      "report",
+      "Friday"
+    ]
+  },
+  {
+    "tag": "en>ta",
+    "raw": "There is a meeting tomorrow morning",
+    "must": [
+      "நாளை"
+    ],
+    "writeIn": "Tamil",
+    "region": "india",
+    "mustNot": [
+      "meeting",
+      "tomorrow"
+    ]
+  },
+  {
+    "tag": "en>bn",
+    "raw": "I am working from home today",
+    "must": [
+      "আজ"
+    ],
+    "writeIn": "Bengali",
+    "region": "india",
+    "mustNot": [
+      "working",
+      "today"
+    ]
+  },
+  {
+    "tag": "en>mr",
+    "raw": "Please send the report by evening",
+    "must": [
+      "संध्याकाळ"
+    ],
+    "writeIn": "Marathi",
+    "region": "india",
+    "mustNot": [
+      "report",
+      "evening"
+    ]
+  }
+]

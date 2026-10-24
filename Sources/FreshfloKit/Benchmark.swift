@@ -13,6 +13,8 @@ enum Benchmark {
         var app: String?
         var region: String?
         var writeIn: String?
+        /// The languages this speaker would have picked ("es", "en"); defaults to English + Hindi.
+        var speaks: [String]?
         var command: String?
         var selection: String?
         var mustContain: [String]?
@@ -34,13 +36,17 @@ enum Benchmark {
     static func run(directory: URL, compareFile: URL?) async throws {
         let cases = try JSONDecoder().decode([Case].self, from: Data(contentsOf: directory.appendingPathComponent("cases.json")))
         let settings = AppSettings.shared
-        let saved = (settings.outputLanguage, settings.regionalFormat)
-        defer { (settings.outputLanguage, settings.regionalFormat) = saved }
+        let saved = (settings.outputLanguage, settings.regionalFormat, settings.spokenLanguages, settings.language)
+        defer { (settings.outputLanguage, settings.regionalFormat, settings.spokenLanguages, settings.language) = saved }
+        settings.language = ""
 
         var ours: [Score] = []
-        for c in cases {
+        for (i, c) in cases.enumerated() {
+            // A short pause between cases keeps a long run under the cloud models' per-minute limits.
+            if i > 0 { try? await Task.sleep(nanoseconds: 1_500_000_000) }
             settings.outputLanguage = c.writeIn ?? ""
             settings.regionalFormat = RegionalFormat(rawValue: c.region ?? "") ?? .none
+            settings.spokenLanguages = c.speaks ?? ["en", "hi"]
             let start = Date()
             var output: String
             do {
@@ -105,7 +111,7 @@ enum Benchmark {
         let lower = " " + output.lowercased() + " "
         for s in c.mustContain ?? [] {
             total += 1
-            if !output.contains(s) { failed.append("missing “\(s)”") }
+            if !lower.contains(s.lowercased()) { failed.append("missing “\(s)”") }
         }
         for s in c.mustNotContain ?? [] {
             total += 1

@@ -30,7 +30,7 @@ struct OnboardingView: View {
 
     private let steps: [(title: String, icon: String)] = [
         ("Welcome", "hand.wave"), ("Permissions", "lock.shield"), ("Talk key", "keyboard"),
-        ("First dictation", "waveform"), ("Finish", "flag.checkered"),
+        ("Your languages", "globe"), ("First dictation", "waveform"), ("Finish", "flag.checkered"),
     ]
 
     init(initialStep: Int = 0, onFinish: @escaping () -> Void) {
@@ -47,7 +47,8 @@ struct OnboardingView: View {
                     case 0: welcome
                     case 1: permissionsStep
                     case 2: keyStep
-                    case 3: tryItStep
+                    case 3: languagesStep
+                    case 4: tryItStep
                     default: finishStep
                     }
                 }
@@ -403,6 +404,105 @@ struct OnboardingView: View {
         .animation(.spring(response: 0.45, dampingFraction: 0.8), value: practiced)
     }
 
+    // MARK: Languages
+
+    /// The languages people dictate in most, shown as chips; the rest are one menu away.
+    private static let commonLanguages = ["en", "hi", "bn", "mr", "ta", "te", "gu", "kn", "ml", "pa", "ur", "es", "fr", "de"]
+
+    private var languagesStep: some View {
+        let spoken = settings.spokenLanguages
+        let name = { (code: String) in Languages.spoken.first { $0.code == code }?.name ?? code }
+        let mixesHindi = spoken.contains("hi") && spoken.contains("en")
+        return VStack(alignment: .leading, spacing: 16) {
+            title("Which languages do you speak?", "Include the ones you mix: Hinglish is Hindi + English. Freshflo listens for these only. Change them anytime, or press ⌃⌥L while you work.")
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 8)], alignment: .leading, spacing: 8) {
+                ForEach(Self.commonLanguages + spoken.filter { !Self.commonLanguages.contains($0) }, id: \.self) { code in
+                    let on = spoken.contains(code)
+                    Button { toggleSpoken(code) } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: on ? "checkmark.circle.fill" : "circle").foregroundStyle(on ? Brand.mint : Color.secondary)
+                            Text(name(code)).lineLimit(1)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 10).padding(.vertical, 8)
+                        .background(RoundedRectangle(cornerRadius: 10).fill(on ? Brand.mint.opacity(0.14) : Color.white.opacity(0.85)))
+                        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(on ? Brand.mint : Color.black.opacity(0.08)))
+                    }
+                    .buttonStyle(.plain)
+                }
+                Menu("More…") {
+                    ForEach(Languages.spoken.filter { !$0.code.isEmpty && !Self.commonLanguages.contains($0.code) }, id: \.code) { lang in
+                        Button { toggleSpoken(lang.code) } label: {
+                            if spoken.contains(lang.code) { Label(lang.name, systemImage: "checkmark") } else { Text(lang.name) }
+                        }
+                    }
+                }
+                .menuStyle(.borderlessButton)
+                .padding(.horizontal, 10).padding(.vertical, 8)
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Write my words in").font(.headline)
+                ForEach(writeChoices(spoken), id: \.tag) { choice in
+                    let on = settings.outputLanguage == choice.tag
+                    Button { settings.outputLanguage = choice.tag } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: on ? "largecircle.fill.circle" : "circle").foregroundStyle(on ? Brand.mint : Color.secondary)
+                            Text(choice.label)
+                            Spacer()
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                if mixesHindi {
+                    example(settings.outputLanguage)
+                }
+            }
+            .padding(14)
+            .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.85)))
+        }
+    }
+
+    private func writeChoices(_ spoken: [String]) -> [(tag: String, label: String)] {
+        var list: [(tag: String, label: String)] = [("", "The language I speak")]
+        if spoken.count > 1 || spoken.first != "en" { list.append(("English", "English, always")) }
+        if spoken.contains("hi") { list += [("Hindi", "Hindi (हिन्दी)"), ("Hinglish (Hindi in Latin letters)", "Hinglish (Roman letters)")] }
+        if !list.contains(where: { $0.tag == settings.outputLanguage }) { list.append((settings.outputLanguage, settings.outputLanguage)) }
+        return list
+    }
+
+    /// What the choice means, shown with a Hinglish sentence.
+    @ViewBuilder private func example(_ writeIn: String) -> some View {
+        let said = "“kal meeting hai, deck ready rakhna”"
+        let typed: String = switch writeIn {
+        case "English": "“There's a meeting tomorrow, keep the deck ready.”"
+        case "Hindi": "“कल मीटिंग है, डेक तैयार रखना।”"
+        case "": "“Kal meeting hai, deck ready rakhna.”"
+        default: "“Kal meeting hai, deck ready rakhna.”"
+        }
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "text.bubble").foregroundStyle(Brand.mint)
+            (Text("You say ").foregroundColor(.secondary) + Text(said) + Text("  →  Freshflo types ").foregroundColor(.secondary) + Text(typed).bold())
+                .font(.callout).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func toggleSpoken(_ code: String) {
+        if let i = settings.spokenLanguages.firstIndex(of: code) {
+            settings.spokenLanguages.remove(at: i)
+        } else {
+            settings.spokenLanguages.append(code)
+        }
+        // Detection picks among your languages each time; a single pinned language would block the others.
+        if !settings.language.isEmpty, settings.spokenLanguages.count != 1 || settings.spokenLanguages.first != settings.language {
+            settings.language = ""
+        }
+        // Writing in a language you no longer speak (other than English) makes no sense: fall back to as spoken.
+        if settings.outputLanguage == "Hindi" || settings.outputLanguage.hasPrefix("Hinglish"), !settings.spokenLanguages.contains("hi") {
+            settings.outputLanguage = ""
+        }
+    }
+
     // MARK: Finish
 
     private var finishStep: some View {
@@ -413,17 +513,6 @@ struct OnboardingView: View {
                 cheat(keys: [settings.hotkey.shortLabel, "control"], "Edit by voice", "“make that shorter”, “scratch that”", color: Color(red: 0.44, green: 0.31, blue: 0.88))
                 cheat(keys: [settings.hotkey.shortLabel, "shift"], "Ask anything", "“remind me to call Rahul at 5”", color: Color(red: 0.18, green: 0.48, blue: 0.88))
             }
-            HStack(spacing: 12) {
-                Image(systemName: "globe").foregroundStyle(Brand.mint).frame(width: 18)
-                Picker("I speak", selection: $settings.language) {
-                    ForEach(Languages.spoken, id: \.code) { Text($0.name).tag($0.code) }
-                }
-                Picker("Write in", selection: $settings.outputLanguage) {
-                    ForEach(Languages.written, id: \.self) { Text($0.isEmpty ? "Same as spoken" : $0).tag($0) }
-                }
-            }
-            .padding(.horizontal, 12).padding(.vertical, 9)
-            .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.85)))
             Toggle(isOn: $openAtLogin) {
                 VStack(alignment: .leading, spacing: 1) {
                     Text("Open Freshflo when I log in").font(.headline)
@@ -528,8 +617,11 @@ struct OnboardingView: View {
                 if !permissionsDone { Button("Skip for now") { step += 1 }.buttonStyle(.borderless) }
                 Button("Continue") { step += 1 }.keyboardShortcut(.defaultAction).controlSize(.large).buttonStyle(.borderedProminent).disabled(!permissionsDone)
             case 3:
-                Button(practiced ? "Continue" : "Skip") { step += 1 }.keyboardShortcut(.defaultAction).controlSize(.large).buttonStyle(.borderedProminent)
+                Button("Continue") { step += 1 }.keyboardShortcut(.defaultAction).controlSize(.large).buttonStyle(.borderedProminent)
+                    .disabled(settings.spokenLanguages.isEmpty)
             case 4:
+                Button(practiced ? "Continue" : "Skip") { step += 1 }.keyboardShortcut(.defaultAction).controlSize(.large).buttonStyle(.borderedProminent)
+            case 5:
                 Button("Start using Freshflo") { finish() }.keyboardShortcut(.defaultAction).controlSize(.large).buttonStyle(.borderedProminent)
             default:
                 Button("Continue") { step += 1 }.keyboardShortcut(.defaultAction).controlSize(.large).buttonStyle(.borderedProminent)

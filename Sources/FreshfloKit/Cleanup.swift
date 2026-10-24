@@ -167,7 +167,7 @@ enum Cleanup {
             instructions += "\nSpell these names and terms exactly like this: " + input.vocabulary.prefix(60).joined(separator: ", ")
         }
         if input.translating {
-            instructions += "\nWrite the final text in \(input.outputLanguage). If the speaker used another language or mixed languages, translate it naturally into \(input.outputLanguage); this is the one exception to keeping their exact words. Work in this order: drop fillers (um, matlab, basically, haan toh), apply the speaker's corrections (\"Tuesday, nahi nahi, Wednesday\" → Wednesday), then translate everything, including each list item, so no Hindi or Hinglish word is left. Keep a lead-in like 'shopping list' as its own line ('Shopping list:') before the items. Keep names, brands, numbers, email addresses and code as they are. Translate the meaning naturally, the way a fluent \(input.outputLanguage) speaker would write it, not word for word. Stay faithful: keep who is speaking (\"hum\" is \"we\", \"main\" is \"I\"), the tense, and what they meant (\"hum resolve karne ki koshish karenge\" is \"we'll try to resolve it\", not an instruction). A statement stays a statement and a question stays a question. Never add a title, heading, summary or bullet list the speaker didn't dictate."
+            instructions += "\nWrite the final text in \(input.outputLanguage). If the speaker used another language or mixed languages, translate it naturally into \(input.outputLanguage); this is the one exception to keeping their exact words. Work in this order: drop fillers (um, matlab, basically, haan toh), apply the speaker's corrections (\"Tuesday, nahi nahi, Wednesday\" → Wednesday), then translate everything, including each list item, so no Hindi or Hinglish word is left. Keep a lead-in like 'shopping list' as its own line ('Shopping list:') before the items. Keep names, brands, numbers, email addresses and code as they are. Translate the meaning naturally, the way a fluent \(input.outputLanguage) speaker would write it, not word for word. Stay faithful: keep who is speaking (\"hum\" is \"we\", \"main\" is \"I\"), the tense, and what they meant (\"hum resolve karne ki koshish karenge\" is \"we'll try to resolve it\", not an instruction). A statement stays a statement and a question stays a question. Never add a title, heading, summary or bullet list the speaker didn't dictate. Write numbers, times, amounts and durations as digits (10 a.m., 15 minutes, 3 people, ₹500), never as words." + Self.scriptRule(input.outputLanguage)
         }
         if let regional = input.regional.instruction { instructions += "\n" + regional }
         if input.emailMode { instructions += "\n" + EmailFormat.instruction }
@@ -253,11 +253,30 @@ enum Cleanup {
         SnippetExpander.normalize(s).split(separator: " ").map(String.init)
     }
 
+    /// Languages with their own script, named explicitly: asked for "Hindi", models sometimes answer in romanised Hinglish.
+    static func scriptRule(_ language: String) -> String {
+        guard let code = LanguageID.writtenCode(language), let script = Indic.expectedScript(code) else { return "" }
+        let name: String
+        switch script {
+        case .devanagari: name = "Devanagari (देवनागरी)"
+        case .bengali: name = "Bengali script (বাংলা)"
+        case .gurmukhi: name = "Gurmukhi (ਗੁਰਮੁਖੀ)"
+        case .gujarati: name = "Gujarati script (ગુજરાતી)"
+        case .tamil: name = "Tamil script (தமிழ்)"
+        case .telugu: name = "Telugu script (తెలుగు)"
+        case .kannada: name = "Kannada script (ಕನ್ನಡ)"
+        case .malayalam: name = "Malayalam script (മലയാളം)"
+        case .arabic: name = "Urdu (Perso-Arabic) script"
+        default: return ""
+        }
+        return " Write it in \(name), never in Roman or Latin letters."
+    }
+
     /// A second, stricter translation when the first one didn't come out in the requested language.
     static func translateStrict(_ text: String, original: String, to language: String, settings: AppSettings) async -> String? {
         let instructions = """
-        Translate the message into \(language). The output MUST be entirely in \(language)\(language.lowercased().hasPrefix("hinglish") ? " written in Latin (Roman) letters, never Devanagari" : ""), with natural grammar and punctuation, as a native speaker would write it.
-        Keep names, brands, numbers, email addresses, URLs and code exactly as they are. Keep the meaning and tone; don't add or drop anything.
+        Translate the message into \(language). The output MUST be entirely in \(language)\(language.lowercased().hasPrefix("hinglish") ? " written in Latin (Roman) letters, never Devanagari" : "")\(Self.scriptRule(language)), with natural grammar and punctuation, as a native speaker would write it.
+        Keep names, brands, email addresses, URLs and code exactly as they are. Write numbers, times, amounts and durations as digits (10 a.m., 15 minutes, ₹500). Keep the meaning and tone; don't add or drop anything.
         Output only the translated message.
         """
         let prompt = "Original (as spoken):\n\(original)\n\nDraft:\n\(text)"

@@ -118,6 +118,8 @@ enum Transcriber {
     struct Segment {
         var start: Double
         var text: String
+        /// When the speech ends, if known (meeting turns), so a voice is fingerprinted on its own speech only.
+        var end: Double? = nil
     }
 
     /// Timestamped transcription (used by meeting notes to interleave speakers).
@@ -132,6 +134,36 @@ enum Transcriber {
         }.filter { !$0.text.isEmpty }
         if segments.isEmpty, let text = json["text"] as? String, !text.isEmpty { return [Segment(start: 0, text: text)] }
         return segments
+    }
+
+    struct TimedSegment: Equatable {
+        var start: Double
+        var end: Double
+        var text: String
+    }
+
+    struct Word: Equatable {
+        var start: Double
+        var word: String
+    }
+
+    /// Segments plus a time for every word (when the service provides them), for splitting meeting turns.
+    static func transcribeTimed(data: Data, filename: String, endpoint: ProviderEndpoint, vocabulary: [String]) async throws -> (segments: [TimedSegment], words: [Word]) {
+        let json = try await retryOnNetworkJSON {
+            try await uploadJSON(data, filename: filename, mime: mime(for: (filename as NSString).pathExtension.lowercased()),
+                                 endpoint: endpoint, prompt: vocabularyPrompt(vocabulary), format: "verbose_json", granularities: ["segment", "word"])
+        }
+        let segments = (json["segments"] as? [[String: Any]] ?? []).compactMap { s -> TimedSegment? in
+            guard let text = (s["text"] as? String)?.trimmingCharacters(in: .whitespaces), !text.isEmpty else { return nil }
+            let start = (s["start"] as? Double) ?? 0
+            return TimedSegment(start: start, end: (s["end"] as? Double) ?? start, text: text)
+        }
+        let words = (json["words"] as? [[String: Any]] ?? []).compactMap { w -> Word? in
+            guard let word = w["word"] as? String, let start = w["start"] as? Double else { return nil }
+            return Word(start: start, word: word)
+        }
+        if segments.isEmpty, let text = json["text"] as? String, !text.isEmpty { return ([TimedSegment(start: 0, end: 0, text: text)], words) }
+        return (segments, words)
     }
 
     private static func retryOnNetworkJSON(_ attempt: () async throws -> [String: Any]) async throws -> [String: Any] {
@@ -219,7 +251,7 @@ enum Transcriber {
     }
 
     private static func uploadJSON(_ audio: Data, filename: String, mime: String, endpoint: ProviderEndpoint,
-                                   prompt: String?, format: String) async throws -> [String: Any] {
+                                   prompt: String?, format: String, granularities: [String] = []) async throws -> [String: Any] {
         var req = try OpenAICompatible.request(endpoint, path: "/audio/transcriptions")
         let boundary = "Freshflo-\(UUID().uuidString)"
         req.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
@@ -233,6 +265,7 @@ enum Transcriber {
         field("temperature", "0")
         if !endpoint.language.isEmpty { field("language", endpoint.language) }
         if let prompt { field("prompt", prompt) }
+        for g in granularities { field("timestamp_granularities[]", g) }
         body.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\nContent-Type: \(mime)\r\n\r\n".utf8))
         body.append(audio)
         body.append(Data("\r\n--\(boundary)--\r\n".utf8))

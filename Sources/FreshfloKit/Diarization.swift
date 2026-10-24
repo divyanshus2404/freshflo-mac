@@ -10,19 +10,24 @@ enum Diarization {
 
     /// Speaker number (0, 1, 2… in order of first appearance) for each segment, or nil if it all sounds like one voice.
     /// `starts` are segment start times in seconds, in order; each segment runs until the next one starts.
-    static func speakers(samples: [Float], starts: [Double], threshold: Float = 4.6, maxSpeakers: Int = 6) -> [Int]? {
+    static func speakers(samples: [Float], starts: [Double], ends: [Double]? = nil, threshold: Float = 4.6, maxSpeakers: Int = 6) -> [Int]? {
         guard starts.count >= 2 else { return nil }
         let total = Double(samples.count) / sampleRate
         var features: [[Float]?] = []
         for (i, start) in starts.enumerated() {
-            let end = min(i + 1 < starts.count ? starts[i + 1] : total, start + 30)
+            // With known turn ends, only that turn's own speech; otherwise up to the next turn.
+            let end = min(ends?[i] ?? (i + 1 < starts.count ? starts[i + 1] : total), start + 30)
             let a = max(0, Int(start * sampleRate)), b = min(samples.count, Int(end * sampleRate))
             features.append(b - a > Int(0.8 * sampleRate) ? fingerprint(samples[a..<b]) : nil)
         }
         let known = features.enumerated().compactMap { i, f in f.map { (i, $0) } }
         guard known.count >= 2 else { return nil }
         // Distance on the average voice character (MFCC means). Absolute, not relative to this call, so one person never gets split in two.
-        let labels = cluster(known.map { Array($0.1.prefix(coefficients)) }, threshold: threshold, maxClusters: maxSpeakers)
+        // Measured on each turn's own speech (ends known), one person's turns sit 1.3–2.6 apart and different people
+        // 4.0–5.5, so the cut goes between. Without ends each sample also holds silence and the next voice, which
+        // blurs everyone together, hence the looser default.
+        let cut = ends != nil ? min(threshold, 3.3) : threshold
+        let labels = cluster(known.map { Array($0.1.prefix(coefficients)) }, threshold: cut, maxClusters: maxSpeakers)
         guard Set(labels).count > 1 else { return nil }
 
         // Short segments take the speaker of the nearest fingerprinted segment before them (or after, at the start).
@@ -166,7 +171,7 @@ enum SpeakerNames {
         guard !labels.isEmpty else { return [:] }
         let instructions = """
         You read the start of a meeting transcript. Some participants are labelled \(labels.joined(separator: ", ")).
-        For each label, give that person's first name only if the transcript makes it clear: they introduce themselves ("I'm Priya", "this is Rahul"), or someone addresses them by name right before they reply.
+        For each label, give that person's first name only if the transcript makes it clear: they introduce themselves in any language ("I'm Priya", "this is Rahul", "मैं नेहा", "main Neha bol rahi hoon"), or someone addresses them by name right before they reply.
         Reply with JSON only, like {"Speaker 1": "Priya"}. Leave out any label you're not sure about. Never guess.
         """
         let prompt = String(transcript.prefix(6_000))

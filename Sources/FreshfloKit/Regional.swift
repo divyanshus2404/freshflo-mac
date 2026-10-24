@@ -3,7 +3,7 @@ import Foundation
 /// Deterministic regional formatting applied after cleanup, so it doesn't depend on the model following instructions.
 enum Regional {
     static func apply(_ text: String, _ format: RegionalFormat) -> String {
-        var t = spokenEmails(text)
+        var t = digitsForAmounts(spokenEmails(text))
         guard format == .india else { return t }
         t = rupeesInWords(t)
         let number = #"(\d[\d,]*(?:\.\d+)?)"#
@@ -12,6 +12,33 @@ enum Regional {
         t = replace(t, #"\b"# + number + #"\s+(?:rupees?|rs\.?)(?![\p{L}])"#, "₹$1")
         t = replace(t, #"\b(?:rs\.?|inr)\s?(?=\d)"#, "₹")
         return groupIndian(t)
+    }
+
+    private static let smallNumber = #"(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[- ](?:one|two|three|four|five|six|seven|eight|nine))?"#
+
+    /// Durations, counts and clock times as digits, the way Freshflo writes English ("fifteen minutes" → "15 minutes",
+    /// "at ten o'clock" → "at 10"). Narrow on purpose: "one day I'll…" and "at one point" stay words.
+    static func digitsForAmounts(_ text: String) -> String {
+        func digits(_ phrase: String) -> String? {
+            Regional.number(fromWords: phrase.lowercased().split(whereSeparator: { $0 == " " || $0 == "-" }).map(String.init)).map(String.init)
+        }
+        var t = text
+        let units = #"(minutes?|hours?|days?|weeks?|months?|years?|seconds?|people|persons|percent|members|times)"#
+        if let re = try? NSRegularExpression(pattern: #"\b(?!one\b)("# + smallNumber + #")\s+"# + units + #"\b"#, options: [.caseInsensitive]) {
+            for m in re.matches(in: t, range: NSRange(t.startIndex..., in: t)).reversed() {
+                guard let r = Range(m.range(at: 1), in: t), let n = digits(String(t[r])) else { continue }
+                t.replaceSubrange(r, with: n)
+            }
+        }
+        let after = #"(?=\s*(?:[.,;!?]|$|a\.?m\b|p\.?m\b|in the (?:morning|afternoon|evening|night)|tonight|tomorrow|today|sharp))"#
+        // "at ten o'clock" is always a time; a bare "at ten" only when what follows says so.
+        if let re = try? NSRegularExpression(pattern: #"\bat ("# + smallNumber + #")(?: o['’]clock\b|"# + after + ")", options: [.caseInsensitive]) {
+            for m in re.matches(in: t, range: NSRange(t.startIndex..., in: t)).reversed() {
+                guard let whole = Range(m.range, in: t), let r = Range(m.range(at: 1), in: t), let n = digits(String(t[r])) else { continue }
+                t.replaceSubrange(whole, with: (t[whole].hasPrefix("A") ? "At " : "at ") + n)
+            }
+        }
+        return t
     }
 
     /// "rahul at the rate gmail dot com" / "rahul at gmail dot com" → rahul@gmail.com

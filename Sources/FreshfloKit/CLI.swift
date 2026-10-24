@@ -1,3 +1,4 @@
+import Accelerate
 import AppKit
 import SwiftUI
 import Foundation
@@ -37,6 +38,10 @@ public enum CLI {
                     let syllable = Float(max(0, sin(t * 9)) * (0.6 + 0.4 * sin(t * 1.3)))
                     pill.model.push(syllable)
                     pill.model.pushBands(SIMD3(syllable * 0.9, syllable * 0.7, Float(max(0, sin(t * 23))) * syllable))
+                    if CommandLine.arguments.contains("--chip-check"), stage == 1, t > 4 {
+                        stage = 10
+                        pill.chipCheck()
+                    }
                     // Real recognizers update ~4×/s with whole words.
                     let phrase = "so I was thinking we could meet on Wednesday and send the deck".split(separator: " ")
                     if t > 2 {
@@ -44,7 +49,7 @@ public enum CLI {
                         let text = phrase.prefix(words).joined(separator: " ")
                         if text != pill.model.liveText { pill.model.liveText = text }
                     }
-                } else if stage == 1 {
+                } else if stage == 1 || stage == 10 {
                     pill.showProcessing("Polishing…"); stage = 2
                 } else if stage == 2, t > 12 {
                     pill.success("12 words"); stage = 3
@@ -288,7 +293,7 @@ public enum CLI {
         if let path = value("--diarize"), let starts = value("--starts") {
             let samples = try AudioRecorder.load(url: URL(fileURLWithPath: path))
             let times = starts.split(separator: ",").compactMap { Double($0) }
-            let threshold = Float(value("--threshold") ?? "") ?? 0.42
+            let threshold = Float(value("--threshold") ?? "") ?? 4.6
             if CommandLine.arguments.contains("--dump") {
                 for (i, t) in times.enumerated() {
                     let end = i + 1 < times.count ? times[i + 1] : Double(samples.count) / 16_000
@@ -297,7 +302,16 @@ public enum CLI {
                 }
                 return
             }
-            let labels = Diarization.speakers(samples: samples, starts: times, threshold: threshold)
+            let ends = value("--ends")?.split(separator: ",").compactMap { Double($0) }
+            if CommandLine.arguments.contains("--dist") {
+                let f = times.enumerated().compactMap { i, t -> [Float]? in
+                    let e = ends?[i] ?? (i + 1 < times.count ? times[i + 1] : Double(samples.count) / 16_000)
+                    return Diarization.fingerprint(samples[Int(t * 16_000)..<min(samples.count, Int(e * 16_000))]).map { Array($0.prefix(12)) }
+                }
+                for a in f { print(f.map { b in String(format: "%5.2f", sqrt(vDSP.distanceSquared(a, b) / 12)) }.joined(separator: " ")) }
+                return
+            }
+            let labels = Diarization.speakers(samples: samples, starts: times, ends: ends, threshold: threshold)
             print("speakers: \(labels.map { $0.map(String.init).joined(separator: " ") } ?? "one voice")")
             return
         }
