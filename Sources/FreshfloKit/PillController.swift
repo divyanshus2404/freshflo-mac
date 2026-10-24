@@ -33,6 +33,48 @@ final class PillController {
         panel.hidesOnDeactivate = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         panel.contentView = NSHostingView(rootView: PillView(model: model))
+        model.onChipTap = { [weak self] in self?.cycleWriteIn() }
+    }
+
+    /// The bar ignores the mouse so it never gets in the way, except over the language chip while you dictate.
+    private var mouseTimer: Timer?
+
+    private func watchMouse() {
+        mouseTimer?.invalidate()
+        mouseTimer = Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            let chip = self.model.chipFrame
+            guard self.model.phase == .recording, self.model.writeIn != nil, chip.width > 0 else {
+                self.panel.ignoresMouseEvents = true
+                return
+            }
+            let p = NSEvent.mouseLocation, f = self.panel.frame
+            let onScreen = CGRect(x: f.minX + chip.minX, y: f.maxY - chip.maxY, width: chip.width, height: chip.height).insetBy(dx: -4, dy: -4)
+            self.panel.ignoresMouseEvents = !onScreen.contains(p)
+        }
+    }
+
+    /// Diagnostic for --demo-pill --chip-check: where the chip is, whether a click there reaches it, and what a click does.
+    func chipCheck() {
+        let chip = model.chipFrame, f = panel.frame
+        let center = NSPoint(x: f.minX + chip.midX, y: f.maxY - chip.midY)
+        print("chip label: \(model.writeIn.map(PillModel.chipLabel) ?? "hidden") · frame in bar \(chip) · on screen \(center)")
+        let local = NSPoint(x: chip.midX, y: f.height - chip.midY)
+        let hit = panel.contentView?.hitTest(local)
+        print("a click there reaches: \(hit.map { String(describing: type(of: $0)) } ?? "nothing")")
+        let before = AppSettings.shared.outputLanguage
+        for _ in 0..<3 { model.onChipTap?(); print("after a click: \(PillModel.chipLabel(model.writeIn ?? ""))") }
+        AppSettings.shared.outputLanguage = before
+        let shot = "/tmp/freshflo-chip.png"
+        let task = Process(); task.launchPath = "/usr/sbin/screencapture"; task.arguments = ["-x", "-R\(Int(f.minX + chip.minX - 160)),\(Int((NSScreen.main?.frame.height ?? 0) - f.maxY + chip.minY - 20)),\(Int(chip.width + 320)),\(Int(chip.height + 90))", shot]
+        try? task.run(); task.waitUntilExit()
+        print("screenshot: \(shot)")
+    }
+
+    private func cycleWriteIn() {
+        let settings = AppSettings.shared
+        settings.outputLanguage = Languages.next(after: settings.outputLanguage, spoken: settings.spokenLanguages)
+        model.writeIn = settings.outputLanguage
     }
 
     func showRecording(mode: DictationMode, locked: Bool, anchor: CGRect? = nil) {
@@ -48,8 +90,11 @@ final class PillController {
         model.mode = mode
         model.locked = locked
         model.startedAt = Date()
+        // The chip shows when there's a choice to make: you speak more than one language, or write in another.
+        model.writeIn = mode == .dictation && (settings.spokenLanguages.count > 1 || !settings.outputLanguage.isEmpty) ? settings.outputLanguage : nil
         model.phase = .recording
         present()
+        watchMouse()
         announce(mode == .dictation ? "Listening" : mode == .ask ? "Ask: listening" : "Command: listening")
     }
 
@@ -82,6 +127,9 @@ final class PillController {
     }
 
     func hide() {
+        mouseTimer?.invalidate()
+        mouseTimer = nil
+        panel.ignoresMouseEvents = true
         hideWork?.cancel()
         hideWork = nil
         generation += 1

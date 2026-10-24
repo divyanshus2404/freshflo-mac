@@ -82,6 +82,11 @@ final class PillModel: ObservableObject {
 
     @Published var phase: Phase = .hidden
     @Published var locked = false
+    /// The "Write in" chip above the bar while dictating ("→ English"); nil hides it.
+    @Published var writeIn: String?
+    /// Where the chip is, in the bar window's top-left coordinates, so only it takes clicks.
+    var chipFrame: CGRect = .zero
+    var onChipTap: (() -> Void)?
     @Published var mode: DictationMode = .dictation
     @Published var startedAt = Date()
     @Published var style: IndicatorStyle = .halo
@@ -146,6 +151,13 @@ final class PillModel: ObservableObject {
         liveWordCount = 0
         liveText = ""
         finalText = nil
+    }
+}
+
+extension PillModel {
+    /// Short label for the chip: where your words are going.
+    static func chipLabel(_ writeIn: String) -> String {
+        writeIn.isEmpty ? "As spoken" : "→ " + (writeIn.components(separatedBy: " (").first ?? writeIn)
     }
 }
 

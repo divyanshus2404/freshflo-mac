@@ -549,6 +549,35 @@ struct ExpressiveIndicator: View {
     }
 }
 
+private struct ChipFrameKey: PreferenceKey {
+    static var defaultValue: CGRect = .zero
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) { value = nextValue() }
+}
+
+/// Click to change the language this dictation is written in.
+struct WriteInChip: View {
+    let label: String
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 5) {
+                Image(systemName: "globe").font(.system(size: 10, weight: .semibold))
+                Text(label).font(.system(size: 11, weight: .semibold))
+            }
+            .foregroundStyle(.white.opacity(hovering ? 1 : 0.85))
+            .padding(.horizontal, 10).padding(.vertical, 5)
+            .background(Capsule().fill(Color.black.opacity(hovering ? 0.78 : 0.62)))
+            .overlay(Capsule().strokeBorder(.white.opacity(0.18), lineWidth: 0.5))
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .help("Write this dictation in another language")
+        .accessibilityLabel("Writing \(label). Change language")
+    }
+}
+
 struct PillView: View {
     @ObservedObject var model: PillModel
 
@@ -577,6 +606,12 @@ struct PillView: View {
             if showCaptions, !model.style.atTop {
                 CaptionsCard(model: model, accent: IndicatorAccent.color(mode: model.mode, theme: model.theme, error: false))
                     .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+            if let writeIn = model.writeIn, model.phase == .recording, model.mode == .dictation {
+                WriteInChip(label: PillModel.chipLabel(writeIn)) { model.onChipTap?() }
+                    .background(GeometryReader { g in Color.clear.preference(key: ChipFrameKey.self, value: g.frame(in: .global)) })
+                    .onPreferenceChange(ChipFrameKey.self) { model.chipFrame = $0 }
+                    .transition(.opacity)
             }
             switch model.style {
             case .halo: HaloView(model: model)
