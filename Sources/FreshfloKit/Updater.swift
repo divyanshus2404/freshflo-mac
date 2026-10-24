@@ -222,6 +222,12 @@ final class Updater {
 /// Shown once after an update, so people see what got better.
 enum WhatsNew {
     static let notes: [String: [String]] = [
+        "0.23.0": [
+            "Meeting notes know who said what: each person's turns are kept apart, in the right order, and named when they introduce themselves (in any language). The readable transcript comes in the language you write in.",
+            "More accurate everywhere: self-corrections like \"send it to Rahul, actually Priya\" are applied, Bengali, Telugu and Kannada are heard correctly, and numbers read naturally (15 minutes, 45%, ₹5 crore).",
+            "Translation never makes things up: when no capable model is available, your words are typed as spoken.",
+            "Setup asks which languages you speak, and a chip on the bar lets you switch the language you write in while you talk.",
+        ],
         "0.22.0": [
             "Sync with your other devices: your dictionary, snippets and app styles on Mac, Windows and Android with one code. Encrypted on your Mac first, so nobody can read it, including us (Settings → Advanced).",
             "Microphones switch smoothly: the Mac's mic now works while AirPods or Bluetooth headphones are connected, and switching mics mid-dictation keeps every word.",
